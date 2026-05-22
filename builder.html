@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kill Team — Constructor de Comando</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+/* ── TOKENS (heredados de la app principal) ───────────────── */
+:root {
+  --bg:          #0a0a0a;
+  --bg-2:        #111111;
+  --bg-3:        #1a1a1a;
+  --bg-4:        #222222;
+  --border:      #2a2a2a;
+  --border-2:    #333333;
+  --text:        #e8e8e8;
+  --text-2:      #999999;
+  --text-3:      #555555;
+  --orange:      #E8490F;
+  --orange-dim:  #7a2508;
+  --orange-bg:   #1a0a04;
+  --orange-light:#f07040;
+  --green:       #2a6e3a;
+  --green-bg:    #0a1a0e;
+  --green-light: #4caf70;
+  --action-bg:   #1a1200;
+  --action:      #d4a010;
+  --r-sm: 2px; --r-md: 4px; --r-lg: 6px;
+  --font-display:'D-DINCondensed', 'Arial Narrow', sans-serif;
+  --font-mono:   'D-DINExp', 'Courier New', monospace;
+  --font-body:   'D-DIN', Arial, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 14px; line-height: 1.5; padding-bottom: 100px; }
+.wrap { max-width: 720px; margin: 0 auto; padding: 0 12px; }
+button { cursor: pointer; font-family: var(--font-body); }
+
+/* ── HEADER ─────────────────────────────────────────────── */
+.hdr { border-bottom: 3px solid var(--orange); padding: 1.2rem 0 .8rem; margin-bottom: 1.4rem; }
+.hdr-pre { font-family: var(--font-mono); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--orange); display: block; margin-bottom: 2px; }
+.hdr-title { font-family: var(--font-display); font-size: 36px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #fff; line-height: 1; }
+.hdr-nav { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+.btn-back { background: none; border: none; color: var(--text-3); font-size: 12px; font-family: var(--font-display); letter-spacing: .06em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 5px; padding: 0; transition: color .15s; }
+.btn-back:hover { color: var(--text-2); }
+
+/* ── PASOS (stepper) ────────────────────────────────────── */
+.stepper { display: flex; gap: 0; margin-bottom: 1.4rem; border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--border-2); }
+.step { flex: 1; padding: 8px 6px; text-align: center; font-family: var(--font-display); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); background: var(--bg-2); border-right: 1px solid var(--border-2); transition: background .2s, color .2s; }
+.step:last-child { border-right: none; }
+.step.active { background: var(--orange); color: #fff; }
+.step.done { background: var(--bg-3); color: var(--green-light); }
+.step-num { display: block; font-size: 14px; line-height: 1; }
+
+/* ── SECTION LABEL ──────────────────────────────────────── */
+.sec-lbl { font-size: 11px; font-weight: 700; font-family: var(--font-display); color: var(--text-2); text-transform: uppercase; letter-spacing: .14em; margin: 14px 0 8px; display: flex; align-items: center; gap: 8px; }
+.sec-lbl::after { content: ''; flex: 1; height: 1px; background: var(--orange); opacity: .4; }
+
+/* ── PASO 1: selección de facción ───────────────────────── */
+.faction-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.faction-card { background: var(--bg-2); border: 1px solid var(--border-2); border-top: 3px solid var(--orange); border-radius: var(--r-lg); overflow: hidden; cursor: pointer; transition: border-color .15s, transform .12s; }
+.faction-card:hover { border-color: var(--orange); transform: translateY(-2px); }
+.faction-card-img { width: 100%; height: 100px; object-fit: contain; background: var(--bg-3); padding: 10px; display: block; }
+.faction-card-ph { width: 100%; height: 100px; background: var(--bg-3); display: flex; align-items: center; justify-content: center; font-size: 38px; }
+.faction-card-body { padding: 8px 10px 10px; }
+.faction-card-sub { font-family: var(--font-mono); font-size: 9px; color: var(--orange); letter-spacing: .1em; text-transform: uppercase; }
+.faction-card-name { font-family: var(--font-display); font-size: 17px; font-weight: 800; text-transform: uppercase; color: #fff; line-height: 1.1; }
+.faction-card-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
+.ftag { font-size: 9px; padding: 1px 5px; border-radius: 2px; background: var(--bg-3); color: var(--text-3); border: .5px solid var(--border-2); font-family: var(--font-mono); text-transform: uppercase; }
+
+/* ── PASO 2: selección de operativos ────────────────────── */
+.counter-bar { display: flex; align-items: center; gap: 8px; background: var(--bg-2); border: 1px solid var(--border-2); border-radius: var(--r-md); padding: 8px 12px; margin-bottom: 12px; }
+.counter-bar-label { font-family: var(--font-display); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); flex: 1; }
+.counter-val { font-family: var(--font-display); font-size: 20px; font-weight: 800; color: var(--orange); }
+.counter-max { font-family: var(--font-mono); font-size: 12px; color: var(--text-3); }
+.counter-bar.full .counter-val { color: var(--green-light); }
+
+/* Tarjeta de operativo en el builder */
+.op-entry { background: var(--bg-2); border: 1px solid var(--border-2); border-radius: var(--r-lg); margin-bottom: 5px; overflow: hidden; transition: border-color .15s; }
+.op-entry.required-op { border-left: 3px solid var(--orange-dim); }
+.op-entry.selected { border-color: var(--orange); border-left: 3px solid var(--orange); }
+.op-entry.disabled { opacity: .35; pointer-events: none; }
+
+.op-row { display: grid; grid-template-columns: 1fr auto; align-items: center; padding: 10px 12px; cursor: pointer; gap: 8px; }
+.op-row:hover { background: var(--bg-3); }
+.op-meta { min-width: 0; }
+.op-type-badge { font-family: var(--font-mono); font-size: 9px; color: var(--orange); letter-spacing: .1em; text-transform: uppercase; }
+.op-name { font-family: var(--font-display); font-size: 16px; font-weight: 800; text-transform: uppercase; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.op-name small { font-size: 11px; color: var(--text-3); font-weight: 400; font-family: var(--font-body); text-transform: none; letter-spacing: 0; }
+.op-stats { display: flex; gap: 6px; margin-top: 3px; flex-wrap: wrap; }
+.op-stat { font-size: 10px; color: var(--text-3); font-family: var(--font-mono); }
+.op-stat span { color: var(--text-2); }
+.op-note { font-size: 10px; color: var(--action); font-family: var(--font-mono); margin-top: 2px; }
+
+.op-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.qty-box { display: flex; align-items: center; gap: 4px; }
+.qty-btn { width: 26px; height: 26px; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--bg-3); color: var(--text); font-size: 14px; display: flex; align-items: center; justify-content: center; transition: background .12s, border-color .12s; }
+.qty-btn:hover:not(:disabled) { background: var(--bg-4); border-color: var(--orange-dim); }
+.qty-btn:disabled { opacity: .25; cursor: default; }
+.qty-num { font-family: var(--font-display); font-size: 18px; font-weight: 800; color: var(--text); min-width: 20px; text-align: center; }
+.qty-num.on { color: var(--orange); }
+.badge-req { font-size: 9px; background: var(--orange-bg); color: var(--orange); border: .5px solid var(--orange-dim); padding: 2px 6px; border-radius: 2px; font-family: var(--font-mono); letter-spacing: .05em; text-transform: uppercase; }
+.badge-half { font-size: 9px; background: var(--action-bg); color: var(--action); border: .5px solid #5a4000; padding: 2px 6px; border-radius: 2px; font-family: var(--font-mono); }
+
+/* Loadout selector */
+.loadout-panel { border-top: 1px solid var(--border); padding: 10px 12px; background: var(--bg-3); display: none; }
+.loadout-panel.open { display: block; }
+.loadout-title { font-size: 10px; font-family: var(--font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin-bottom: 8px; }
+.loadout-opts { display: flex; flex-direction: column; gap: 5px; }
+.loadout-opt { border: 1px solid var(--border-2); border-radius: var(--r-md); padding: 8px 10px; cursor: pointer; transition: border-color .12s, background .12s; }
+.loadout-opt:hover { border-color: var(--orange-dim); background: var(--bg-4); }
+.loadout-opt.chosen { border-color: var(--orange); background: var(--orange-bg); }
+.loadout-label { font-family: var(--font-display); font-size: 13px; font-weight: 700; text-transform: uppercase; color: var(--text); letter-spacing: .04em; }
+.loadout-weapons { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.wpill { font-size: 10px; padding: 1px 6px; border-radius: 2px; background: var(--bg-2); color: var(--text-2); border: .5px solid var(--border-2); font-family: var(--font-mono); }
+.wpill-rules { color: var(--text-3); font-style: italic; }
+
+/* ── PASO 3: equipo ──────────────────────────────────────── */
+.eq-bar { display: flex; justify-content: space-between; align-items: center; background: var(--bg-2); border: 1px solid var(--border-2); border-radius: var(--r-md); padding: 8px 12px; margin-bottom: 12px; }
+.eq-bar-label { font-family: var(--font-display); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); }
+.eq-slots { font-family: var(--font-display); font-size: 18px; font-weight: 800; color: var(--orange); }
+.eq-slots.full { color: var(--green-light); }
+
+.eq-card { background: var(--bg-2); border: 1px solid var(--border-2); border-radius: var(--r-md); padding: 10px 13px; margin-bottom: 5px; border-left: 3px solid var(--border-2); cursor: pointer; transition: border-color .12s; display: flex; align-items: flex-start; gap: 10px; }
+.eq-card.selected { border-left-color: var(--orange); border-color: var(--orange); }
+.eq-card:hover:not(.disabled-card) { border-color: var(--orange-dim); }
+.eq-card.disabled-card { opacity: .35; cursor: default; }
+.eq-check { width: 20px; height: 20px; border: 1.5px solid var(--border-2); border-radius: var(--r-sm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; background: var(--bg-3); transition: background .12s, border-color .12s; }
+.eq-card.selected .eq-check { background: var(--orange); border-color: var(--orange); }
+.eq-card.selected .eq-check i { color: #fff; }
+.eq-check i { color: transparent; font-size: 13px; }
+.eq-info { flex: 1; min-width: 0; }
+.eq-name { font-weight: 700; font-size: 13px; font-family: var(--font-display); text-transform: uppercase; letter-spacing: .04em; color: var(--text); }
+.eq-qty { font-size: 9px; font-family: var(--font-mono); color: var(--text-3); margin-left: 6px; }
+.eq-txt { font-size: 11px; color: var(--text-2); line-height: 1.5; margin-top: 3px; }
+.eq-faction-badge { font-size: 9px; background: var(--orange-bg); color: var(--orange); border: .5px solid var(--orange-dim); padding: 1px 5px; border-radius: 2px; font-family: var(--font-mono); display: inline-block; margin-bottom: 3px; }
+
+/* ── RESUMEN FINAL ──────────────────────────────────────── */
+.summary-card { background: var(--bg-2); border: 1px solid var(--border-2); border-radius: var(--r-lg); border-top: 3px solid var(--orange); padding: 14px; margin-bottom: 10px; }
+.summary-title { font-family: var(--font-display); font-size: 20px; font-weight: 800; text-transform: uppercase; color: #fff; margin-bottom: 12px; letter-spacing: .04em; }
+.summary-op { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: .5px solid var(--border); }
+.summary-op:last-child { border-bottom: none; }
+.summary-op-type { font-family: var(--font-mono); font-size: 9px; color: var(--orange); min-width: 80px; letter-spacing: .05em; text-transform: uppercase; }
+.summary-op-name { font-family: var(--font-display); font-size: 14px; font-weight: 800; text-transform: uppercase; color: var(--text); flex: 1; }
+.summary-op-loadout { font-size: 11px; color: var(--text-3); }
+.summary-eq { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.summary-eq-pill { font-size: 11px; padding: 3px 8px; border-radius: var(--r-sm); background: var(--bg-3); color: var(--text-2); border: .5px solid var(--border-2); font-family: var(--font-mono); }
+
+/* ── BOTONES DE ACCIÓN ──────────────────────────────────── */
+.action-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #0d0d0d; border-top: 2px solid var(--orange); padding: 10px 16px; display: flex; gap: 8px; justify-content: flex-end; align-items: center; z-index: 100; max-width: 720px; margin: 0 auto; }
+@media(min-width:720px) { .action-bar { left: 50%; right: auto; transform: translateX(-50%); width: 720px; border-radius: 6px 6px 0 0; } }
+.action-info { flex: 1; font-size: 11px; color: var(--text-3); font-family: var(--font-mono); }
+.btn { padding: 8px 18px; border-radius: var(--r-md); font-family: var(--font-display); font-size: 13px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; border: none; transition: opacity .15s; }
+.btn:disabled { opacity: .3; cursor: default; }
+.btn-primary { background: var(--orange); color: #fff; }
+.btn-primary:hover:not(:disabled) { opacity: .88; }
+.btn-ghost { background: var(--bg-3); color: var(--text-2); border: 1px solid var(--border-2); }
+.btn-ghost:hover:not(:disabled) { border-color: var(--orange-dim); color: var(--text); }
+.btn-print { background: var(--green); color: #fff; }
+.btn-print:hover { opacity: .88; }
+
+/* ── MISC ───────────────────────────────────────────────── */
+.note-box { background: var(--action-bg); border: .5px solid #5a4000; border-radius: var(--r-md); padding: 8px 12px; font-size: 11px; color: var(--action); margin-bottom: 10px; line-height: 1.5; }
+.error-pill { background: #2a0505; color: #f07070; border: .5px solid #5a1010; border-radius: var(--r-md); padding: 6px 12px; font-size: 11px; font-family: var(--font-mono); margin-bottom: 8px; display: none; }
+.error-pill.show { display: block; }
+</style>
+</head>
+<body>
+<script>
+  // Globales vacíos — los archivos de datos los rellenan
+  const FACTIONS = {};
+  const KEYWORDS  = {};
+  window.UNIVERSAL_EQUIPMENT = [];
+</script>
+
+<!-- Archivos de datos — mismos nombres que en tu js/data/ -->
+<script src="js/data/universal_equipment.js"></script>
+<script src="js/data/korps.js"></script>
+<script src="js/data/sucesores.js"></script>
+<script src="js/data/ala-asesina.js"></script>
+<script src="js/data/garra-nemesis.js"></script>
+<script src="js/data/tempestus-aquilons.js"></script>
+<script src="js/data/orkomandos.js"></script>
+
+<div class="wrap">
+  <header class="hdr">
+    <span class="hdr-pre">Warhammer 40,000</span>
+    <div style="display:flex;align-items:baseline;gap:12px">
+      <h1 class="hdr-title">Kill Team</h1>
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-3);letter-spacing:.1em;text-transform:uppercase">Constructor de Comando</span>
+    </div>
+    <nav class="hdr-nav">
+      <button class="btn-back" onclick="goHome()"><i class="ti ti-arrow-left"></i> Volver a la app</button>
+    </nav>
+  </header>
+
+  <!-- STEPPER -->
+  <div class="stepper" id="stepper">
+    <div class="step active" id="step1"><span class="step-num">1</span>Comando</div>
+    <div class="step" id="step2"><span class="step-num">2</span>Operativos</div>
+    <div class="step" id="step3"><span class="step-num">3</span>Equipo</div>
+    <div class="step" id="step4"><span class="step-num">4</span>Resumen</div>
+  </div>
+
+  <div id="view"></div>
+
+  <div class="error-pill" id="error-pill"><i class="ti ti-alert-circle"></i> <span id="error-msg"></span></div>
+</div>
+
+<!-- ACTION BAR -->
+<div class="action-bar" id="action-bar">
+  <div class="action-info" id="action-info"></div>
+  <button class="btn btn-ghost" id="btn-prev" onclick="prevStep()" style="display:none"><i class="ti ti-arrow-left"></i> Atrás</button>
+  <button class="btn btn-primary" id="btn-next" onclick="nextStep()">Siguiente <i class="ti ti-arrow-right"></i></button>
+</div>
+
+<!-- ── DATA INTERNA (inline para funcionar como SPA) ─────── -->
+<script>
+// Los globales FACTIONS, KEYWORDS y UNIVERSAL_EQUIPMENT
+// se declaran en el bloque inline previo a los <script src>.
+
+// ─── ESTADO ─────────────────────────────────────────────────
+const state = {
+  step: 1,
+  factionId: null,
+  // roster: { [opId]: { op, entry, qty, loadoutIdx } }
+  roster: {},
+  equipment: [],   // array de ids seleccionados
+};
+
+// ─── NAVEGACIÓN PASOS ────────────────────────────────────────
+function setStep(n) {
+  state.step = n;
+  [1,2,3,4].forEach(i => {
+    const el = document.getElementById('step' + i);
+    el.className = 'step' + (i === n ? ' active' : i < n ? ' done' : '');
+  });
+  document.getElementById('btn-prev').style.display = n > 1 ? '' : 'none';
+  document.getElementById('btn-next').textContent = n === 3 ? 'Ver resumen →' : n === 4 ? '' : 'Siguiente →';
+  document.getElementById('btn-next').style.display = n === 4 ? 'none' : '';
+  hideError();
+  render();
+}
+
+function nextStep() {
+  if (state.step === 1) {
+    if (!state.factionId) { showError('Selecciona un comando primero.'); return; }
+    setStep(2);
+  } else if (state.step === 2) {
+    const err = validateRoster();
+    if (err) { showError(err); return; }
+    setStep(3);
+  } else if (state.step === 3) {
+    setStep(4);
+  }
+}
+
+function prevStep() {
+  if (state.step > 1) setStep(state.step - 1);
+}
+
+function goHome() {
+  // En producción: window.history.back() o goHome() de app.js
+  window.location.href = 'index.html';
+}
+
+// ─── ERRORES ─────────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('error-pill');
+  document.getElementById('error-msg').textContent = msg;
+  el.classList.add('show');
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function hideError() {
+  document.getElementById('error-pill').classList.remove('show');
+}
+
+// ─── RENDER PRINCIPAL ────────────────────────────────────────
+function render() {
+  const view = document.getElementById('view');
+  if (state.step === 1) view.innerHTML = renderStep1();
+  else if (state.step === 2) view.innerHTML = renderStep2();
+  else if (state.step === 3) view.innerHTML = renderStep3();
+  else if (state.step === 4) view.innerHTML = renderStep4();
+  updateActionInfo();
+}
+
+function updateActionInfo() {
+  const el = document.getElementById('action-info');
+  if (state.step === 2 && state.factionId) {
+    const f = FACTIONS[state.factionId];
+    const { used, total } = rosterSlots();
+    el.textContent = `Operativos: ${used} / ${total}`;
+  } else if (state.step === 3 && state.factionId) {
+    const f = FACTIONS[state.factionId];
+    const slots = f.roster.equipment.slots;
+    el.textContent = `Equipo: ${state.equipment.length} / ${slots} piezas`;
+  } else {
+    el.textContent = '';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PASO 1 — SELECCIÓN DE FACCIÓN
+// ═══════════════════════════════════════════════════════════
+function renderStep1() {
+  const factions = Object.values(FACTIONS).filter(f => f.roster);
+  if (!factions.length) {
+    return `<div style="color:var(--text-3);padding:20px;text-align:center;font-family:var(--font-mono)">
+      <i class="ti ti-alert-circle" style="font-size:24px;display:block;margin-bottom:8px"></i>
+      No se encontraron comandos.<br>
+      <span style="font-size:11px">Comprueba que los archivos js/data/*.js están cargados correctamente.</span>
+    </div>`;
+  }
+  const cards = factions.map(f => {
+    const archetypes = (f.roster?.archetypes || []).map(a => `<span class="ftag">${a}</span>`).join('');
+    const img = f.img
+      ? `<img class="faction-card-img" src="${f.img}" alt="${f.name}" onerror="this.outerHTML='<div class=faction-card-ph>${f.icon || '⚔'}</div>'">`
+      : `<div class="faction-card-ph">${f.icon || '⚔'}</div>`;
+    return `<div class="faction-card" onclick="selectFaction('${f.id}')">
+      ${img}
+      <div class="faction-card-body">
+        <div class="faction-card-sub">${f.subfaction}</div>
+        <div class="faction-card-name">${f.name}</div>
+        <div class="faction-card-tags">${archetypes}</div>
+      </div>
+    </div>`;
+  }).join('');
+  return `
+    <div class="sec-lbl">Elige un comando</div>
+    <div class="faction-grid">${cards}</div>`;
+}
+
+function selectFaction(id) {
+  state.factionId = id;
+  state.roster = {};
+  state.equipment = [];
+
+  const f = FACTIONS[id];
+  if (!f?.roster?.required) { nextStep(); return; }
+
+  f.roster.required.forEach((req, i) => {
+    // Buscar el op por type; si hay varios obligatorios del mismo type (ej. SOLDADO ×4)
+    // usamos un key único por índice
+    const op = f.ops.find(o => o.type === req.type);
+    const key = 'req_' + i + '_' + req.type;
+    state.roster[key] = {
+      op: op || null,
+      entry: req,
+      qty: req.count,
+      loadoutIdx: (req.loadouts && req.loadouts.length > 0) ? -1 : null,
+      isRequired: true,
+    };
+  });
+
+  console.log('[Builder] Roster initialized:', Object.keys(state.roster));
+  nextStep();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PASO 2 — SELECCIÓN DE OPERATIVOS
+// ═══════════════════════════════════════════════════════════
+
+// Renderiza un obligatorio simple sin tarjeta de operativo completa (ej. SOLDADO ×4)
+function renderRequiredSimple(req, key, item) {
+  return `
+    <div class="op-entry required-op selected" id="oe-${key}">
+      <div class="op-row">
+        <div class="op-meta">
+          <div class="op-type-badge">${req.type}</div>
+          <div class="op-name">${req.type} <small style="font-weight:400;font-size:11px;text-transform:none">${req.note || ''}</small></div>
+        </div>
+        <div class="op-actions">
+          <span class="badge-req">FIJO ×${req.count}</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+// Calcula slots usados vs total
+function rosterSlots() {
+  const f = FACTIONS[state.factionId];
+  if (!f?.roster) return { used: 0, total: 0 };
+  const poolSlots = f.roster.pool?.slots || 0;
+
+  // Count pool slots used
+  let poolUsed = 0;
+  Object.values(state.roster).forEach(item => {
+    if (item.isRequired) return;
+    poolUsed += item.entry.half ? item.qty * 0.5 : item.qty;
+  });
+
+  // Required total
+  const reqTotal = (f.roster.required || []).reduce((s, r) => s + r.count, 0);
+  const reqUsed  = (f.roster.required || []).reduce((s, r, i) => {
+    const key = 'req_' + i + '_' + r.type;
+    return s + (state.roster[key]?.qty || 0);
+  }, 0);
+
+  return {
+    used:  reqUsed + poolUsed,
+    total: reqTotal + poolSlots,
+    poolUsed, poolSlots, reqUsed, reqTotal,
+  };
+}
+
+function renderStep2() {
+  const f = FACTIONS[state.factionId];
+  const { used, total, poolUsed, poolSlots } = rosterSlots();
+  const full = Math.round(poolUsed * 2) >= poolSlots * 2;
+
+  let html = `
+    <div class="counter-bar${full ? ' full' : ''}">
+      <div class="counter-bar-label">Operativos seleccionados</div>
+      <span class="counter-val">${used}</span>
+      <span class="counter-max"> / ${total}</span>
+    </div>`;
+
+  // Pool note
+  if (f.roster.pool?.note) {
+    html += `<div class="note-box">${f.roster.pool.note}</div>`;
+  }
+
+  // ── OBLIGATORIOS ──
+  html += `<div class="sec-lbl">Obligatorios</div>`;
+  (f.roster.required || []).forEach((req, i) => {
+    const key = 'req_' + i + '_' + req.type;
+    // Garantizar que el item existe en state.roster antes de renderizar
+    // (evita que chooseLoadout falle por key ausente)
+    if (!state.roster[key]) {
+      const op = f.ops.find(o => o.type === req.type);
+      state.roster[key] = {
+        op: op || null,
+        entry: req,
+        qty: req.count,
+        loadoutIdx: (req.loadouts && req.loadouts.length > 0) ? -1 : null,
+        isRequired: true,
+      };
+    }
+    const item = state.roster[key];
+    const op = f.ops.find(o => o.type === req.type);
+    if (!op) {
+      html += renderRequiredSimple(req, key, item);
+      return;
+    }
+    html += renderOpEntry(op, req, key, item, true);
+  });
+
+  // ── POOL ──
+  if (f.roster.pool?.entries?.length) {
+    html += `<div class="sec-lbl">Agentes disponibles <span style="font-size:10px;font-weight:400;font-family:var(--font-body);text-transform:none;letter-spacing:0;color:var(--text-3)">${Math.round(poolUsed)} / ${poolSlots} slots</span></div>`;
+    f.roster.pool.entries.forEach(entry => {
+      if (entry.type === 'ARDID_0PM') {
+        // Special entry for korps
+        const key = 'ardid_0pm';
+        const item = state.roster[key] || { qty: 0, loadoutIdx: null };
+        html += renderArdidEntry(entry, key, item, poolUsed, poolSlots);
+        return;
+      }
+      const op = f.ops.find(o => o.type === entry.type);
+      if (!op) return;
+      const key = 'pool_' + entry.type;
+      const item = state.roster[key] || { qty: 0, loadoutIdx: entry.loadouts ? -1 : null };
+      html += renderOpEntry(op, entry, key, item, false, poolUsed, poolSlots);
+    });
+  }
+
+  return html;
+}
+
+function renderOpEntry(op, entry, key, item, isRequired, poolUsed = 0, poolSlots = 0) {
+  const qty = item.qty || 0;
+  // maxQty calculado dinámicamente en canAdd para respetar pool slots
+  const hasLoadout = entry.loadouts && entry.loadouts.length > 0;
+  const chosenLoadout = hasLoadout ? (entry.loadouts[item.loadoutIdx] || null) : null;
+  const halfCost = entry.half ? 0.5 : 1;
+
+  // Can add? — para max:null usamos los slots libres como tope
+  const realMax   = (entry.max !== null && entry.max !== undefined) ? entry.max
+                  : Math.max(0, Math.floor((poolSlots - poolUsed + (qty * halfCost)) / halfCost));
+  const poolFull  = !isRequired && Math.round((poolUsed + halfCost) * 2) > poolSlots * 2;
+  const atMax     = qty >= realMax;
+  const canAdd    = !isRequired && !poolFull && !atMax;
+  const canRemove = !isRequired && qty > 0;
+  const isSelected = qty > 0;
+
+  let cls = 'op-entry';
+  if (isRequired) cls += ' required-op';
+  if (isSelected) cls += ' selected';
+
+  // Stats mini
+  const stats = `<span class="op-stat">LPA <span>${op.s.lpa}</span></span>
+    <span class="op-stat">MOV <span>${op.s.mov}</span></span>
+    <span class="op-stat">SALV <span>${op.s.salv}</span></span>
+    <span class="op-stat">H <span>${op.s.h}</span></span>`;
+
+  // Loadout display — se muestra si hay loadouts Y (está seleccionado O es obligatorio)
+  let loadoutInfo = '';
+  const showLoadout = hasLoadout && (isSelected || isRequired);
+  if (showLoadout) {
+    if (item.loadoutIdx >= 0) {
+      loadoutInfo = `<div class="op-note"><i class="ti ti-sword" style="font-size:10px"></i> ${entry.loadouts[item.loadoutIdx].label}</div>`;
+    } else {
+      loadoutInfo = `<div class="op-note" style="color:#f07070"><i class="ti ti-alert-circle" style="font-size:10px"></i> Elige armamento</div>`;
+    }
+  }
+
+  // Action controls
+  let actions = '';
+  if (isRequired) {
+    actions = `<span class="badge-req">FIJO ×${entry.count}</span>`;
+  } else {
+    actions = `
+      <div class="qty-box">
+        <button class="qty-btn" onclick="changeQty('${key}', -1, event)" ${qty <= 0 ? 'disabled' : ''}>−</button>
+        <span class="qty-num ${qty > 0 ? 'on' : ''}">${qty}</span>
+        <button class="qty-btn" onclick="changeQty('${key}', +1, event)" ${!canAdd ? 'disabled' : ''}>+</button>
+      </div>
+      ${entry.half ? '<span class="badge-half">½ slot</span>' : ''}`;
+  }
+
+  // Loadout panel — visible para obligatorios también
+  let loadoutPanel = '';
+  if (hasLoadout && (isSelected || isRequired)) {
+    const opts = entry.loadouts.map((lo, idx) => {
+      const chosen = item.loadoutIdx === idx;
+      const weapons = lo.w.map(w => `
+        <span class="wpill">${w.n}</span>
+        ${w.r?.length ? `<span class="wpill wpill-rules">${w.r.join(', ')}</span>` : ''}`).join('');
+      return `
+        <div class="loadout-opt ${chosen ? 'chosen' : ''}" onclick="chooseLoadout('${key}', ${idx}, event)">
+          <div class="loadout-label">${lo.label}</div>
+          <div class="loadout-weapons">${weapons}</div>
+        </div>`;
+    }).join('');
+    loadoutPanel = `
+      <div class="loadout-panel open" id="lp-${key}">
+        <div class="loadout-title"><i class="ti ti-sword"></i> Elige el armamento</div>
+        <div class="loadout-opts">${opts}</div>
+      </div>`;
+  }
+
+  return `
+    <div class="op-entry ${cls}" id="oe-${key}">
+      <div class="op-row" onclick="toggleOpPanel('${key}')">
+        <div class="op-meta">
+          <div class="op-type-badge">${op.type}</div>
+          <div class="op-name">${op.name}</div>
+          <div class="op-stats">${stats}</div>
+          ${loadoutInfo}
+        </div>
+        <div class="op-actions">${actions}</div>
+      </div>
+      ${loadoutPanel}
+    </div>`;
+}
+
+function renderArdidEntry(entry, key, item, poolUsed, poolSlots) {
+  const qty = item.qty || 0;
+  const maxQty = entry.max || 4;
+  const poolFull = Math.round((poolUsed + 1) * 2) > poolSlots * 2 && qty === 0;
+  const atMax = qty >= maxQty;
+  const canAdd = !poolFull && !atMax;
+
+  return `
+    <div class="op-entry ${qty > 0 ? 'selected' : ''}" id="oe-${key}">
+      <div class="op-row">
+        <div class="op-meta">
+          <div class="op-type-badge" style="color:var(--action)">ARDID 0PM</div>
+          <div class="op-name" style="font-size:14px">Ardid Korps de la Muerte <small>(coste 0PM en batalla)</small></div>
+          <div style="font-size:10px;color:var(--text-3);margin-top:2px">${entry.note}</div>
+        </div>
+        <div class="op-actions">
+          <div class="qty-box">
+            <button class="qty-btn" onclick="changeQty('${key}', -1, event)" ${qty <= 0 ? 'disabled' : ''}>−</button>
+            <span class="qty-num ${qty > 0 ? 'on' : ''}">${qty}</span>
+            <button class="qty-btn" onclick="changeQty('${key}', +1, event)" ${!canAdd ? 'disabled' : ''}>+</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function toggleOpPanel(key) {
+  // No-op visual — panels are auto-shown when selected
+}
+
+function changeQty(key, delta, event) {
+  event.stopPropagation();
+  const f = FACTIONS[state.factionId];
+  if (!state.roster[key]) {
+    // Initialize from pool entry
+    const entry = f.roster.pool.entries.find(e => 'pool_' + e.type === key)
+               || (key === 'ardid_0pm' ? { type: 'ARDID_0PM', max: 4 } : null);
+    if (!entry) return;
+    const op = key === 'ardid_0pm' ? null : f.ops.find(o => o.type === entry.type);
+    state.roster[key] = {
+      op, entry,
+      qty: 0,
+      loadoutIdx: entry.loadouts ? -1 : null,
+      isRequired: false,
+    };
+  }
+  const item = state.roster[key];
+  const newQty = Math.max(0, item.qty + delta);
+  const maxQty = effectiveMax(item.entry, key);
+  item.qty = Math.min(newQty, maxQty);
+  if (item.qty === 0) item.loadoutIdx = item.entry?.loadouts ? -1 : null;
+  hideError();
+  render();
+}
+
+// Calcula el máximo real de un entry del pool:
+// - Si tiene max numérico, ese es el límite de tipo
+// - Si max es null (ilimitado), el límite es los slots libres restantes del pool
+//   (evita que SOLDADO u ORKORRASO superen el total del pool)
+function effectiveMax(entry, key) {
+  if (entry.max !== null && entry.max !== undefined) return entry.max;
+  // max: null → limitado solo por slots libres
+  const f = FACTIONS[state.factionId];
+  const poolSlots = f.roster.pool?.slots || 0;
+  const halfCost  = entry.half ? 0.5 : 1;
+  // Slots usados por OTROS operativos del pool (no este)
+  let otherUsed = 0;
+  Object.entries(state.roster).forEach(([k, item]) => {
+    if (item.isRequired) return;
+    if (k === key) return;
+    otherUsed += item.entry.half ? item.qty * 0.5 : item.qty;
+  });
+  const freeSlots = poolSlots - otherUsed;
+  return Math.max(0, Math.floor(freeSlots / halfCost));
+}
+
+function chooseLoadout(key, idx, event) {
+  event.stopPropagation();
+  // Si el item no existe en state.roster, intentamos recuperarlo
+  // (puede pasar si selectFaction no lo inicializó bien)
+  if (!state.roster[key]) {
+    const f = FACTIONS[state.factionId];
+    // Buscar en required
+    const reqMatch = (f.roster?.required || []).find((r, i) => 'req_' + i + '_' + r.type === key);
+    if (reqMatch) {
+      const op = f.ops.find(o => o.type === reqMatch.type);
+      state.roster[key] = { op, entry: reqMatch, qty: reqMatch.count, loadoutIdx: -1, isRequired: true };
+    } else {
+      console.warn('[Builder] chooseLoadout: key not found in roster:', key);
+      return;
+    }
+  }
+  state.roster[key].loadoutIdx = idx;
+  render();
+}
+
+// Validate roster before moving to step 3
+function validateRoster() {
+  const f = FACTIONS[state.factionId];
+  // Check required ops all have loadouts chosen if needed
+  for (const [key, item] of Object.entries(state.roster)) {
+    if (item.qty > 0 && item.loadoutIdx === -1) {
+      return `"${item.op?.name || item.entry?.type || 'Operativo'}" necesita un armamento elegido.`;
+    }
+  }
+  // Check pool slots exactly filled
+  const { poolUsed, poolSlots } = rosterSlots();
+  if (Math.round(poolUsed * 2) < poolSlots * 2) {
+    return `Faltan ${poolSlots - Math.round(poolUsed * 2) / 2} slot(s) por cubrir en el pool.`;
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PASO 3 — EQUIPO
+// ═══════════════════════════════════════════════════════════
+function renderStep3() {
+  const f = FACTIONS[state.factionId];
+  const eq = f.roster.equipment;
+  const slots = eq.slots;
+  const used  = state.equipment.length;
+  const full  = used >= slots;
+
+  let html = `
+    <div class="eq-bar">
+      <div class="eq-bar-label">Piezas de equipo seleccionadas</div>
+      <span class="eq-slots${full ? ' full' : ''}">${used} / ${slots}</span>
+    </div>`;
+
+  // Faction equipment
+  if (eq.faction?.length) {
+    html += `<div class="sec-lbl">Equipo de facción</div>`;
+    eq.faction.forEach(e => {
+      const selected = state.equipment.includes(e.id);
+      const disabled = !selected && full;
+      html += `
+        <div class="eq-card${selected ? ' selected' : ''}${disabled ? ' disabled-card' : ''}"
+             onclick="${disabled ? '' : `toggleEquip('${e.id}')`}">
+          <div class="eq-check"><i class="ti ti-check"></i></div>
+          <div class="eq-info">
+            <div class="eq-faction-badge">Facción</div>
+            <div class="eq-name">${e.n} ${e.qty > 1 ? `<span class="eq-qty">×${e.qty}</span>` : ''}</div>
+            <div class="eq-txt">${e.note}</div>
+          </div>
+        </div>`;
+    });
+  }
+
+  // Universal equipment
+  const univIds = eq.universal || [];
+  const univItems = (window.UNIVERSAL_EQUIPMENT || []).filter(u => univIds.includes(u.id));
+  if (univItems.length) {
+    html += `<div class="sec-lbl">Equipo universal</div>`;
+    univItems.forEach(e => {
+      const selected = state.equipment.includes(e.id);
+      const disabled = !selected && full;
+      html += `
+        <div class="eq-card${selected ? ' selected' : ''}${disabled ? ' disabled-card' : ''}"
+             onclick="${disabled ? '' : `toggleEquip('${e.id}')`}">
+          <div class="eq-check"><i class="ti ti-check"></i></div>
+          <div class="eq-info">
+            <div class="eq-name">${e.n} ${e.qty > 1 ? `<span class="eq-qty">×${e.qty}</span>` : e.qty === 1 ? '<span class="eq-qty">×1</span>' : ''}</div>
+            <div class="eq-txt">${e.t}</div>
+          </div>
+        </div>`;
+    });
+  }
+
+  return html;
+}
+
+function toggleEquip(id) {
+  const f = FACTIONS[state.factionId];
+  const slots = f.roster.equipment.slots;
+  if (state.equipment.includes(id)) {
+    state.equipment = state.equipment.filter(x => x !== id);
+  } else {
+    if (state.equipment.length >= slots) return;
+    state.equipment.push(id);
+  }
+  hideError();
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PASO 4 — RESUMEN
+// ═══════════════════════════════════════════════════════════
+function renderStep4() {
+  const f = FACTIONS[state.factionId];
+
+  // Ops
+  const opRows = Object.values(state.roster)
+    .filter(item => item.qty > 0)
+    .map(item => {
+      const times = item.qty > 1 ? ` ×${item.qty}` : '';
+      let loadoutLabel = '';
+      if (item.entry?.loadouts && item.loadoutIdx >= 0) {
+        loadoutLabel = `<div class="summary-op-loadout">${item.entry.loadouts[item.loadoutIdx].label}</div>`;
+      }
+      if (item.entry?.type === 'ARDID_0PM') {
+        return `
+          <div class="summary-op">
+            <div class="summary-op-type" style="color:var(--action)">Ardid 0PM</div>
+            <div>
+              <div class="summary-op-name" style="font-size:12px">Ardid Korps de la Muerte${times}</div>
+            </div>
+          </div>`;
+      }
+      return `
+        <div class="summary-op">
+          <div class="summary-op-type">${item.op?.type || ''}</div>
+          <div>
+            <div class="summary-op-name">${item.op?.name || ''}${times}</div>
+            ${loadoutLabel}
+          </div>
+        </div>`;
+    }).join('');
+
+  // Equipment
+  const allEq = [
+    ...(f.roster.equipment.faction || []),
+    ...(window.UNIVERSAL_EQUIPMENT || []).filter(u => f.roster.equipment.universal?.includes(u.id)),
+  ];
+  const eqPills = state.equipment.map(id => {
+    const e = allEq.find(x => x.id === id);
+    return e ? `<span class="summary-eq-pill">${e.n}</span>` : '';
+  }).join('');
+
+  return `
+    <div class="summary-card">
+      <div class="summary-title">${f.name}</div>
+      <div class="sec-lbl">Operativos</div>
+      ${opRows || '<div style="color:var(--text-3);font-size:12px">Sin operativos</div>'}
+      <div class="sec-lbl" style="margin-top:14px">Equipo</div>
+      ${state.equipment.length
+        ? `<div class="summary-eq">${eqPills}</div>`
+        : `<div style="color:var(--text-3);font-size:12px">Sin equipo seleccionado</div>`}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-ghost" onclick="setStep(2)"><i class="ti ti-edit"></i> Editar operativos</button>
+      <button class="btn btn-ghost" onclick="setStep(3)"><i class="ti ti-package"></i> Editar equipo</button>
+      <button class="btn btn-print" onclick="window.print()"><i class="ti ti-printer"></i> Imprimir</button>
+    </div>`;
+}
+
+// ─── INIT ────────────────────────────────────────────────────
+// render() se llama desde DOMContentLoaded para garantizar
+// que todos los scripts de datos han sido ejecutados.
+</script>
+
+<!-- Datos globales: deben cargarse ANTES del init -->
+<!-- Datos embebidos directamente en el HTML -->
+
+<script>
+window.addEventListener('load', () => {
+  const factions = Object.values(FACTIONS).filter(f => f.roster);
+  const count    = factions.length;
+
+  console.log('[Builder] Facciones con roster:', count, factions.map(f => f.id));
+  console.log('[Builder] Equipo universal:', (window.UNIVERSAL_EQUIPMENT || []).length, 'piezas');
+
+  if (count === 0) {
+    const allFactions = Object.keys(FACTIONS);
+    const noRoster    = allFactions.filter(id => !FACTIONS[id].roster);
+
+    document.getElementById('view').innerHTML = `
+      <div style="background:#1a0505;border:1px solid #5a1010;border-radius:6px;padding:16px 20px;font-family:monospace;font-size:12px;color:#f07070;line-height:1.9">
+        <div style="font-size:15px;font-weight:700;margin-bottom:10px;color:#ff8080">⚠ No se encontraron comandos</div>
+        <div style="color:#aaa;margin-bottom:10px">
+          Facciones en FACTIONS: <strong style="color:#fff">${allFactions.length}</strong>
+          ${allFactions.length ? ' (' + allFactions.join(', ') + ')' : ''}<br>
+          Facciones con bloque roster: <strong style="color:#fff">${count}</strong>
+          ${noRoster.length ? '<br>Sin roster (usan archivos viejos): <strong style="color:#f07070">' + noRoster.join(', ') + '</strong>' : ''}
+        </div>
+        <div style="color:#aaa;margin-bottom:10px">
+          Posibles causas:<br>
+          ① Los archivos JS no se encuentran → F12 → Console → busca errores 404<br>
+          ② Los archivos JS son los originales sin bloque <strong>roster:</strong> → usa los actualizados<br>
+          ③ El builder.html no está en la carpeta raíz del proyecto
+        </div>
+        <div style="color:#888;border-top:1px solid #3a1010;padding-top:10px">
+          Estructura esperada:<br>
+          <pre style="color:#aaa;margin-top:6px;line-height:1.7">  builder.html
+  index.html
+  js/data/
+    universal_equipment.js
+    korps.js
+    sucesores.js
+    ala-asesina.js
+    garra-nemesis.js
+    tempestus-aquilons.js
+    orkomandos.js</pre>
+        </div>
+      </div>`;
+    return;
+  }
+
+  render();
+});
+</script>
+</body>
+</html>
