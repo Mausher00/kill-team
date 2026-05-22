@@ -5,13 +5,13 @@
 
 FACTIONS['garra-nemesis'] = {
   id: 'garra-nemesis', name: 'Garra Némesis', subfaction: 'Astartes Herejes del Caos',
-  icon: '🦀', img: 'Imagenes/garra-nemesis.png', desc: 'Comandos de los Amos de la Noche que usan el miedo como arma: venenos, terror psíquico y violencia obscena para aniquilar a sus presas.',
+  icon: '🦀', img: 'imagenes/garra-nemesis.png', desc: 'Comandos de los Amos de la Noche que usan el miedo como arma: venenos, terror psíquico y violencia obscena para aniquilar a sus presas.',
   tags: ['Caos', 'Élite', 'Infiltración', 'Buscar y Destruir'], version: '1.0',
 
   ops: [
     {
       id: 'visionario', name: 'Visionario Amo de la Noche', type: 'LÍDER',
-      img: 'Imagenes/garra-nemesis-img/visionario.jpg',
+      img: 'imagenes/garra-nemesis-img/visionario.jpg',
       s: { lpa: 3, mov: '6"', salv: '3+', h: 15 },
       kw: ['GARRA NÉMESIS', 'CAOS', 'ASTARTES HEREJES', 'PSÍQUICO', 'LÍDER', 'VISIONARIO'],
       w: [
@@ -30,7 +30,7 @@ FACTIONS['garra-nemesis'] = {
     },
     {
       id: 'siembramiedos', name: 'Siembramiedos Amo de la Noche', type: 'SIEMBRAMIEDOS',
-      img: 'Imagenes/garra-nemesis-img/siembramiedos.jpg',
+      img: 'imagenes/garra-nemesis-img/siembramiedos.jpg',
       s: { lpa: 3, mov: '6"', salv: '3+', h: 14 },
       kw: ['GARRA NÉMESIS', 'CAOS', 'ASTARTES HEREJES', 'SIEMBRAMIEDOS'],
       w: [
@@ -47,7 +47,7 @@ FACTIONS['garra-nemesis'] = {
     },
     {
       id: 'tirador', name: 'Tirador Amo de la Noche', type: 'TIRADOR',
-      img: 'Imagenes/garra-nemesis-img/tirador.jpg',
+      img: 'imagenes/garra-nemesis-img/tirador.jpg',
       s: { lpa: 3, mov: '6"', salv: '3+', h: 14 },
       kw: ['GARRA NÉMESIS', 'CAOS', 'ASTARTES HEREJES', 'TIRADOR'],
       w: [
@@ -62,7 +62,7 @@ FACTIONS['garra-nemesis'] = {
     },
     {
       id: 'tirador-pesado', name: 'Tirador Pesado Amo de la Noche', type: 'TIRADOR PESADO',
-      img: 'Imagenes/garra-nemesis-img/tirador-pesado.jpg',
+      img: 'imagenes/garra-nemesis-img/tirador-pesado.jpg',
       s: { lpa: 3, mov: '6"', salv: '3+', h: 14 },
       kw: ['GARRA NÉMESIS', 'CAOS', 'ASTARTES HEREJES', 'TIRADOR PESADO'],
       w: [
@@ -77,7 +77,7 @@ FACTIONS['garra-nemesis'] = {
     },
     {
       id: 'aullador', name: 'Aullador Amo de la Noche', type: 'AULLADOR',
-      img: 'Imagenes/garra-nemesis-img/aullador.jpg',
+      img: 'imagenes/garra-nemesis-img/aullador.jpg',
       s: { lpa: 3, mov: '6"', salv: '3+', h: 14 },
       kw: ['GARRA NÉMESIS', 'CAOS', 'ASTARTES HEREJES', 'AULLADOR'],
       w: [
@@ -90,7 +90,7 @@ FACTIONS['garra-nemesis'] = {
     },
     {
       id: 'robapieles', name: 'Robapieles Amo de la Noche', type: 'ROBAPIELES',
-      img: 'Imagenes/garra-nemesis-img/robapieles.jpg',
+      img: 'imagenes/garra-nemesis-img/robapieles.jpg',
       s: { lpa: 3, mov: '6"', salv: '3+', h: 14 },
       kw: ['GARRA NÉMESIS', 'CAOS', 'ASTARTES HEREJES', 'ROBAPIELES'],
       w: [
@@ -104,7 +104,7 @@ FACTIONS['garra-nemesis'] = {
     },
     {
       id: 'ventrilokar', name: 'Ventrilokar Amo de la Noche', type: 'VENTRILOKAR',
-      img: 'Imagenes/garra-nemesis-img/ventrilokar.jpg',
+      img: 'imagenes/garra-nemesis-img/ventrilokar.jpg',
       s: { lpa: 3, mov: '6"', salv: '3+', h: 14 },
       kw: ['GARRA NÉMESIS', 'CAOS', 'ASTARTES HEREJES', 'PSÍQUICO', 'VENTRILOKAR'],
       w: [
@@ -118,7 +118,7 @@ FACTIONS['garra-nemesis'] = {
     },
     {
       id: 'combatiente', name: 'Combatiente Amo de la Noche', type: 'COMBATIENTE',
-      img: 'Imagenes/garra-nemesis-img/combatiente.jpg',
+      img: 'imagenes/garra-nemesis-img/combatiente.jpg',
       s: { lpa: 3, mov: '6"', salv: '3+', h: 14 },
       kw: ['GARRA NÉMESIS', 'CAOS', 'ASTARTES HEREJES', 'COMBATIENTE'],
       w: [

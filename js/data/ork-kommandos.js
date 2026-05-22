@@ -5,14 +5,14 @@
 
 FACTIONS['orkomandos'] = {
   id: 'orkomandos', name: 'Orkomandos', subfaction: 'Orkos',
-  icon: '🔧', img: 'Imagenes/orkomandos.png',
+  icon: '🔧', img: 'imagenes/orkomandos.png',
   desc: 'Kommandos Orkos que combinan la brutalidad de su especie con una astucia sorprendente. Expertos en infiltración y emboscada, caen sobre el enemigo desde las sombras antes de que pueda reaccionar.',
   tags: ['Orkos', 'Infiltración', 'Buscar y Destruir'], version: '1.0',
 
   ops: [
     {
       id: 'noble', name: 'Noble Orkomando', type: 'LÍDER',
-      img: 'Imagenes/orkomandos-img/noble.jpg',
+      img: 'imagenes/orkomandos-img/noble.jpg',
       s: { lpa: 3, mov: '6"', salv: '5+', h: 14 },
       kw: ['ORKOMANDO', 'ORKO', 'LÍDER', 'NOBLE'],
       w: [
@@ -27,7 +27,7 @@ FACTIONS['orkomandos'] = {
     },
     {
       id: 'orkorraso', name: 'Orkorraso', type: 'ORKORRASO',
-      img: 'Imagenes/orkomandos-img/orkorraso.jpg',
+      img: 'imagenes/orkomandos-img/orkorraso.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 10 },
       kw: ['ORKOMANDO', 'ORKO', 'ORKORRASO'],
       w: [
@@ -40,7 +40,7 @@ FACTIONS['orkomandos'] = {
     },
     {
       id: 'orkoriete', name: 'Orkoriete', type: 'ORKORIETE',
-      img: 'Imagenes/orkomandos-img/orkoriete.jpg',
+      img: 'imagenes/orkomandos-img/orkoriete.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 10 },
       kw: ['ORKOMANDO', 'ORKO', 'ORKORIETE'],
       w: [
@@ -53,7 +53,7 @@ FACTIONS['orkomandos'] = {
     },
     {
       id: 'achicharrador', name: 'Achicharrador', type: 'ACHICHARRADOR',
-      img: 'Imagenes/orkomandos-img/achicharrador.jpg',
+      img: 'imagenes/orkomandos-img/achicharrador.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 10 },
       kw: ['ORKOMANDO', 'ORKO', 'ACHICHARRADOR'],
       w: [
@@ -67,7 +67,7 @@ FACTIONS['orkomandos'] = {
     },
     {
       id: 'teleko', name: 'Teleko', type: 'TELEKO',
-      img: 'Imagenes/orkomandos-img/teleko.jpg',
+      img: 'imagenes/orkomandos-img/teleko.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 10 },
       kw: ['ORKOMANDO', 'ORKO', 'TELEKO'],
       w: [
@@ -81,7 +81,7 @@ FACTIONS['orkomandos'] = {
     },
     {
       id: 'zueltadakka', name: 'Zueltadakka', type: 'ZUELTADAKKA',
-      img: 'Imagenes/orkomandos-img/zueltadakka.jpg',
+      img: 'imagenes/orkomandos-img/zueltadakka.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 10 },
       kw: ['ORKOMANDO', 'ORKO', 'ZUELTADAKKA'],
       w: [
@@ -95,7 +95,7 @@ FACTIONS['orkomandos'] = {
     },
     {
       id: 'rajador', name: 'Rajador', type: 'RAJADOR',
-      img: 'Imagenes/orkomandos-img/rajador.jpg',
+      img: 'imagenes/orkomandos-img/rajador.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 10 },
       kw: ['ORKOMANDO', 'ORKO', 'RAJADOR'],
       w: [
@@ -108,7 +108,7 @@ FACTIONS['orkomandos'] = {
     },
     {
       id: 'francotiradork', name: 'Francotiradork', type: 'FRANCOTIRADORK',
-      img: 'Imagenes/orkomandos-img/francotiradork.jpg',
+      img: 'imagenes/orkomandos-img/francotiradork.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 10 },
       kw: ['ORKOMANDO', 'ORKO', 'FRANCOTIRADORK'],
       w: [
@@ -123,7 +123,7 @@ FACTIONS['orkomandos'] = {
     },
     {
       id: 'chiko-kobete', name: 'Chiko Kobete', type: 'CHIKO KOBETE',
-      img: 'Imagenes/orkomandos-img/chiko-kobete.jpg',
+      img: 'imagenes/orkomandos-img/chiko-kobete.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 10 },
       kw: ['ORKOMANDO', 'ORKO', 'CHIKO KOBETE'],
       w: [
@@ -135,7 +135,7 @@ FACTIONS['orkomandos'] = {
     },
     {
       id: 'kanijo', name: 'Kanijo Komando', type: 'KANIJO',
-      img: 'Imagenes/orkomandos-img/kanijo.jpg',
+      img: 'imagenes/orkomandos-img/kanijo.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 5 },
       kw: ['ORKOMANDO', 'ORKO', 'GROT'],
       w: [
@@ -148,7 +148,7 @@ FACTIONS['orkomandos'] = {
     },
     {
       id: 'garrapato-bomba', name: 'Garrapato Bomba', type: 'GARRAPATO BOMBA',
-      img: 'Imagenes/orkomandos-img/garrapato-bomba.jpg',
+      img: 'imagenes/orkomandos-img/garrapato-bomba.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 5 },
       kw: ['ORKOMANDO', 'ORKO', 'GARRAPATO BOMBA'],
       w: [

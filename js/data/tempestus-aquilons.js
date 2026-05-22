@@ -5,14 +5,14 @@
 
 FACTIONS['tempestus-aquilons'] = {
   id: 'tempestus-aquilons', name: 'Tempestus Aquilons', subfaction: 'Militarum Tempestus',
-  icon: '⚡', img: 'Imagenes/tempestus-aquilons.png',
+  icon: '⚡', img: 'imagenes/tempestus-aquilons.png',
   desc: 'Soldados de élite del Imperium que descienden desde las alturas en paracaídas gravíticos. Maestros del ataque por inserción, combinan potencia de fuego con posicionamiento táctico.',
   tags: ['Imperium', 'Élite', 'Reconocimiento', 'Buscar y Destruir'], version: '1.0',
 
   ops: [
     {
       id: 'tempestor', name: 'Tempestor Aquilon', type: 'LÍDER',
-      img: 'Imagenes/tempestus-aquilons-img/tempestor.jpg',
+      img: 'imagenes/tempestus-aquilons-img/tempestor.jpg',
       s: { lpa: 3, mov: '6"', salv: '4+', h: 9 },
       kw: ['TEMPESTUS AQUILON', 'IMPERIUM', 'LÍDER', 'TEMPESTOR'],
       w: [
@@ -30,7 +30,7 @@ FACTIONS['tempestus-aquilons'] = {
     },
     {
       id: 'granadero', name: 'Granadero Aquilon', type: 'GRANADERO',
-      img: 'Imagenes/tempestus-aquilons-img/granadero.jpg',
+      img: 'imagenes/tempestus-aquilons-img/granadero.jpg',
       s: { lpa: 2, mov: '6"', salv: '4+', h: 8 },
       kw: ['TEMPESTUS AQUILON', 'IMPERIUM', 'GRANADERO'],
       w: [
@@ -44,7 +44,7 @@ FACTIONS['tempestus-aquilons'] = {
     },
     {
       id: 'pistolero', name: 'Pistolero Aquilon', type: 'PISTOLERO',
-      img: 'Imagenes/tempestus-aquilons-img/pistolero.jpg',
+      img: 'imagenes/tempestus-aquilons-img/pistolero.jpg',
       s: { lpa: 2, mov: '6"', salv: '4+', h: 8 },
       kw: ['TEMPESTUS AQUILON', 'IMPERIUM', 'PISTOLERO'],
       w: [
@@ -59,7 +59,7 @@ FACTIONS['tempestus-aquilons'] = {
     },
     {
       id: 'tirador', name: 'Tirador Aquilon', type: 'TIRADOR',
-      img: 'Imagenes/tempestus-aquilons-img/tirador.jpg',
+      img: 'imagenes/tempestus-aquilons-img/tirador.jpg',
       s: { lpa: 2, mov: '6"', salv: '4+', h: 8 },
       kw: ['TEMPESTUS AQUILON', 'IMPERIUM', 'TIRADOR'],
       w: [
@@ -72,7 +72,7 @@ FACTIONS['tempestus-aquilons'] = {
     },
     {
       id: 'ojo-preciso', name: 'Ojo Preciso Aquilon', type: 'OJO PRECISO',
-      img: 'Imagenes/tempestus-aquilons-img/ojo-preciso.jpg',
+      img: 'imagenes/tempestus-aquilons-img/ojo-preciso.jpg',
       s: { lpa: 2, mov: '6"', salv: '4+', h: 8 },
       kw: ['TEMPESTUS AQUILON', 'IMPERIUM', 'OJO PRECISO'],
       w: [
@@ -88,7 +88,7 @@ FACTIONS['tempestus-aquilons'] = {
     },
     {
       id: 'precursor', name: 'Precursor Aquilon', type: 'PRECURSOR',
-      img: 'Imagenes/tempestus-aquilons-img/precursor.jpg',
+      img: 'imagenes/tempestus-aquilons-img/precursor.jpg',
       s: { lpa: 2, mov: '6"', salv: '4+', h: 8 },
       kw: ['TEMPESTUS AQUILON', 'IMPERIUM', 'PRECURSOR'],
       w: [
@@ -102,7 +102,7 @@ FACTIONS['tempestus-aquilons'] = {
     },
     {
       id: 'servocentinela', name: 'Servocentinela Aquilon', type: 'SERVOCENTINELA',
-      img: 'Imagenes/tempestus-aquilons-img/servocentinela.jpg',
+      img: 'imagenes/tempestus-aquilons-img/servocentinela.jpg',
       s: { lpa: 2, mov: '4"', salv: '3+', h: 10 },
       kw: ['TEMPESTUS AQUILON', 'IMPERIUM', 'SERVOCENTINELA'],
       w: [
@@ -119,7 +119,7 @@ FACTIONS['tempestus-aquilons'] = {
     },
     {
       id: 'soldado', name: 'Soldado Aquilon', type: 'SOLDADO',
-      img: 'Imagenes/tempestus-aquilons-img/soldado.jpg',
+      img: 'imagenes/tempestus-aquilons-img/soldado.jpg',
       s: { lpa: 2, mov: '6"', salv: '4+', h: 8 },
       kw: ['TEMPESTUS AQUILON', 'IMPERIUM', 'SOLDADO'],
       w: [

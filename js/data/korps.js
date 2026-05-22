@@ -5,13 +5,13 @@
 
 FACTIONS['korps'] = {
   id: 'korps', name: 'Korps de la Muerte', subfaction: 'Astra Militarum',
-  icon: '💀', img: 'Imagenes/korps.png', desc: 'Especialistas del Imperium en asedios, trincheras y combate en zonas de alta toxicidad.',
+  icon: '💀', img: 'imagenes/korps.png', desc: 'Especialistas del Imperium en asedios, trincheras y combate en zonas de alta toxicidad.',
   tags: ['Imperium', 'Élite', 'Disparos'], version: '1.2',
 
   ops: [
     {
       id: 'vigia', name: 'Vigía de los Korps', type: 'VIGÍA',
-      img: 'Imagenes/korps-img/vigia.jpg',
+      img: 'imagenes/korps-img/vigia.jpg',
       s: { lpa: 3, mov: '6"', salv: '5+', h: 8 },
       kw: ['KORPS DE LA MUERTE', 'IMPERIUM', 'ASTRA MILITARUM', 'VIGÍA'],
       w: [
@@ -27,7 +27,7 @@ FACTIONS['korps'] = {
     },
     {
       id: 'granadero', name: 'Granadero de los Korps', type: 'GRANADERO',
-      img: 'Imagenes/korps-img/granadero.jpg',
+      img: 'imagenes/korps-img/granadero.jpg',
       s: { lpa: 2, mov: '6"', salv: '4+', h: 7 },
       kw: ['KORPS DE LA MUERTE', 'IMPERIUM', 'ASTRA MILITARUM', 'GRANADERO'],
       w: [
@@ -43,7 +43,7 @@ FACTIONS['korps'] = {
     },
     {
       id: 'lanzallamas', name: 'Portallamas de los Korps', type: 'PORTALLAMAS',
-      img: 'Imagenes/korps-img/lanzallamas.jpg',
+      img: 'imagenes/korps-img/lanzallamas.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 7 },
       kw: ['KORPS DE LA MUERTE', 'IMPERIUM', 'ASTRA MILITARUM', 'PORTALLAMAS'],
       w: [
@@ -56,7 +56,7 @@ FACTIONS['korps'] = {
     },
     {
       id: 'demoledor', name: 'Demoledor de los Korps', type: 'DEMOLEDOR',
-      img: 'Imagenes/korps-img/demoledor.jpg',
+      img: 'imagenes/korps-img/demoledor.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 7 },
       kw: ['KORPS DE LA MUERTE', 'IMPERIUM', 'ASTRA MILITARUM', 'DEMOLEDOR'],
       w: [
@@ -69,7 +69,7 @@ FACTIONS['korps'] = {
     },
     {
       id: 'artillero', name: 'Artillero de los Korps', type: 'ARTILLERO',
-      img: 'Imagenes/korps-img/artillero.jpg',
+      img: 'imagenes/korps-img/artillero.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 7 },
       kw: ['KORPS DE LA MUERTE', 'IMPERIUM', 'ASTRA MILITARUM', 'ARTILLERO'],
       w: [
@@ -82,7 +82,7 @@ FACTIONS['korps'] = {
     },
     {
       id: 'medico', name: 'Médico de los Korps', type: 'MÉDICO',
-      img: 'Imagenes/korps-img/medico.jpg',
+      img: 'imagenes/korps-img/medico.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 7 },
       kw: ['KORPS DE LA MUERTE', 'IMPERIUM', 'ASTRA MILITARUM', 'MÉDICO'],
       w: [
@@ -96,7 +96,7 @@ FACTIONS['korps'] = {
     },
     {
       id: 'franco', name: 'Francotirador de los Korps', type: 'FRANCOTIRADOR',
-      img: 'Imagenes/korps-img/franco.jpg',
+      img: 'imagenes/korps-img/franco.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 7 },
       kw: ['KORPS DE LA MUERTE', 'IMPERIUM', 'ASTRA MILITARUM', 'FRANCOTIRADOR'],
       w: [
@@ -111,7 +111,7 @@ FACTIONS['korps'] = {
     },
     {
       id: 'soldado', name: 'Soldado de los Korps', type: 'SOLDADO',
-      img: 'Imagenes/korps-img/soldado.jpg',
+      img: 'imagenes/korps-img/soldado.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 7 },
       kw: ['KORPS DE LA MUERTE', 'IMPERIUM', 'ASTRA MILITARUM', 'SOLDADO'],
       w: [
@@ -124,7 +124,7 @@ FACTIONS['korps'] = {
     },
     {
       id: 'zapador', name: 'Zapador de los Korps', type: 'ZAPADOR',
-      img: 'Imagenes/korps-img/zapador.jpg',
+      img: 'imagenes/korps-img/zapador.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 7 },
       kw: ['KORPS DE LA MUERTE', 'IMPERIUM', 'ASTRA MILITARUM', 'ZAPADOR'],
       w: [
@@ -139,7 +139,7 @@ FACTIONS['korps'] = {
     },
     {
       id: 'ojeador', name: 'Ojeador de los Korps', type: 'OJEADOR',
-      img: 'Imagenes/korps-img/ojeador.jpg',
+      img: 'imagenes/korps-img/ojeador.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 7 },
       kw: ['KORPS DE LA MUERTE', 'IMPERIUM', 'ASTRA MILITARUM', 'OJEADOR'],
       w: [
@@ -153,7 +153,7 @@ FACTIONS['korps'] = {
     },
     {
       id: 'veterano', name: 'Veterano de los Korps', type: 'VETERANO',
-      img: 'Imagenes/korps-img/veterano.jpg',
+      img: 'imagenes/korps-img/veterano.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 7 },
       kw: ['KORPS DE LA MUERTE', 'IMPERIUM', 'ASTRA MILITARUM', 'VETERANO'],
       w: [
@@ -167,7 +167,7 @@ FACTIONS['korps'] = {
     },
     {
       id: 'voco', name: 'Vocooperador de los Korps', type: 'VOCOOPERADOR',
-      img: 'Imagenes/korps-img/voco.jpg',
+      img: 'imagenes/korps-img/voco.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 7 },
       kw: ['KORPS DE LA MUERTE', 'IMPERIUM', 'ASTRA MILITARUM', 'VOCOOPERADOR'],
       w: [
@@ -181,7 +181,7 @@ FACTIONS['korps'] = {
     },
     {
       id: 'fanatico', name: 'Fanático de los Korps', type: 'FANÁTICO',
-      img: 'Imagenes/korps-img/fanatico.jpg',
+      img: 'imagenes/korps-img/fanatico.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 7 },
       kw: ['KORPS DE LA MUERTE', 'IMPERIUM', 'ASTRA MILITARUM', 'FANÁTICO'],
       w: [

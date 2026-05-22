@@ -5,13 +5,13 @@
 
 FACTIONS['ala-asesina'] = {
   id: 'ala-asesina', name: 'Ala Asesina', subfaction: 'Astartes Herejes del Caos',
-  icon: '🦅', img: 'Imagenes/alaasesina.png', desc: 'Guerreros del Caos con propulsores de salto que atacan desde las alturas con velocidad y ferocidad devastadoras.',
+  icon: '🦅', img: 'imagenes/alaasesina.png', desc: 'Guerreros del Caos con propulsores de salto que atacan desde las alturas con velocidad y ferocidad devastadoras.',
   tags: ['Caos', 'Élite', 'Buscar y Destruir'], version: '1.2',
 
   ops: [
     {
       id: 'senor', name: 'Señor del Caos del Ala Asesina', type: 'LÍDER',
-      img: 'Imagenes/ala-asesina-img/senor.jpg',
+      img: 'imagenes/ala-asesina-img/senor.jpg',
       s: { lpa: 3, mov: '6"', salv: '3+', h: 15 },
       kw: ['ALA ASESINA', 'CAOS', 'ASTARTES HEREJES', 'LÍDER', 'SEÑOR'],
       w: [
@@ -30,7 +30,7 @@ FACTIONS['ala-asesina'] = {
     },
     {
       id: 'campeon', name: 'Campeón del Ala Asesina', type: 'CAMPEÓN',
-      img: 'Imagenes/ala-asesina-img/campeon.jpg',
+      img: 'imagenes/ala-asesina-img/campeon.jpg',
       s: { lpa: 3, mov: '6"', salv: '3+', h: 14 },
       kw: ['ALA ASESINA', 'CAOS', 'ASTARTES HEREJES', 'CAMPEÓN'],
       w: [
@@ -47,7 +47,7 @@ FACTIONS['ala-asesina'] = {
     },
     {
       id: 'garramaldita', name: 'Garramaldita del Ala Asesina', type: 'GARRAMALDITA',
-      img: 'Imagenes/ala-asesina-img/garramaldita.jpg',
+      img: 'imagenes/ala-asesina-img/garramaldita.jpg',
       s: { lpa: 3, mov: '6"', salv: '3+', h: 14 },
       kw: ['ALA ASESINA', 'CAOS', 'ASTARTES HEREJES', 'GARRAMALDITA'],
       w: [
@@ -61,7 +61,7 @@ FACTIONS['ala-asesina'] = {
     },
     {
       id: 'depredador', name: 'Depredador del Ala Asesina', type: 'DEPREDADOR',
-      img: 'Imagenes/ala-asesina-img/depredador.jpg',
+      img: 'imagenes/ala-asesina-img/depredador.jpg',
       s: { lpa: 3, mov: '6"', salv: '3+', h: 14 },
       kw: ['ALA ASESINA', 'CAOS', 'ASTARTES HEREJES', 'DEPREDADOR'],
       w: [
@@ -75,7 +75,7 @@ FACTIONS['ala-asesina'] = {
     },
     {
       id: 'maestro', name: 'Maestro Cazador del Ala Asesina', type: 'MAESTRO CAZADOR',
-      img: 'Imagenes/ala-asesina-img/maestro.jpg',
+      img: 'imagenes/ala-asesina-img/maestro.jpg',
       s: { lpa: 3, mov: '6"', salv: '3+', h: 14 },
       kw: ['ALA ASESINA', 'CAOS', 'ASTARTES HEREJES', 'MAESTRO CAZADOR'],
       w: [
@@ -89,7 +89,7 @@ FACTIONS['ala-asesina'] = {
     },
     {
       id: 'rapaz', name: 'Rapaz del Ala Asesina', type: 'RAPAZ',
-      img: 'Imagenes/ala-asesina-img/rapaz.jpg',
+      img: 'imagenes/ala-asesina-img/rapaz.jpg',
       s: { lpa: 3, mov: '6"', salv: '3+', h: 14 },
       kw: ['ALA ASESINA', 'CAOS', 'ASTARTES HEREJES', 'RAPAZ'],
       w: [
@@ -104,7 +104,7 @@ FACTIONS['ala-asesina'] = {
     },
     {
       id: 'estridente', name: 'Estridente del Ala Asesina', type: 'ESTRIDENTE',
-      img: 'Imagenes/ala-asesina-img/estridente.jpg',
+      img: 'imagenes/ala-asesina-img/estridente.jpg',
       s: { lpa: 3, mov: '6"', salv: '3+', h: 14 },
       kw: ['ALA ASESINA', 'CAOS', 'ASTARTES HEREJES', 'ESTRIDENTE'],
       w: [
@@ -118,7 +118,7 @@ FACTIONS['ala-asesina'] = {
     },
     {
       id: 'ignifero', name: 'Ignífero del Ala Asesina', type: 'IGNÍFERO',
-      img: 'Imagenes/ala-asesina-img/ignifero.jpg',
+      img: 'imagenes/ala-asesina-img/ignifero.jpg',
       s: { lpa: 3, mov: '6"', salv: '3+', h: 14 },
       kw: ['ALA ASESINA', 'CAOS', 'ASTARTES HEREJES', 'IGNÍFERO'],
       w: [
@@ -133,7 +133,7 @@ FACTIONS['ala-asesina'] = {
     },
     {
       id: 'espolon', name: 'Espolón de la Disformidad del Ala Asesina', type: 'ESPOLÓN DE LA DISFORMIDAD',
-      img: 'Imagenes/ala-asesina-img/espolon.jpg',
+      img: 'imagenes/ala-asesina-img/espolon.jpg',
       s: { lpa: 3, mov: '6"', salv: '3+', h: 14 },
       kw: ['ALA ASESINA', 'CAOS', 'ASTARTES HEREJES', 'ESPOLÓN DE LA DISFORMIDAD'],
       w: [

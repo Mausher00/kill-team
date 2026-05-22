@@ -5,14 +5,14 @@
 
 FACTIONS['demoledorez'] = {
   id: 'demoledorez', name: 'Demoledorez', subfaction: 'Orkos',
-  icon: '💥',  img: 'Imagenes/demoledorez.png',
+  icon: '💥',  img: 'imagenes/demoledorez.png',
   desc: 'Orkos obsesionados con la destrucción. Cuanto más atacan, más puntos de Demolizión generan y más letales se vuelven.',
   tags: ['Caos Orko', 'Élite', 'Buscar y Destruir', 'Seguridad'], version: '1.2',
 
   ops: [
     {
       id: 'noble-jefazo', name: 'Noble Jefazo Demoledorez', type: 'LÍDER',
-      img: 'Imagenes/demoledorez-img/noble-jefazo.jpg',
+      img: 'imagenes/demoledorez-img/noble-jefazo.jpg',
       s: { lpa: 2, mov: '6"', salv: '4+', h: 14 },
       kw: ['DEMOLEDOREZ', 'ORKO', 'LÍDER', 'NOBLE JEFAZO'],
       w: [
@@ -29,7 +29,7 @@ FACTIONS['demoledorez'] = {
     },
     {
       id: 'garrapato-bomba', name: 'Garrapato Bomba Demoledorez', type: 'GARRAPATO BOMBA',
-      img: 'Imagenes/demoledorez-img/garrapato-bomba.jpg',
+      img: 'imagenes/demoledorez-img/garrapato-bomba.jpg',
       s: { lpa: 2, mov: '6"', salv: '5+', h: 5 },
       kw: ['DEMOLEDOREZ', 'ORKO', 'GARRAPATO BOMBA'],
       w: [
@@ -45,7 +45,7 @@ FACTIONS['demoledorez'] = {
     },
     {
       id: 'tronchademoledor', name: 'Tronchademoledor', type: 'TRONCHADOR',
-      img: 'Imagenes/demoledorez-img/tronchademoledor.jpg',
+      img: 'imagenes/demoledorez-img/tronchademoledor.jpg',
       s: { lpa: 2, mov: '6"', salv: '4+', h: 12 },
       kw: ['DEMOLEDOREZ', 'ORKO', 'TRONCHADOR', 'DEMOLEDOR'],
       w: [
@@ -59,7 +59,7 @@ FACTIONS['demoledorez'] = {
     },
     {
       id: 'tronchapeleon', name: 'Tronchapeleón', type: 'TRONCHADOR',
-      img: 'Imagenes/demoledorez-img/tronchapeleon.jpg',
+      img: 'imagenes/demoledorez-img/tronchapeleon.jpg',
       s: { lpa: 2, mov: '6"', salv: '4+', h: 12 },
       kw: ['DEMOLEDOREZ', 'ORKO', 'TRONCHADOR', 'LUCHADOR'],
       w: [
@@ -71,7 +71,7 @@ FACTIONS['demoledorez'] = {
     },
     {
       id: 'tronchamachakador', name: 'Tronchamachakador', type: 'TRONCHADOR',
-      img: 'Imagenes/demoledorez-img/tronchamachakador.jpg',
+      img: 'imagenes/demoledorez-img/tronchamachakador.jpg',
       s: { lpa: 2, mov: '6"', salv: '4+', h: 12 },
       kw: ['DEMOLEDOREZ', 'ORKO', 'TRONCHADOR', 'MACHAKADOR'],
       w: [
@@ -84,7 +84,7 @@ FACTIONS['demoledorez'] = {
     },
     {
       id: 'artillero-petatankez', name: 'Artillero Petatankez', type: 'PETATANKEZ',
-      img: 'Imagenes/demoledorez-img/artillero-petatankez.jpg',
+      img: 'imagenes/demoledorez-img/artillero-petatankez.jpg',
       s: { lpa: 2, mov: '6"', salv: '4+', h: 12 },
       kw: ['DEMOLEDOREZ', 'ORKO', 'PETATANKEZ', 'ARTILLERO'],
       w: [
@@ -98,7 +98,7 @@ FACTIONS['demoledorez'] = {
     },
     {
       id: 'kobeteador-petatankez', name: 'Kobeteador Petatankez', type: 'PETATANKEZ',
-      img: 'Imagenes/demoledorez-img/kobeteador-petatankez.jpg',
+      img: 'imagenes/demoledorez-img/kobeteador-petatankez.jpg',
       s: { lpa: 2, mov: '6"', salv: '4+', h: 12 },
       kw: ['DEMOLEDOREZ', 'ORKO', 'PETATANKEZ', 'KOBETEADOR'],
       w: [

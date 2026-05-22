@@ -5,13 +5,13 @@
 
 FACTIONS['sucesores'] = {
   id: 'sucesores', name: 'Sucesores Recuperadores', subfaction: 'Ligas de los Votann',
-  icon: '⛏️', img: 'Imagenes/sucesores.png', desc: 'Guerreros Kin especializados en recuperación de recursos en pecios espaciales y zonas hostiles.',
+  icon: '⛏️', img: 'imagenes/sucesores.png', desc: 'Guerreros Kin especializados en recuperación de recursos en pecios espaciales y zonas hostiles.',
   tags: ['Votann', 'Reconocimiento', 'Seguridad'], version: '1.2',
 
   ops: [
     {
       id: 'theyn', name: 'Theyn Sucesor', type: 'LÍDER',
-      img: 'Imagenes/sucesores-img/theyn.jpg',
+      img: 'imagenes/sucesores-img/theyn.jpg',
       s: { lpa: 2, mov: '5"', salv: '3+', h: 9 },
       kw: ['SUCESOR RECUPERADOR', 'LIGAS DE LOS VOTANN', 'LÍDER', 'THEYN'],
       w: [
@@ -31,7 +31,7 @@ FACTIONS['sucesores'] = {
     },
     {
       id: 'bulldozer', name: 'Sucesor Bulldôzer', type: 'BULLDÔZER',
-      img: 'Imagenes/sucesores-img/bulldozer.jpg',
+      img: 'imagenes/sucesores-img/bulldozer.jpg',
       s: { lpa: 2, mov: '5"', salv: '3+', h: 8 },
       kw: ['SUCESOR RECUPERADOR', 'LIGAS DE LOS VOTANN', 'BULLDÔZER'],
       w: [
@@ -45,7 +45,7 @@ FACTIONS['sucesores'] = {
     },
     {
       id: 'medico', name: 'Sucesor Médico de Campo', type: 'MÉDICO DE CAMPO',
-      img: 'Imagenes/sucesores-img/medico.jpg',
+      img: 'imagenes/sucesores-img/medico.jpg',
       s: { lpa: 2, mov: '5"', salv: '3+', h: 8 },
       kw: ['SUCESOR RECUPERADOR', 'LIGAS DE LOS VOTANN', 'MÉDICO', 'MÉDICO DE CAMPO'],
       w: [
@@ -59,7 +59,7 @@ FACTIONS['sucesores'] = {
     },
     {
       id: 'granadero', name: 'Sucesor Granadero', type: 'GRANADERO',
-      img: 'Imagenes/sucesores-img/granadero.jpg',
+      img: 'imagenes/sucesores-img/granadero.jpg',
       s: { lpa: 2, mov: '5"', salv: '3+', h: 8 },
       kw: ['SUCESOR RECUPERADOR', 'LIGAS DE LOS VOTANN', 'GRANADERO'],
       w: [
@@ -74,7 +74,7 @@ FACTIONS['sucesores'] = {
     },
     {
       id: 'tirador', name: 'Sucesor Tirador', type: 'TIRADOR',
-      img: 'Imagenes/sucesores-img/tirador.jpg',
+      img: 'imagenes/sucesores-img/tirador.jpg',
       s: { lpa: 2, mov: '5"', salv: '3+', h: 8 },
       kw: ['SUCESOR RECUPERADOR', 'LIGAS DE LOS VOTANN', 'TIRADOR'],
       w: [
@@ -93,7 +93,7 @@ FACTIONS['sucesores'] = {
     },
     {
       id: 'propulsor', name: 'Sucesor con Propulsor de Salto', type: 'PROPULSOR DE SALTO',
-      img: 'Imagenes/sucesores-img/propulsor.jpg',
+      img: 'imagenes/sucesores-img/propulsor.jpg',
       s: { lpa: 2, mov: '8"', salv: '3+', h: 8 },
       kw: ['SUCESOR RECUPERADOR', 'LIGAS DE LOS VOTANN', 'SUCESOR CON PROPULSOR DE SALTO'],
       w: [
@@ -108,7 +108,7 @@ FACTIONS['sucesores'] = {
     },
     {
       id: 'radiovinculado', name: 'Sucesor Radiovinculado', type: 'RADIOVINCULADO',
-      img: 'Imagenes/sucesores-img/radiovinculado.jpg',
+      img: 'imagenes/sucesores-img/radiovinculado.jpg',
       s: { lpa: 2, mov: '5"', salv: '3+', h: 8 },
       kw: ['SUCESOR RECUPERADOR', 'LIGAS DE LOS VOTANN', 'RADIOVINCULADO'],
       w: [
@@ -123,7 +123,7 @@ FACTIONS['sucesores'] = {
     },
     {
       id: 'analista', name: 'Sucesor Anâlista', type: 'ANÂLISTA',
-      img: 'Imagenes/sucesores-img/analista.jpg',
+      img: 'imagenes/sucesores-img/analista.jpg',
       s: { lpa: 2, mov: '5"', salv: '3+', h: 8 },
       kw: ['SUCESOR RECUPERADOR', 'LIGAS DE LOS VOTANN', 'ANÂLISTA'],
       w: [
@@ -138,7 +138,7 @@ FACTIONS['sucesores'] = {
     },
     {
       id: 'localizador', name: 'Sucesor Locâlizador', type: 'LOCÂLIZADOR',
-      img: 'Imagenes/sucesores-img/localizador.jpg',
+      img: 'imagenes/sucesores-img/localizador.jpg',
       s: { lpa: 2, mov: '5"', salv: '3+', h: 8 },
       kw: ['SUCESOR RECUPERADOR', 'LIGAS DE LOS VOTANN', 'LOCÂLIZADOR'],
       w: [
@@ -153,7 +153,7 @@ FACTIONS['sucesores'] = {
     },
     {
       id: 'sherpa', name: 'Sucesor Sherpa', type: 'SHERPA',
-      img: 'Imagenes/sucesores-img/sherpa.jpg',
+      img: 'imagenes/sucesores-img/sherpa.jpg',
       s: { lpa: 2, mov: '5"', salv: '3+', h: 8 },
       kw: ['SUCESOR RECUPERADOR', 'LIGAS DE LOS VOTANN', 'SHERPA'],
       w: [
@@ -168,7 +168,7 @@ FACTIONS['sucesores'] = {
     },
     {
       id: 'combatiente', name: 'Sucesor Combatiente', type: 'COMBATIENTE',
-      img: 'Imagenes/sucesores-img/combatiente.jpg',
+      img: 'imagenes/sucesores-img/combatiente.jpg',
       s: { lpa: 2, mov: '5"', salv: '3+', h: 8 },
       kw: ['SUCESOR RECUPERADOR', 'LIGAS DE LOS VOTANN', 'COMBATIENTE'],
       w: [

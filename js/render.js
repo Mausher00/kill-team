@@ -1,15 +1,15 @@
 // ============================================================
 //  render.js — Motor compartido para todas las facciones
-//  Imágenes operativos: rutas locales desde carpeta Imagenes/
+//  Imágenes operativos: rutas locales desde carpeta imagenes/
 // ============================================================
 
 const ICONS = {
-  lpa:    'Imagenes/lpa.png',
-  mov:    'Imagenes/mov.png',
-  def:    'Imagenes/def.png',
-  her:    'Imagenes/her.png',
-  ranged: 'Imagenes/ranged.png',
-  cac:    'Imagenes/cac.png',
+  lpa:    'imagenes/lpa.png',
+  mov:    'imagenes/mov.png',
+  def:    'imagenes/def.png',
+  her:    'imagenes/her.png',
+  ranged: 'imagenes/ranged.png',
+  cac:    'imagenes/cac.png',
 };
 
 
