@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kill Team</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <footer class="kw-footer" id="kw-footer">
+    <div class="kw-idle" id="kw-idle">
+      <i class="ti ti-info-circle"></i>
+      <span>Toca una palabra clave subrayada para ver su definición</span>
+    </div>
+    <div class="kw-active" id="kw-active">
+      <div class="kw-cat" id="kw-cat"></div>
+      <div class="kw-nm"  id="kw-nm"></div>
+      <div class="kw-ds"  id="kw-ds"></div>
+    </div>
+    <button class="close-btn" id="kw-close"><i class="ti ti-x"></i></button>
+  </footer>
+
+  <script>
+    const FACTIONS = {};
+    const KEYWORDS = {};
+    window.COMING_SOON = [];
+  </script>
+
+  <!-- ═══ FACCIONES ═══════════════════════════════════════════
+       Para añadir una nueva: crea js/data/nombre.js
+       y añade una línea <script> aquí.
+       ═══════════════════════════════════════════════════════ -->
+  <script src="js/data/korps.js"></script>
+  <script src="js/data/sucesores.js"></script>
+  <script src="js/data/ala-asesina.js"></script>
+  <script src="js/data/garra-nemesis.js"></script>
+  <script src="js/data/demoledorez.js"></script>
+  <script src="js/data/vespid.js"></script>
+  <script src="js/data/ork-kommandos.js"></script>
+  <script src="js/data/tempestus-aquilons.js"></script>
+
+  <!-- Motor compartido -->
+  <script src="js/render.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kill Team — Misiones</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#0a0a0a; --bg-2:#111111; --bg-3:#1a1a1a; --bg-4:#141414;
+      --border:#2a2a2a; --border-2:#333333;
+      --text:#e8e8e8; --text-2:#888888; --text-3:#444444;
+      --orange:#E8490F; --orange-dim:#7a2508; --orange-bg:#1a0a04;
+      --green:#2ecc71; --green-bg:#0a1f10;
+      --font-d:'Barlow Condensed',sans-serif;
+      --font-b:'Barlow',sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-b); min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ── HEADER ── */
+    header { border-bottom: 3px solid var(--orange); padding: 1.4rem 1.5rem 1rem; max-width: 960px; width: 100%; margin: 0 auto; }
+    .back { font-family: var(--font-d); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-3); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 10px; transition: color .15s; }
+    .back:hover { color: var(--orange); }
+    .pre-title { font-family: var(--font-d); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--orange); display: block; margin-bottom: 4px; }
+    h1 { font-family: var(--font-d); font-size: 48px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #fff; line-height: 1; }
+    .sub { font-size: 13px; color: var(--text-2); margin-top: 6px; }
+
+    /* ── LAYOUT ── */
+    main { flex: 1; max-width: 960px; width: 100%; margin: 0 auto; padding: 2rem 1.5rem; }
+    .section-label { font-family: var(--font-d); font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--text-3); display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--orange); opacity: .3; }
+
+    /* ── ZONA CARDS ── */
+    .zona-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 2.5rem; }
+    .zona-card { background: var(--bg-2); border: 1px solid var(--border-2); border-top: 3px solid var(--border-2); border-radius: 6px; padding: 14px 16px; cursor: pointer; transition: border-color .15s, transform .15s; }
+    .zona-card:hover { border-color: var(--orange); transform: translateY(-2px); }
+    .zona-card.active { border-color: var(--orange); border-top-color: var(--orange); background: var(--orange-bg); }
+    .zona-card.soon { opacity: .45; cursor: default; }
+    .zona-card.soon:hover { border-color: var(--border-2); transform: none; }
+    .zona-icon { font-size: 24px; margin-bottom: 8px; }
+    .zona-name { font-family: var(--font-d); font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: #fff; line-height: 1.1; }
+    .zona-badge { font-family: var(--font-d); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--orange); margin-top: 4px; }
+    .zona-badge.soon-badge { color: var(--text-3); }
+
+    /* ── DETAIL PANEL ── */
+    .detail { display: none; animation: fadeIn .2s ease; }
+    .detail.visible { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    /* tabs */
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border-2); margin-bottom: 1.5rem; }
+    .tab { font-family: var(--font-d); font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; padding: 8px 16px; border-bottom: 3px solid transparent; margin-bottom: -1px; cursor: pointer; color: var(--text-3); transition: color .15s, border-color .15s; }
+    .tab:hover { color: var(--text-2); }
+    .tab.active { color: var(--orange); border-bottom-color: var(--orange); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* zona info bar */
+    .zona-info { background: var(--bg-2); border: 1px solid var(--border-2); border-left: 4px solid var(--orange); border-radius: 6px; padding: 14px 18px; display: flex; flex-wrap: wrap; gap: 24px; margin-bottom: 1.5rem; }
+    .zona-stat { }
+    .zona-stat-label { font-family: var(--font-d); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); margin-bottom: 2px; }
+    .zona-stat-val { font-family: var(--font-d); font-size: 18px; font-weight: 700; color: #fff; }
+
+    /* terreno cards */
+    .terreno-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+    .terreno-card { background: var(--bg-2); border: 1px solid var(--border-2); border-radius: 6px; overflow: hidden; }
+    .terreno-header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; user-select: none; }
+    .terreno-icon { font-size: 18px; width: 28px; text-align: center; flex-shrink: 0; }
+    .terreno-name { font-family: var(--font-d); font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: #fff; flex: 1; }
+    .terreno-types { display: flex; gap: 4px; flex-wrap: wrap; }
+    .type-tag { font-size: 8px; font-family: var(--font-d); letter-spacing: .08em; text-transform: uppercase; padding: 2px 5px; border-radius: 2px; background: var(--bg-3); border: .5px solid var(--border-2); color: var(--text-3); }
+    .type-tag.heavy { border-color: var(--orange-dim); color: var(--orange); }
+    .terreno-chevron { font-size: 10px; color: var(--text-3); transition: transform .2s; margin-left: 4px; }
+    .terreno-card.open .terreno-chevron { transform: rotate(180deg); }
+    .terreno-body { display: none; border-top: 1px solid var(--border); padding: 12px 14px; }
+    .terreno-card.open .terreno-body { display: block; }
+    .terreno-body ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+    .terreno-body li { font-size: 12px; color: var(--text-2); line-height: 1.5; padding-left: 14px; position: relative; }
+    .terreno-body li::before { content: '›'; position: absolute; left: 0; color: var(--orange); }
+
+    /* acción cards */
+    .accion-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+    .accion-card { background: var(--orange-bg); border: 1px solid var(--orange-dim); border-radius: 6px; overflow: hidden; }
+    .accion-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; border-bottom: 1px solid var(--orange-dim); }
+    .accion-name { font-family: var(--font-d); font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--orange); }
+    .accion-cost { font-family: var(--font-d); font-size: 13px; font-weight: 700; color: #fff; background: var(--orange); padding: 2px 8px; border-radius: 2px; }
+    .accion-body { padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
+    .accion-rule { font-size: 11px; color: var(--text-2); line-height: 1.5; display: flex; gap: 8px; }
+    .accion-rule-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); flex-shrink: 0; margin-top: 4px; }
+    .accion-rule-dot.restrict { background: #c0392b; }
+
+    /* combate cerrado */
+    .regla-especial { background: var(--bg-2); border: 1px solid var(--border-2); border-radius: 6px; padding: 14px 16px; margin-bottom: 10px; }
+    .regla-especial-name { font-family: var(--font-d); font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #fff; margin-bottom: 6px; }
+    .regla-especial p { font-size: 12px; color: var(--text-2); line-height: 1.6; }
+
+    /* misiones grid */
+    .misiones-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+    .mision-card { background: var(--bg-2); border: 1px solid var(--border-2); border-top: 3px solid var(--orange); border-radius: 6px; overflow: hidden; cursor: pointer; text-decoration: none; display: flex; flex-direction: column; transition: border-color .15s, transform .15s; }
+    .mision-card:hover { border-color: var(--orange); transform: translateY(-2px); }
+    .mision-img-ph { width: 100%; height: 100px; background: var(--bg-3); display: flex; align-items: center; justify-content: center; font-size: 36px; color: var(--text-3); border-bottom: 1px solid var(--border); }
+    .mision-body { padding: 10px 14px 12px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .mision-num { font-family: var(--font-d); font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--orange); }
+    .mision-name { font-family: var(--font-d); font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: #fff; line-height: 1.1; }
+    .mision-desc { font-size: 11px; color: var(--text-2); margin-top: 4px; line-height: 1.5; flex: 1; }
+    .mision-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+    .mision-tag { font-size: 9px; padding: 2px 6px; border-radius: 2px; background: var(--bg-3); color: var(--text-3); border: .5px solid var(--border-2); font-family: var(--font-d); letter-spacing: .06em; text-transform: uppercase; }
+    .mision-footer { padding: 7px 14px; border-top: 1px solid var(--border); font-family: var(--font-d); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--orange); display: flex; justify-content: space-between; }
+
+    .mision-card-soon { background: transparent; border: 1px dashed var(--border-2); border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 1.5rem; color: var(--text-3); min-height: 160px; cursor: default; }
+    .mision-card-soon-icon { font-size: 24px; }
+    .mision-card-soon-name { font-family: var(--font-d); font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; text-align: center; }
+    .mision-card-soon-badge { font-size: 9px; font-family: var(--font-d); letter-spacing: .1em; text-transform: uppercase; opacity: .5; }
+
+    footer { border-top: 1px solid var(--border); padding: .8rem 1.5rem; text-align: center; font-size: 11px; color: var(--text-3); font-family: var(--font-d); letter-spacing: .06em; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+
+<header>
+  <a class="back" href="../">← Volver al selector</a>
+  <span class="pre-title">Warhammer 40,000 · Kill Team</span>
+  <h1>Misiones</h1>
+  <p class="sub">Selecciona una zona de aniquilación para ver sus reglas de terreno y misiones disponibles</p>
+</header>
+
+<main>
+  <!-- SELECTOR DE ZONA -->
+  <div class="section-label">Zonas de aniquilación</div>
+  <div class="zona-grid" id="zona-grid"></div>
+
+  <!-- PANEL DE DETALLE -->
+  <div class="detail" id="detail-panel">
+    <div class="tabs" id="tabs">
+      <div class="tab active" data-tab="terreno">Reglas de terreno</div>
+      <div class="tab" data-tab="misiones">Misiones</div>
+    </div>
+    <div class="tab-content active" id="tab-terreno"></div>
+    <div class="tab-content" id="tab-misiones"></div>
+  </div>
+</main>
+
+<footer>Kill Team Companion — uso personal</footer>
+
+<script>
+  /* ─────────────────────────────────────────────
+     DATOS
+  ───────────────────────────────────────────── */
+  const ZONAS = [
+    {
+      id: 'mundo-necropolis',
+      name: 'Mundo Necrópolis',
+      icon: '⚰️',
+      tablero: '606 × 703 mm',
+      rejilla: '6 × 7 zonas',
+      elementos: '1 sarcófago · 4 escombros · 2 de cada tipo de muro · 16 medios pilares',
+      terreno: [
+        {
+          icon: '🧱',
+          name: 'Muro de Mundo Necrópolis',
+          types: ['Pesado', 'Muro'],
+          reglas: [
+            'Los agentes no pueden moverse por encima o a través de terreno de muro (tiene preferencia sobre todas las demás reglas).',
+            'La visibilidad no puede determinarse por encima o a través de terreno de muro.',
+            'Las distancias no pueden medirse por encima o a través de terreno de muro; deben medirse rodeándolo por la ruta más corta posible (salvo hacia áreas especiales de la zona de aniquilación).',
+            'Para cobertura y ofuscamiento, solo las esquinas y los finales de un muro pueden interponerse, a menos que el agente activo los haya superado.',
+          ]
+        },
+        {
+          icon: '🚪',
+          name: 'Escotilla',
+          types: ['Accesible (abierta)', 'Muro (cerrada)'],
+          reglas: [
+            'Dos estados: cerrada y abierta. Las escotillas empiezan la batalla cerradas.',
+            'Cerrada: el portillo y el punto de acceso son terreno pesado y de muro.',
+            'Abierta: el portillo se retira de la zona. El punto de acceso es terreno accesible, insignificante y expuesto.',
+            'Se abre o cierra con la acción de misión Operar portillo (1 PA).',
+          ]
+        },
+        {
+          icon: '💥',
+          name: 'Punto de brecha',
+          types: ['Accesible (abierto)', 'Muro (cerrado)'],
+          reglas: [
+            'Dos estados: cerrado y abierto. Los puntos de brecha empiezan la batalla cerrados.',
+            'Cerrado: la brecha de muro y el punto de acceso son terreno pesado y de muro.',
+            'Abierto: la brecha de muro se retira. El punto de acceso es terreno accesible, insignificante y expuesto.',
+            'Se abre con la acción Brecha (2 PA). Una vez abierto, no puede cerrarse.',
+            'Al abrir, se tira 1D6 por cada agente al otro lado en zona de control: con 4+, recibe -1 LPA y daño igual a la mitad del dado (redondeando al alza).',
+          ]
+        },
+        {
+          icon: '🔮',
+          name: 'Plataforma de teleportación',
+          types: ['Descubierto', 'Insignificante', 'Aventajado'],
+          reglas: [
+            'Solo puede estar encima un único agente, que no toca el suelo mientras esté sobre ella.',
+            'El equipo de terreno no puede situarse a 2″ o menos de la plataforma.',
+            'Si la peana toca la plataforma y hay otro agente encima, ambos se consideran en zona de control del otro.',
+            'Desde el inicio del 2.º punto de inflexión: al realizar Cargar, Retroceder o Reposicionarse desde la plataforma, puedes teleportar al agente a la otra plataforma en lugar de moverlo.',
+            'Si hay otro agente en la plataforma destino al teleportarse, se intercambian posiciones.',
+            'Un agente no puede teleportarse más de una vez por activación.',
+          ]
+        },
+        {
+          icon: '🪨',
+          name: 'Sarcófago y escombros',
+          types: ['Ligero'],
+          reglas: [
+            'Terreno ligero: proporciona cobertura y ofuscamiento, pero los agentes pueden moverse a través de él y disparar a través de él con penalizador.',
+          ]
+        },
+      ],
+      combateCerrado: [
+        {
+          name: 'Estancia',
+          desc: 'Cada estancia es un área completamente rodeada por elementos de terreno muro de Mundo Necrópolis y, donde proceda, los bordes de la zona de aniquilación. Los mapas de misión identifican cada estancia con un borde de color naranja.',
+        },
+        {
+          name: 'Entorno condensado',
+          desc: 'Las armas con la regla de armas Área, Ráfaga y/o x″ Devastadora (Devastadora con requisito de distancia) tienen también la regla de armas Letal 5+.',
+        },
+      ],
+      acciones: [
+        {
+          name: 'Operar portillo',
+          cost: '1 PA',
+          reglas: [
+            { text: 'Abre o cierra una escotilla cuyo punto de acceso se encuentre en la zona de control del agente.', restrict: false },
+            { text: 'Puede realizarse durante la acción de Correr o Reposicionarse; tras realizarla el agente puede usar cualquier distancia de movimiento restante.', restrict: false },
+            { text: 'No puede realizarse si el agente está en zona de control enemiga, o si la escotilla está abierta y su punto de acceso está en zona de control enemiga.', restrict: true },
+          ]
+        },
+        {
+          name: 'Brecha',
+          cost: '2 PA',
+          reglas: [
+            { text: 'Abre un punto de brecha cerrado cuyo punto de acceso esté en la zona de control del agente.', restrict: false },
+            { text: 'Agentes con "marcador de brecha", "granadero" o "mina" en su tarjeta, o con arma de Penetración 2 o Críticos de penetración 2 (salvo Área o Ráfaga), pueden realizarla por 1 PA menos (mínimo 1 PA). No puede realizarse por menos de 2 PA si en esa activación se ha realizado Cargar o Disparar (o viceversa).', restrict: false },
+            { text: 'Al abrir: tira 1D6 por cada agente enemigo al otro lado con el punto de acceso en su zona de control. Con 4+, ese agente sufre -1 LPA hasta el final de su siguiente activación y daño igual a la mitad del resultado (redondeando al alza).', restrict: false },
+            { text: 'No puede realizarse en zona de control enemiga, ni si el punto de brecha ya está abierto.', restrict: true },
+          ]
+        },
+        {
+          name: 'Defensa',
+          cost: '1 PA',
+          reglas: [
+            { text: 'El agente se pone en guardia hasta que: realice cualquier acción, un agente enemigo termine una acción en su zona de control sin interrumpir, su orden cambie, o sea el inicio del siguiente punto de inflexión.', restrict: false },
+            { text: 'En guardia: una vez por activación enemiga, tras una acción del agente enemigo, puedes interrumpir para que un agente amigo en guardia realice una acción libre de Disparar o Combatir. Puede disparar incluso en zona de control enemiga (disparo a bocajarro): toma como blanco al enemigo en zona de control, empeora en 1 el atributo Impactar, y ese agente no puede contraatacar hasta el final de esa activación.', restrict: false },
+            { text: 'Se trata como una acción de Disparar. No puede realizarse en zona de control enemiga ni con orden de ocultarse.', restrict: true },
+          ]
+        },
+        {
+          name: 'Combatir en escotillas',
+          cost: '1 PA',
+          reglas: [
+            { text: 'Combate con el agente activo.', restrict: false },
+            { text: 'En el paso de Elegir agente enemigo, elige un agente enemigo a 2″ o menos al otro lado del punto de acceso de una escotilla abierta o punto de brecha abierto que el agente activo esté tocando. Ambos agentes se tratan como en zona de control del otro durante la acción.', restrict: false },
+            { text: 'Se trata como una acción de Combatir. No puede realizarse en zona de control enemiga ni si la peana no toca el punto de acceso de una escotilla/brecha abierta.', restrict: true },
+          ]
+        },
+      ],
+      misiones: [
+        // Pendiente de añadir cuando se disponga del contenido de misiones individuales
+      ],
+    },
+  ];
+
+  const ZONAS_PRONTO = [
+    { name: 'Horcasombría',     icon: '🏚️' },
+    { name: 'Plataforma Orbital', icon: '🛸' },
+    { name: 'Zona de Guerra',   icon: '🔥' },
+  ];
+
+  /* ─────────────────────────────────────────────
+     RENDER ZONAS
+  ───────────────────────────────────────────── */
+  const zonaGrid = document.getElementById('zona-grid');
+  let activeZona = null;
+
+  ZONAS.forEach(z => {
+    const card = document.createElement('div');
+    card.className = 'zona-card';
+    card.innerHTML = `<div class="zona-icon">${z.icon}</div><div class="zona-name">${z.name}</div><div class="zona-badge">Ver zona →</div>`;
+    card.addEventListener('click', () => selectZona(z, card));
+    zonaGrid.appendChild(card);
+  });
+
+  ZONAS_PRONTO.forEach(z => {
+    const card = document.createElement('div');
+    card.className = 'zona-card soon';
+    card.innerHTML = `<div class="zona-icon">${z.icon}</div><div class="zona-name">${z.name}</div><div class="zona-badge soon-badge">Próximamente</div>`;
+    zonaGrid.appendChild(card);
+  });
+
+  /* ─────────────────────────────────────────────
+     SELECCIONAR ZONA
+  ───────────────────────────────────────────── */
+  function selectZona(zona, card) {
+    document.querySelectorAll('.zona-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+
+    renderTerreno(zona);
+    renderMisiones(zona);
+
+    const panel = document.getElementById('detail-panel');
+    panel.classList.add('visible');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /* ─────────────────────────────────────────────
+     RENDER TERRENO
+  ───────────────────────────────────────────── */
+  function renderTerreno(zona) {
+    const el = document.getElementById('tab-terreno');
+    el.innerHTML = '';
+
+    // Info bar
+    const bar = document.createElement('div');
+    bar.className = 'zona-info';
+    bar.innerHTML = `
+      <div class="zona-stat"><div class="zona-stat-label">Tablero</div><div class="zona-stat-val">${zona.tablero}</div></div>
+      <div class="zona-stat"><div class="zona-stat-label">Rejilla</div><div class="zona-stat-val">${zona.rejilla}</div></div>
+      <div class="zona-stat" style="flex:1"><div class="zona-stat-label">Elementos incluidos</div><div class="zona-stat-val" style="font-size:13px;color:var(--text-2);font-weight:400">${zona.elementos}</div></div>`;
+    el.appendChild(bar);
+
+    // Terreno
+    const tLabel = document.createElement('div');
+    tLabel.className = 'section-label';
+    tLabel.textContent = 'Elementos de terreno';
+    el.appendChild(tLabel);
+
+    const tGrid = document.createElement('div');
+    tGrid.className = 'terreno-grid';
+    zona.terreno.forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'terreno-card';
+      card.innerHTML = `
+        <div class="terreno-header">
+          <span class="terreno-icon">${t.icon}</span>
+          <span class="terreno-name">${t.name}</span>
+          <div class="terreno-types">${t.types.map(tp => `<span class="type-tag ${tp.toLowerCase().includes('pesado') || tp.toLowerCase().includes('muro') ? 'heavy' : ''}">${tp}</span>`).join('')}</div>
+          <span class="terreno-chevron">▼</span>
+        </div>
+        <div class="terreno-body"><ul>${t.reglas.map(r => `<li>${r}</li>`).join('')}</ul></div>`;
+      card.querySelector('.terreno-header').addEventListener('click', () => card.classList.toggle('open'));
+      tGrid.appendChild(card);
+    });
+    el.appendChild(tGrid);
+
+    // Combate cerrado
+    const ccLabel = document.createElement('div');
+    ccLabel.className = 'section-label';
+    ccLabel.textContent = 'Combate cerrado';
+    el.appendChild(ccLabel);
+
+    zona.combateCerrado.forEach(r => {
+      const div = document.createElement('div');
+      div.className = 'regla-especial';
+      div.innerHTML = `<div class="regla-especial-name">${r.name}</div><p>${r.desc}</p>`;
+      el.appendChild(div);
+    });
+
+    // Acciones especiales
+    const acLabel = document.createElement('div');
+    acLabel.className = 'section-label';
+    acLabel.textContent = 'Acciones especiales';
+    el.appendChild(acLabel);
+
+    const acGrid = document.createElement('div');
+    acGrid.className = 'accion-grid';
+    zona.acciones.forEach(a => {
+      const card = document.createElement('div');
+      card.className = 'accion-card';
+      card.innerHTML = `
+        <div class="accion-header">
+          <span class="accion-name">${a.name}</span>
+          <span class="accion-cost">${a.cost}</span>
+        </div>
+        <div class="accion-body">
+          ${a.reglas.map(r => `<div class="accion-rule"><div class="accion-rule-dot ${r.restrict ? 'restrict' : ''}"></div><span>${r.text}</span></div>`).join('')}
+        </div>`;
+      acGrid.appendChild(card);
+    });
+    el.appendChild(acGrid);
+  }
+
+  /* ─────────────────────────────────────────────
+     RENDER MISIONES
+  ───────────────────────────────────────────── */
+  function renderMisiones(zona) {
+    const el = document.getElementById('tab-misiones');
+    el.innerHTML = '';
+
+    const grid = document.createElement('div');
+    grid.className = 'misiones-grid';
+
+    if (zona.misiones.length === 0) {
+      // Placeholder misiones
+      const placeholder = [
+        { num: 'Misión 1', name: 'Por añadir', icon: '📋' },
+        { num: 'Misión 2', name: 'Por añadir', icon: '📋' },
+        { num: 'Misión 3', name: 'Por añadir', icon: '📋' },
+        { num: 'Misión 4', name: 'Por añadir', icon: '📋' },
+      ];
+      placeholder.forEach(m => {
+        const card = document.createElement('div');
+        card.className = 'mision-card-soon';
+        card.innerHTML = `<div class="mision-card-soon-icon">${m.icon}</div><div class="mision-card-soon-name">${m.num}</div><div class="mision-card-soon-badge">Pendiente de añadir</div>`;
+        grid.appendChild(card);
+      });
+    } else {
+      zona.misiones.forEach(m => {
+        const card = document.createElement('a');
+        card.className = 'mision-card';
+        card.href = m.url || '#';
+        card.innerHTML = `
+          <div class="mision-img-ph">${m.icon}</div>
+          <div class="mision-body">
+            <span class="mision-num">${m.num}</span>
+            <span class="mision-name">${m.name}</span>
+            <p class="mision-desc">${m.desc}</p>
+            <div class="mision-tags">${(m.tags||[]).map(t=>`<span class="mision-tag">${t}</span>`).join('')}</div>
+          </div>
+          <div class="mision-footer">Ver misión <span>→</span></div>`;
+        grid.appendChild(card);
+      });
+    }
+
+    el.appendChild(grid);
+  }
+
+  /* ─────────────────────────────────────────────
+     TABS
+  ───────────────────────────────────────────── */
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>
