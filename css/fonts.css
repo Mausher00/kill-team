@@ -1,0 +1,12 @@
+/* ============================================================
+   fonts.css — D-DIN local (compartido por todas las páginas)
+   Rutas en minúsculas: GitHub Pages (Linux) distingue mayúsculas.
+   ============================================================ */
+@font-face { font-family: 'D-DIN';          src: url('../recursos/d-din/d-din.otf') format('opentype');               font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'D-DIN';          src: url('../recursos/d-din/d-din-bold.otf') format('opentype');          font-weight: 700 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'D-DIN';          src: url('../recursos/d-din/d-din-italic.otf') format('opentype');        font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'D-DINCondensed'; src: url('../recursos/d-din/d-dincondensed.otf') format('opentype');      font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'D-DINCondensed'; src: url('../recursos/d-din/d-dincondensed-bold.otf') format('opentype'); font-weight: 700 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'D-DINExp';       src: url('../recursos/d-din/d-dinexp.otf') format('opentype');            font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'D-DINExp';       src: url('../recursos/d-din/d-dinexp-bold.otf') format('opentype');       font-weight: 700 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'D-DINExp';       src: url('../recursos/d-din/d-dinexp-italic.otf') format('opentype');     font-weight: 400; font-style: italic; font-display: swap; }

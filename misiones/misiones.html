@@ -4,17 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kill Team — Misiones</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#0a0a0a">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <link rel="stylesheet" href="../css/fonts.css">
   <style>
     :root {
       --bg:#0a0a0a; --bg-2:#111111; --bg-3:#1a1a1a; --bg-4:#141414;
       --border:#2a2a2a; --border-2:#333333;
-      --text:#e8e8e8; --text-2:#888888; --text-3:#444444;
-      --orange:#E8490F; --orange-dim:#7a2508; --orange-bg:#1a0a04;
-      --green:#2ecc71; --green-bg:#0a1f10;
-      --font-d:'Barlow Condensed',sans-serif;
-      --font-b:'Barlow',sans-serif;
+      --text:#e8e8e8; --text-2:#999999; --text-3:#555555;
+      --orange:#E8490F; --orange-dim:#7a2508; --orange-bg:#1a0a04; --orange-light:#f07040;
+      --green:#2ecc71; --green-bg:#0a1f10; --green-light:#4caf70;
+      --radius-sm:2px; --radius-md:4px; --radius-lg:6px;
+      /* Misma tipografía que la app (D-DIN) */
+      --font-display:'D-DINCondensed', sans-serif;
+      --font-mono:'D-DINExp', sans-serif;
+      --font-body:'D-DIN', sans-serif;
+      --font-d: var(--font-display);
+      --font-b: var(--font-body);
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); color: var(--text); font-family: var(--font-b); min-height: 100vh; display: flex; flex-direction: column; }
@@ -74,8 +80,18 @@
     .type-tag.heavy { border-color: var(--orange-dim); color: var(--orange); }
     .terreno-chevron { font-size: 10px; color: var(--text-3); transition: transform .2s; margin-left: 4px; }
     .terreno-card.open .terreno-chevron { transform: rotate(180deg); }
-    .terreno-body { display: none; border-top: 1px solid var(--border); padding: 12px 14px; }
-    .terreno-card.open .terreno-body { display: block; }
+    .terreno-body { border-top: 1px solid var(--border); padding: 12px 14px; }
+    .terreno-card { transition: border-color .2s, box-shadow .25s; }
+    .terreno-card.open { border-color: var(--orange-dim); box-shadow: 0 10px 26px -18px rgba(232,73,15,.55); }
+    .terreno-header:hover { background: var(--bg-3); }
+    .terreno-chevron { transition: transform .3s var(--ease-out); }
+    .terreno-card.open .terreno-chevron { color: var(--orange); }
+    .zona-card { outline-offset: 2px; }
+    .tab { transition: color .15s, border-color .25s; }
+    .tools { display: flex; justify-content: flex-end; margin: -8px 0 10px; }
+    .link-btn { background: none; border: none; color: var(--text-3); font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px; border-radius: 2px; }
+    .link-btn:hover { color: var(--orange); background: var(--bg-2); }
+    .nav-row { display: flex; gap: 14px; margin-bottom: 10px; }
     .terreno-body ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
     .terreno-body li { font-size: 12px; color: var(--text-2); line-height: 1.5; padding-left: 14px; position: relative; }
     .terreno-body li::before { content: '›'; position: absolute; left: 0; color: var(--orange); }
@@ -116,11 +132,15 @@
 
     footer { border-top: 1px solid var(--border); padding: .8rem 1.5rem; text-align: center; font-size: 11px; color: var(--text-3); font-family: var(--font-d); letter-spacing: .06em; text-transform: uppercase; }
   </style>
+  <link rel="stylesheet" href="../css/fx.css">
 </head>
 <body>
 
 <header>
-  <a class="back" href="../">← Volver al selector</a>
+  <div class="nav-row">
+    <a class="back" href="../index.html">← Volver al selector</a>
+    <a class="back" href="../builder.html">Constructor</a>
+  </div>
   <span class="pre-title">Warhammer 40,000 · Kill Team</span>
   <h1>Misiones</h1>
   <p class="sub">Selecciona una zona de aniquilación para ver sus reglas de terreno y misiones disponibles</p>
@@ -142,7 +162,8 @@
   </div>
 </main>
 
-<footer>Kill Team Companion — uso personal</footer>
+<footer>Kill Team Companion — uso personal · <kbd>1</kbd> <kbd>2</kbd> pestañas · <kbd>E</kbd> expandir terreno</footer>
+<script src="../js/ui.js"></script>
 
 <script>
   /* ─────────────────────────────────────────────
@@ -282,7 +303,11 @@
 
   ZONAS.forEach(z => {
     const card = document.createElement('div');
-    card.className = 'zona-card';
+    card.className = 'zona-card spot lift reveal';
+    card.style.setProperty('--i', ZONAS.indexOf(z));
+    card.tabIndex = 0;
+    card.setAttribute('role', 'button');
+    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectZona(z, card); } });
     card.innerHTML = `<div class="zona-icon">${z.icon}</div><div class="zona-name">${z.name}</div><div class="zona-badge">Ver zona →</div>`;
     card.addEventListener('click', () => selectZona(z, card));
     zonaGrid.appendChild(card);
@@ -290,7 +315,8 @@
 
   ZONAS_PRONTO.forEach(z => {
     const card = document.createElement('div');
-    card.className = 'zona-card soon';
+    card.className = 'zona-card soon reveal';
+    card.style.setProperty('--i', ZONAS.length + ZONAS_PRONTO.indexOf(z));
     card.innerHTML = `<div class="zona-icon">${z.icon}</div><div class="zona-name">${z.name}</div><div class="zona-badge soon-badge">Próximamente</div>`;
     zonaGrid.appendChild(card);
   });
@@ -307,7 +333,20 @@
 
     const panel = document.getElementById('detail-panel');
     panel.classList.add('visible');
+    panel.classList.remove('fade-in'); void panel.offsetWidth; panel.classList.add('fade-in');
     panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    KT.store.set('mis.zona', zona.id);
+  }
+
+  function toggleAllTerreno() {
+    const cards = [...document.querySelectorAll('.terreno-card')];
+    const open = !cards.every(c => c.classList.contains('open'));
+    cards.forEach((c, i) => setTimeout(() => { c.classList.toggle('open', open); c.querySelector('.terreno-header').setAttribute('aria-expanded', open); }, i * 30));
+  }
+
+  function setTab(name) {
+    const tab = document.querySelector(`.tab[data-tab="${name}"]`);
+    if (tab) tab.click();
   }
 
   /* ─────────────────────────────────────────────
@@ -326,6 +365,12 @@
       <div class="zona-stat" style="flex:1"><div class="zona-stat-label">Elementos incluidos</div><div class="zona-stat-val" style="font-size:13px;color:var(--text-2);font-weight:400">${zona.elementos}</div></div>`;
     el.appendChild(bar);
 
+    // Herramientas
+    const tools = document.createElement('div');
+    tools.className = 'tools';
+    tools.innerHTML = '<button class="link-btn" onclick="toggleAllTerreno()">Expandir / contraer todo</button>';
+    el.appendChild(tools);
+
     // Terreno
     const tLabel = document.createElement('div');
     tLabel.className = 'section-label';
@@ -336,7 +381,7 @@
     tGrid.className = 'terreno-grid';
     zona.terreno.forEach(t => {
       const card = document.createElement('div');
-      card.className = 'terreno-card';
+      card.className = 'terreno-card spot';
       card.innerHTML = `
         <div class="terreno-header">
           <span class="terreno-icon">${t.icon}</span>
@@ -344,8 +389,12 @@
           <div class="terreno-types">${t.types.map(tp => `<span class="type-tag ${tp.toLowerCase().includes('pesado') || tp.toLowerCase().includes('muro') ? 'heavy' : ''}">${tp}</span>`).join('')}</div>
           <span class="terreno-chevron">▼</span>
         </div>
-        <div class="terreno-body"><ul>${t.reglas.map(r => `<li>${r}</li>`).join('')}</ul></div>`;
-      card.querySelector('.terreno-header').addEventListener('click', () => card.classList.toggle('open'));
+        <div class="acc"><div class="acc-in"><div class="terreno-body"><ul>${t.reglas.map(r => `<li>${r}</li>`).join('')}</ul></div></div></div>`;
+      const hdr = card.querySelector('.terreno-header');
+      hdr.tabIndex = 0; hdr.setAttribute('role', 'button'); hdr.setAttribute('aria-expanded', 'false');
+      const toggle = () => { const o = card.classList.toggle('open'); hdr.setAttribute('aria-expanded', o); };
+      hdr.addEventListener('click', toggle);
+      hdr.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
       tGrid.appendChild(card);
     });
     el.appendChild(tGrid);
@@ -443,6 +492,27 @@
       document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
     });
   });
+
+  /* ─────────────────────────────────────────────
+     EFECTOS, ATAJOS Y ÚLTIMA ZONA
+  ───────────────────────────────────────────── */
+  KT.initFx();
+  KT.keys({
+    '1': () => setTab('terreno'),
+    '2': () => setTab('misiones'),
+    'e': () => { if (document.querySelector('.terreno-card')) toggleAllTerreno(); else return false; },
+    '?': () => KT.helpModal([['1', 'Reglas de terreno'], ['2', 'Misiones'], ['E', 'Expandir / contraer terreno'], ['Tab', 'Moverse entre zonas y elementos']]),
+  });
+  (function restore() {
+    const id = KT.store.get('mis.zona');
+    const i = ZONAS.findIndex(z => z.id === id);
+    if (i >= 0) {
+      const card = zonaGrid.children[i];
+      card.classList.add('active');
+      renderTerreno(ZONAS[i]); renderMisiones(ZONAS[i]);
+      document.getElementById('detail-panel').classList.add('visible');
+    }
+  })();
 </script>
 </body>
 </html>

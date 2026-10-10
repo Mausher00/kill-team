@@ -42,12 +42,13 @@ function annotate(text) {
     ? text.replace(/<[^>]+>/g, '')
     : text;
 
-  const sorted = Object.keys(KEYWORDS).slice().sort((a, b) => b.length - a.length);
+  const sorted = [...new Set([...Object.keys(KEYWORDS), ...Object.keys(window.LOCAL_KW || {})])].sort((a, b) => b.length - a.length);
 
   const matches = [];
   sorted.forEach(kw => {
     const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const re = new RegExp(`\\b(${escaped})\\b`, 'gi');
+    // \b de JS no trata letras acentuadas como palabra: "Área" nunca casaba.
+    const re = new RegExp(`(?<![\\p{L}\\p{N}])(${escaped})(?![\\p{L}\\p{N}])`, 'giu');
     let m;
     while ((m = re.exec(plain)) !== null) {
       matches.push({ start: m.index, end: m.index + m[0].length, key: kw, matched: m[0] });
@@ -78,11 +79,20 @@ function annotate(text) {
   return result;
 }
 
+function kwLookup(term) {
+  const L = window.LOCAL_KW || {};
+  const t = term.toLowerCase();
+  return Object.keys(L).find(k => k.toLowerCase() === t) ? 'local'
+       : Object.keys(KEYWORDS).find(k => k.toLowerCase() === t) ? 'global' : null;
+}
+
 function weaponRules(arr) {
   if (!arr || arr.length === 0) return '—';
+  const L = window.LOCAL_KW || {};
   return arr.map(r => {
-    const base = r.replace(/\s*\d+[""]?\s*$/, '').replace(/\s*\*$/, '').trim();
-    const found = Object.keys(KEYWORDS).find(k => base.toLowerCase().startsWith(k.toLowerCase()));
+    const base = r.replace(/\s*[\d"”x+\/]+"?\s*$/, '').replace(/\*$/, '').trim();
+    const local = Object.keys(L).find(k => k.toLowerCase() === base.toLowerCase());
+    const found = local || Object.keys(KEYWORDS).find(k => base.toLowerCase().startsWith(k.toLowerCase()));
     return found
       ? `<span class="rkw" data-kw="${found}">${r}</span>`
       : `<span style="color:var(--text-2)">${r}</span>`;
@@ -98,56 +108,91 @@ function weaponIcon(w) {
 
 // ── HOME ─────────────────────────────────────────────────────
 
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || '');
+const MOD = IS_MAC ? '⌘' : 'Ctrl';
+
 function renderHome() {
-  const cards = Object.values(FACTIONS).map(f => `
-    <div class="faction-card" onclick="goTo('${f.id}')">
+  const all = Object.values(FACTIONS);
+  const filt = window.homeFilter || '';
+  const chipsSet = [...new Set(all.flatMap(f => f.tags || []))];
+  const chips = ['', ...chipsSet].map(t => `<button class="chip${t === filt ? ' on' : ''}" onclick="setHomeFilter('${t.replace(/'/g, "\\'")}')">${t || 'Todos'}<span>${t ? all.filter(f => (f.tags || []).includes(t)).length : all.length}</span></button>`).join('');
+  const shown = filt ? all.filter(f => (f.tags || []).includes(filt)) : all;
+  const cards = shown.map((f, i) => `
+    <div class="faction-card spot lift reveal" style="--i:${i}" tabindex="0" role="link"
+         aria-label="Ver comando ${f.name}" onclick="goTo('${f.id}')"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goTo('${f.id}')}">
       ${f.img
-        ? `<img class="faction-card-img" src="${f.img}" alt="${f.name}"
-             onerror="this.outerHTML='<div class=\\'faction-card-ph\\'>${f.icon || '⚔'}</div>'">`
+        ? `<div class="faction-card-imgwrap"><img class="faction-card-img" src="${f.img}" alt="" loading="lazy"
+             onerror="this.parentNode.outerHTML='<div class=\\'faction-card-ph\\'>${f.icon || '⚔'}</div>'"></div>`
         : `<div class="faction-card-ph">${f.icon || '⚔'}</div>`
       }
       <div class="faction-card-body">
         <span class="faction-card-sub">${f.subfaction}</span>
         <span class="faction-card-name">${f.name}</span>
-        <p class="faction-card-desc">${f.desc}</p>
+        <p class="faction-card-desc">${f.desc || ''}</p>
         <div class="faction-card-tags">
           ${(f.tags || []).map(t => `<span class="faction-tag">${t}</span>`).join('')}
         </div>
       </div>
-      <div class="faction-card-footer">Ver comando <span>→</span></div>
+      <div class="faction-card-footer">
+        <span class="fc-meta">${f.ops.length} operativos${f.roster ? ' · <i class="ti ti-hammer"></i> constructor' : ''}</span>
+        <span>→</span>
+      </div>
     </div>`).join('');
 
-  const soon = (window.COMING_SOON || []).map(c => `
-    <div class="faction-card-soon">
-      <div class="faction-card-soon-icon">${c.icon}</div>
+  const n = Object.keys(FACTIONS).length;
+  const soon = (window.COMING_SOON || []).map((c, i) => `
+    <div class="faction-card-soon reveal" style="--i:${n + i}">
+      ${c.img ? `<img src="${c.img}" alt="" class="soon-img" loading="lazy">` : `<div class="faction-card-soon-icon">${c.icon}</div>`}
       <div class="faction-card-soon-name">${c.name}</div>
       <div class="faction-card-soon-badge">Próximamente</div>
     </div>`).join('');
 
   return `
     <div class="wrap">
-      <header class="home-hdr">
+      <header class="home-hdr reveal">
         <span class="home-pre">Warhammer 40,000</span>
         <h1 class="home-h1">Kill Team</h1>
         <p class="home-sub">Selecciona un comando para ver sus operativos, reglas y ardides</p>
         <nav class="home-nav">
-          <span class="nav-link active">Comandos</span>
-          <a class="nav-link" href="misiones/misiones.html">Misiones</a>
+          <span class="nav-link active"><i class="ti ti-books"></i> Comandos</span>
+          <a class="nav-link" href="builder.html"><i class="ti ti-hammer"></i> Constructor</a>
+          <a class="nav-link" href="misiones/misiones.html"><i class="ti ti-map"></i> Misiones</a>
         </nav>
       </header>
-      <div class="section-label">Comandos disponibles</div>
-      <div class="faction-grid">${cards}${soon}</div>
-      <footer class="page-footer">Kill Team Companion — uso personal</footer>
+      <button class="search-trigger spot reveal" style="--i:1" onclick="openPalette()" aria-label="Buscar en todos los comandos">
+        <i class="ti ti-search"></i>
+        <span>Buscar operativo, arma, regla, ardid…</span>
+        <span class="st-keys"><kbd>${MOD}</kbd><kbd>K</kbd></span>
+      </button>
+      <div class="section-label">Comandos disponibles <span class="sl-count">${n}</span></div>
+      <div class="chips" role="toolbar" aria-label="Filtrar comandos">${chips}</div>
+      <div class="faction-grid">${cards}${filt ? '' : soon}</div>
+      <footer class="page-footer">Kill Team Companion — uso personal · pulsa <kbd>?</kbd> para ver los atajos</footer>
     </div>`;
 }
 
 // ── VISTA DE FACCIÓN ─────────────────────────────────────────
 
+const TABS = [
+  { id: 'op', label: 'Operativos', count: f => f.ops.length },
+  { id: 'gr', label: 'Reglas' },
+  { id: 'rf', label: 'Facción' },
+  { id: 'ar', label: 'Ardides',   count: f => (f.pl?.s?.length || 0) + (f.pl?.f?.length || 0) },
+  { id: 'eq', label: 'Equipo',    count: f => f.eq?.length || 0 },
+  { id: 'er', label: 'Erratas',   count: f => (f.er || []).reduce((n, v) => n + v.ee.length, 0) },
+];
+
 function renderFactionView(f, activeTab, searchQ, openOps) {
   const tagHtml = (f.tags || []).map(t => `<span class="hdr-tag">${t}</span>`).join('');
+  const tabs = TABS.map((t, i) => {
+    const c = t.count ? t.count(f) : null;
+    return `<button class="tab-btn ${activeTab === t.id ? 'on' : ''}" data-tab="${t.id}" role="tab"
+      aria-selected="${activeTab === t.id}" title="${t.label} (${i + 1})">${t.label}${c ? `<span class="tcount">${c}</span>` : ''}</button>`;
+  }).join('');
   return `
     <div class="wrap">
-      <div class="faction-hdr">
+      <div class="faction-hdr reveal">
         <div class="faction-hdr-inner">
           <div class="faction-hdr-left">
             <span class="faction-hdr-pre">${f.subfaction}</span>
@@ -155,31 +200,28 @@ function renderFactionView(f, activeTab, searchQ, openOps) {
           </div>
           <div class="faction-hdr-tags">
             ${tagHtml}
-            <span class="hdr-tag hdr-tag-accent">v${f.version || '1.0'}</span>
+            <span class="hdr-tag hdr-tag-accent" title="Fecha de la última actualización del PDF oficial">${/^\d/.test(f.version || '') ? 'v' + f.version : (f.version || '—')}</span>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
-          <button class="btn-back" onclick="goHome()">
+        <div class="faction-actions">
+          <button class="btn-back" onclick="goHome()" title="Volver (Alt+←)">
             <i class="ti ti-arrow-left"></i> Todos los comandos
           </button>
-          <a class="btn-back" href="misiones/misiones.html">
-            <i class="ti ti-map"></i> Misiones
-          </a>
+          <a class="btn-back" href="misiones/misiones.html"><i class="ti ti-map"></i> Misiones</a>
+          <span style="flex:1"></span>
+          ${f.roster ? `<a class="icon-btn accent ripple" href="builder.html#${f.id}" title="Abrir en el constructor"><i class="ti ti-hammer"></i> Construir</a>` : ''}
+          <button class="icon-btn" onclick="openPalette()" title="Buscar en todo (${MOD}+K)" aria-label="Buscar en todo"><i class="ti ti-command"></i></button>
         </div>
       </div>
-      <div class="srch">
-        <i class="ti ti-search"></i>
-        <input id="si" type="search" placeholder="Buscar operativo, arma, regla..." value="${searchQ}">
+      <div class="sticky-head">
+        <div class="srch">
+          <i class="ti ti-search"></i>
+          <input id="si" type="search" placeholder="Filtrar en esta pestaña…" value="${searchQ.replace(/"/g, '&quot;')}" aria-label="Filtrar">
+          <kbd class="srch-kbd">/</kbd>
+        </div>
+        <nav class="tabs" role="tablist">${tabs}</nav>
       </div>
-      <nav class="tabs">
-        <button class="tab-btn ${activeTab==='op'?'on':''}" data-tab="op">Operativos</button>
-        <button class="tab-btn ${activeTab==='gr'?'on':''}" data-tab="gr">Reglas</button>
-        <button class="tab-btn ${activeTab==='rf'?'on':''}" data-tab="rf">Facción</button>
-        <button class="tab-btn ${activeTab==='ar'?'on':''}" data-tab="ar">Ardides</button>
-        <button class="tab-btn ${activeTab==='eq'?'on':''}" data-tab="eq">Equipo</button>
-        <button class="tab-btn ${activeTab==='er'?'on':''}" data-tab="er">Erratas</button>
-      </nav>
-      <main id="pane"></main>
+      <main id="pane" role="tabpanel"></main>
     </div>`;
 }
 
@@ -201,20 +243,21 @@ function renderOp(op, openOps) {
       <td class="cn">${w.a}</td>
       <td class="cn">${w.i}</td>
       <td class="dm">${w.d}</td>
-      <td class="rt">${weaponRules(w.r)}</td>
+      <td class="rt${w.r && w.r.length ? '' : ' none'}">${weaponRules(w.r)}</td>
     </tr>`).join('');
 
   const rules = op.ru && op.ru.length
     ? op.ru.map(r => `
         <div class="${r.isAct ? 'rbox-act' : 'rbox'}">
           <div class="${r.isAct ? 'rname-act' : 'rname'}">${r.n}</div>
-          <div class="rtxt">${annotate(r.t)}</div>
+          <div class="rtxt">${annotate(r.t).replace(/\n/g, '<br>')}</div>
         </div>`).join('')
     : '<div class="rtxt" style="color:var(--text-3);font-size:12px">Sin reglas especiales.</div>';
 
   return `
-  <div class="op-card" id="op-${op.id}">
-    <div class="op-hd-card" onclick="toggleOp('${op.id}')">
+  <div class="op-card spot reveal${isOpen ? ' open' : ''}" id="op-${op.id}" style="--i:${op._i || 0}">
+    <div class="op-hd-card" role="button" tabindex="0" aria-expanded="${isOpen}" aria-controls="body-${op.id}"
+         onclick="toggleOp('${op.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleOp('${op.id}')}">
       <div class="op-hd-left"${imgUrl ? ` style="background-image:url('${imgUrl}')"` : ''}>
         <div class="op-hd-name-col">
           <span class="op-hd-type">${op.type}</span>
@@ -243,11 +286,11 @@ function renderOp(op, openOps) {
           <span class="op-stat-val">${op.s.h}</span>
         </div>
         <div class="op-hd-chv">
-          <i class="ti ti-chevron-down" id="chv-${op.id}" style="${isOpen ? 'transform:rotate(180deg)' : ''}"></i>
+          <i class="ti ti-chevron-down" id="chv-${op.id}"></i>
         </div>
       </div>
     </div>
-    <div class="op-body" id="body-${op.id}" style="${isOpen ? '' : 'display:none'}">
+    <div class="acc" id="body-${op.id}"><div class="acc-in"><div class="op-body">
       <div class="kw-pills">${kws}</div>
       <span class="sec-lbl">Armamento</span>
       <div class="tbl-wrap">
@@ -264,52 +307,70 @@ function renderOp(op, openOps) {
       </div>
       <span class="sec-lbl" style="margin-top:14px">Habilidades</span>
       <div class="rule-list">${rules}</div>
-    </div>
+    </div></div></div>
   </div>`;
 }
 
 function renderOps(f, searchQ, openOps) {
-  const q = searchQ.toLowerCase();
+  const q = KT.norm(searchQ.trim());
+  const has = t => KT.norm(t).includes(q);
   const list = q
     ? f.ops.filter(o =>
-        o.name.toLowerCase().includes(q) ||
-        o.type.toLowerCase().includes(q) ||
-        (o.kw || []).some(k => k.toLowerCase().includes(q)) ||
-        o.w.some(w => w.n.toLowerCase().includes(q)) ||
-        (o.ru || []).some(r => r.n.toLowerCase().includes(q))
+        has(o.name) || has(o.type) ||
+        (o.kw || []).some(has) ||
+        o.w.some(w => has(w.n) || (w.r || []).some(has)) ||
+        (o.ru || []).some(r => has(r.n) || has(r.t))
       )
     : f.ops;
-  if (!list.length) return '<div class="empty">No se encontraron operativos.</div>';
-  return `<div class="cnt">${list.length} OPERATIVO${list.length !== 1 ? 'S' : ''}</div>` +
+  if (!list.length) return `<div class="empty"><i class="ti ti-mood-empty" style="font-size:26px;display:block;margin-bottom:6px"></i>No se encontraron operativos para “${KT.esc(searchQ)}”.</div>`;
+  list.forEach((o, i) => { o._i = Math.min(i, 12); });
+  const allOpen = list.every(o => openOps.has(o.id));
+  return `<div class="list-bar">
+      <span class="cnt">${list.length} OPERATIVO${list.length !== 1 ? 'S' : ''}${q ? ` · filtro “${KT.esc(searchQ)}”` : ''}</span>
+      <button class="link-btn" onclick="toggleAllOps()" title="Expandir/contraer todo (E)">
+        <i class="ti ti-${allOpen ? 'fold' : 'fold-down'}"></i> ${allOpen ? 'Contraer todo' : 'Expandir todo'}
+      </button>
+    </div>` +
     list.map(op => renderOp(op, openOps)).join('');
 }
 
 // ── OTRAS SECCIONES ───────────────────────────────────────────
 
 function renderGR(gr) {
-  const concepts = gr.concepts.map(c => `<div class="gr-card"><div class="gr-top"><span class="gr-name">${c.n}</span></div><div class="gr-txt">${annotate(c.t)}</div></div>`).join('');
-  const orders   = gr.orders.map(o => `<div class="gr-card"><div class="gr-top"><span class="gr-name">${o.n}</span></div><div class="gr-txt">${annotate(o.t)}</div></div>`).join('');
-  const phases   = gr.phases.map(p => `<div class="gr-card"><div class="gr-top"><span class="gr-name">${p.n}</span></div><div class="gr-txt">${annotate(p.t)}</div></div>`).join('');
-  const actions  = gr.actions.map(a => `<div class="gr-card"><div class="gr-top"><span class="gr-name">${a.n}</span><span class="gr-cost">${a.cost}</span></div><div class="gr-txt">${annotate(a.t)}</div></div>`).join('');
-  const wrCards  = gr.wr.map(w => `<div class="gr-card"><div class="gr-top"><span class="gr-name">${w.n}</span></div><div class="gr-txt">${w.t}</div></div>`).join('');
+  const concepts = gr.concepts.map(c => `<div class="gr-card filt spot"><div class="gr-top"><span class="gr-name">${c.n}</span></div><div class="gr-txt">${annotate(c.t)}</div></div>`).join('');
+  const orders   = gr.orders.map(o => `<div class="gr-card filt spot"><div class="gr-top"><span class="gr-name">${o.n}</span></div><div class="gr-txt">${annotate(o.t)}</div></div>`).join('');
+  const phases   = gr.phases.map(p => `<div class="gr-card filt spot"><div class="gr-top"><span class="gr-name">${p.n}</span></div><div class="gr-txt">${annotate(p.t)}</div></div>`).join('');
+  const actions  = gr.actions.map(a => `<div class="gr-card filt spot"><div class="gr-top"><span class="gr-name">${a.n}</span><span class="gr-cost">${a.cost}</span></div><div class="gr-txt">${annotate(a.t)}</div></div>`).join('');
+  const wrCards  = gr.wr.map(w => `<div class="gr-card filt spot"><div class="gr-top"><span class="gr-name">${w.n}</span></div><div class="gr-txt">${w.t}</div></div>`).join('');
   return `<span class="sec-lbl">Conceptos clave</span>${concepts}<span class="sec-lbl">Órdenes</span>${orders}<span class="sec-lbl">Fases del turno</span>${phases}<span class="sec-lbl">Acciones</span>${actions}<span class="sec-lbl">Reglas de arma</span><div class="wr-grid">${wrCards}</div>`;
 }
 
-function renderFR(fr) {
-  const items = fr.orders.map(o => `<div class="ord-card"><div class="ord-name">${o.n}</div><div class="ord-txt">${annotate(o.t)}</div></div>`).join('');
-  return `<div class="fr-card"><span class="fr-type">${fr.type}</span><div class="fr-name">${fr.name}</div><div class="fr-txt">${annotate(fr.text)}</div><span class="sec-lbl" style="margin-top:0">Detalles</span><div style="display:flex;flex-direction:column;gap:6px">${items}</div></div>`;
+function renderFR(f) {
+  // Formato nuevo: f.frs = [{ name, text, subs:[{n,t}] }]; antiguo: f.fr = { name, type, text, orders }
+  const list = f.frs && f.frs.length ? f.frs
+    : f.fr ? [{ name: f.fr.name, text: f.fr.text, subs: (f.fr.orders || []).map(o => ({ n: o.n, t: o.t })) }] : [];
+  if (!list.length) return '';
+  const para = t => annotate(t).replace(/\n/g, '<br>');
+  return list.map((r, i) => `
+    <div class="fr-card filt spot reveal" style="--i:${i}">
+      <span class="fr-type">Regla de facción</span>
+      <div class="fr-name">${r.name}</div>
+      ${r.text ? `<div class="fr-txt">${para(r.text)}</div>` : ''}
+      ${r.subs && r.subs.length ? `<div style="display:flex;flex-direction:column;gap:6px">${r.subs.map(o =>
+        `<div class="ord-card"><div class="ord-name">${o.n}</div><div class="ord-txt">${para(o.t)}</div></div>`).join('')}</div>` : ''}
+    </div>`).join('');
 }
 
 function renderPL(pl) {
-  const s = pl.s.map(p => `<div class="pl-card"><div class="pl-name">${p.n}</div><div class="pl-txt">${annotate(p.t)}</div></div>`).join('');
-  const f = pl.f.map(p => `<div class="pl-card"><div class="pl-name">${p.n}</div><div class="pl-txt">${annotate(p.t)}</div></div>`).join('');
+  const s = pl.s.map(p => `<div class="pl-card filt spot"><div class="pl-name">${p.n}</div><div class="pl-txt">${annotate(p.t).replace(/\n/g, '<br>')}</div></div>`).join('');
+  const f = pl.f.map(p => `<div class="pl-card filt spot"><div class="pl-name">${p.n}</div><div class="pl-txt">${annotate(p.t).replace(/\n/g, '<br>')}</div></div>`).join('');
   return `<div class="pl-grid"><div><span class="pl-col-hd">Ardides de Estrategia</span>${s}</div><div><span class="pl-col-hd">Ardides de Tiroteo</span>${f}</div></div>`;
 }
 
 function renderEQ(eq) {
-  return eq.map(e => `<div class="eq-card"><div class="eq-name">${e.n}</div><div class="eq-txt">${annotate(e.t)}</div></div>`).join('');
+  return eq.map(e => `<div class="eq-card filt spot"><div class="eq-name">${e.n}</div><div class="eq-txt">${annotate(e.t).replace(/\n/g, '<br>')}</div></div>`).join('');
 }
 
 function renderER(er) {
-  return er.map(v => `<div class="er-v">Versión ${v.v}</div>${v.ee.map(e => `<div class="er-entry"><div class="er-sec">${e.s}</div><div class="er-txt">${e.t}</div></div>`).join('')}`).join('');
+  return er.map(v => `<div class="er-v">Versión ${v.v}</div>${v.ee.map(e => `<div class="er-entry filt spot"><div class="er-sec">${e.s}</div><div class="er-txt">${e.t.replace(/\n/g, '<br>')}</div></div>`).join('')}`).join('');
 }

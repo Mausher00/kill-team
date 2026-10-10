@@ -3,8 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0a0a">
 <title>Kill Team — Constructor de Comando</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<link rel="stylesheet" href="css/fonts.css">
 <style>
 /* ── TOKENS (heredados de la app principal) ───────────────── */
 :root {
@@ -163,7 +165,100 @@ button { cursor: pointer; font-family: var(--font-body); }
 .note-box { background: var(--action-bg); border: .5px solid #5a4000; border-radius: var(--r-md); padding: 8px 12px; font-size: 11px; color: var(--action); margin-bottom: 10px; line-height: 1.5; }
 .error-pill { background: #2a0505; color: #f07070; border: .5px solid #5a1010; border-radius: var(--r-md); padding: 6px 12px; font-size: 11px; font-family: var(--font-mono); margin-bottom: 8px; display: none; }
 .error-pill.show { display: block; }
+
+/* ══════════════════════════════════════════════════════════
+   MEJORAS v2 — mismos tokens y tipografía
+   ══════════════════════════════════════════════════════════ */
+.hdr { padding-top: 1.2rem; }
+.hdr-nav { gap: 14px; flex-wrap: wrap; }
+.btn-back { text-decoration: none; cursor: pointer; }
+.btn-back:hover { color: var(--orange); }
+
+/* Stepper clicable */
+.step { cursor: default; position: relative; }
+.step.reach { cursor: pointer; }
+.step.reach:hover:not(.active) { color: var(--text); background: var(--bg-3); }
+.step.done .step-num::after { content: ' ✓'; font-size: 11px; }
+.stepper { position: sticky; top: 0; z-index: 40; box-shadow: 0 8px 20px -14px #000; }
+
+/* Panel de estado (contador + progreso + checklist) */
+.status { background: var(--bg-2); border: 1px solid var(--border-2); border-radius: var(--r-md); padding: 10px 12px 12px; margin-bottom: 12px; }
+.status .counter-bar { background: none; border: none; padding: 0 0 8px; margin: 0; }
+.checks { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.chk { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-family: var(--font-mono); padding: 3px 8px; border-radius: 2px; border: .5px solid var(--border-2); color: var(--text-3); background: var(--bg-3); transition: color .2s, border-color .2s, background .2s; }
+.chk i { font-size: 12px; }
+.chk.ok { color: var(--green-light); border-color: var(--green); background: var(--green-bg); }
+.chk.bad { color: #f07070; border-color: #5a1010; background: #1a0505; }
+
+/* Entradas */
+.op-entry { transition: border-color .2s, box-shadow .25s, opacity .2s; }
+.op-entry.selected { box-shadow: 0 8px 24px -16px rgba(232,73,15,.6); }
+.op-entry.maxed .qty-btn:last-child { opacity: .25; }
+.op-row:focus-visible { outline-offset: -2px; }
+.op-entry .chv { color: var(--text-3); transition: transform .3s var(--ease-out); font-size: 14px; }
+.op-entry.open .chv { transform: rotate(180deg); color: var(--orange); }
+.loadout-panel { display: block; padding: 0; border-top: none; background: var(--bg-3); }
+.loadout-panel .lp-in { padding: 10px 12px; border-top: 1px solid var(--border); }
+.qty-btn { cursor: pointer; }
+.qty-btn:active:not(:disabled) { transform: scale(.9); }
+.op-entry.unavail { opacity: .45; }
+.op-entry.unavail .op-row { cursor: default; }
+
+/* Chips de ardid */
+.ploy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+@media (max-width: 480px) { .ploy-grid { grid-template-columns: 1fr; } }
+.ploy { text-align: left; border: 1px solid var(--border-2); background: var(--bg-2); border-radius: var(--r-md); padding: 7px 9px; color: var(--text-2); cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
+.ploy:hover:not(:disabled) { border-color: var(--action); color: var(--text); }
+.ploy.on { border-color: var(--action); background: var(--action-bg); color: var(--action); }
+.ploy:disabled { opacity: .35; cursor: default; }
+.ploy b { display: block; font-family: var(--font-display); font-size: 12px; letter-spacing: .05em; text-transform: uppercase; }
+.ploy small { font-family: var(--font-mono); font-size: 9px; color: var(--text-3); text-transform: uppercase; letter-spacing: .08em; }
+
+/* Mis comandos */
+.saved-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin-bottom: 1.4rem; }
+.saved { background: var(--bg-2); border: 1px solid var(--border-2); border-left: 3px solid var(--orange); border-radius: var(--r-md); padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; }
+.saved-name { font-family: var(--font-display); font-weight: 800; font-size: 16px; text-transform: uppercase; color: #fff; letter-spacing: .03em; line-height: 1.1; }
+.saved-meta { font-family: var(--font-mono); font-size: 10px; color: var(--text-3); }
+.saved-meta b { color: var(--orange); font-weight: 400; }
+.saved-acts { display: flex; gap: 4px; margin-top: 6px; }
+.saved-acts .icon-btn { height: 26px; min-width: 26px; padding: 0 7px; }
+.saved-acts .icon-btn i { font-size: 13px; }
+.empty-saved { border: 1px dashed var(--border-2); border-radius: var(--r-md); padding: 16px; color: var(--text-3); font-size: 12px; text-align: center; margin-bottom: 1.4rem; }
+.tools-row { display: flex; gap: 8px; flex-wrap: wrap; margin: -4px 0 14px; }
+
+.faction-card.no-roster { cursor: default; opacity: .4; filter: grayscale(.6); }
+.faction-card.no-roster:hover { transform: none; border-color: var(--border-2); box-shadow: none; }
+.faction-card .nr { font-family: var(--font-mono); font-size: 9px; color: var(--text-3); margin-top: 4px; text-transform: uppercase; letter-spacing: .06em; }
+
+/* Resumen */
+.name-in { width: 100%; background: transparent; border: none; border-bottom: 1px dashed var(--border-2); color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 22px; text-transform: uppercase; letter-spacing: .04em; padding: 2px 0 4px; margin-bottom: 4px; transition: border-color .15s; }
+.name-in:focus { outline: none; border-bottom-color: var(--orange); }
+.sum-sub { font-family: var(--font-mono); font-size: 10px; color: var(--orange); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 10px; }
+.sum-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.sum-tbl th { font-family: var(--font-display); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); text-align: center; padding: 4px 6px; border-bottom: 2px solid var(--orange); }
+.sum-tbl th:first-child { text-align: left; }
+.sum-tbl td { padding: 6px; border-bottom: .5px solid var(--border); text-align: center; font-family: var(--font-mono); }
+.sum-tbl td:first-child { text-align: left; font-family: var(--font-body); }
+.sum-tbl td .t { display: block; font-family: var(--font-mono); font-size: 9px; color: var(--orange); letter-spacing: .06em; text-transform: uppercase; }
+.sum-tbl td .n { font-family: var(--font-display); font-weight: 800; font-size: 14px; text-transform: uppercase; color: var(--text); }
+.sum-tbl td .x { color: var(--orange); font-family: var(--font-display); font-weight: 800; }
+.sum-tbl tr:hover td { background: var(--bg-3); }
+.sum-acts { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.zero-pill { border-color: #5a4000 !important; color: var(--action) !important; background: var(--action-bg) !important; }
+
+.action-bar .btn { display: inline-flex; align-items: center; gap: 6px; transition: opacity .15s, transform .1s, background .15s; }
+.action-bar .btn:active:not(:disabled) { transform: scale(.97); }
+.action-info { display: flex; flex-direction: column; gap: 4px; }
+.action-info .pbar { width: min(220px, 100%); }
+.error-pill { position: sticky; bottom: 70px; }
+
+@media print {
+  .hdr-nav, .stepper, .sum-acts, .tools-row { display: none !important; }
+  body { background: #fff; color: #000; padding: 0; }
+  .summary-card { border-color: #000; }
+}
 </style>
+<link rel="stylesheet" href="css/fx.css">
 </head>
 <body>
 <script>
@@ -173,73 +268,333 @@ button { cursor: pointer; font-family: var(--font-body); }
   window.UNIVERSAL_EQUIPMENT = [];
 </script>
 
-<!-- Archivos de datos — mismos nombres que en tu js/data/ -->
+<!-- Archivos de datos — mismos que index.html -->
 <script src="js/data/universal_equipment.js"></script>
 <script src="js/data/korps.js"></script>
 <script src="js/data/sucesores.js"></script>
 <script src="js/data/ala-asesina.js"></script>
 <script src="js/data/garra-nemesis.js"></script>
+<script src="js/data/demoledorez.js"></script>
+<script src="js/data/ork-kommandos.js"></script>
 <script src="js/data/tempestus-aquilons.js"></script>
-<script src="js/data/orkomandos.js"></script>
+<script src="js/data/angeles-muerte.js"></script>
+<script src="js/data/asaltantes-phobos.js"></script>
+<script src="js/data/escuadra-exaccion.js"></script>
+<script src="js/data/mano-arconte.js"></script>
+<script src="js/data/mandragoras.js"></script>
+<script src="js/data/novicias.js"></script>
+<script src="js/data/rastreadores.js"></script>
+<script src="js/data/vespid.js"></script>
+<script src="js/ui.js"></script>
 
 <div class="wrap">
   <header class="hdr">
     <span class="hdr-pre">Warhammer 40,000</span>
-    <div style="display:flex;align-items:baseline;gap:12px">
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
       <h1 class="hdr-title">Kill Team</h1>
       <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-3);letter-spacing:.1em;text-transform:uppercase">Constructor de Comando</span>
     </div>
     <nav class="hdr-nav">
-      <button class="btn-back" onclick="goHome()"><i class="ti ti-arrow-left"></i> Volver a la app</button>
+      <a class="btn-back" href="index.html"><i class="ti ti-arrow-left"></i> Volver a la app</a>
+      <a class="btn-back" href="misiones/misiones.html"><i class="ti ti-map"></i> Misiones</a>
+      <span style="flex:1"></span>
+      <button class="btn-back" onclick="showHelp()" title="Atajos (?)"><i class="ti ti-keyboard"></i> Atajos</button>
     </nav>
   </header>
 
   <!-- STEPPER -->
-  <div class="stepper" id="stepper">
-    <div class="step active" id="step1"><span class="step-num">1</span>Comando</div>
-    <div class="step" id="step2"><span class="step-num">2</span>Operativos</div>
-    <div class="step" id="step3"><span class="step-num">3</span>Equipo</div>
-    <div class="step" id="step4"><span class="step-num">4</span>Resumen</div>
+  <div class="stepper" id="stepper" role="tablist">
+    <div class="step active" id="step1" data-step="1"><span class="step-num">1</span>Comando</div>
+    <div class="step" id="step2" data-step="2"><span class="step-num">2</span>Operativos</div>
+    <div class="step" id="step3" data-step="3"><span class="step-num">3</span>Equipo</div>
+    <div class="step" id="step4" data-step="4"><span class="step-num">4</span>Resumen</div>
   </div>
 
   <div id="view"></div>
 
-  <div class="error-pill" id="error-pill"><i class="ti ti-alert-circle"></i> <span id="error-msg"></span></div>
+  <div class="error-pill" id="error-pill" role="alert"><i class="ti ti-alert-circle"></i> <span id="error-msg"></span></div>
 </div>
 
 <!-- ACTION BAR -->
 <div class="action-bar" id="action-bar">
   <div class="action-info" id="action-info"></div>
-  <button class="btn btn-ghost" id="btn-prev" onclick="prevStep()" style="display:none"><i class="ti ti-arrow-left"></i> Atrás</button>
-  <button class="btn btn-primary" id="btn-next" onclick="nextStep()">Siguiente <i class="ti ti-arrow-right"></i></button>
+  <button class="btn btn-ghost" id="btn-prev" onclick="prevStep()" style="display:none" title="Alt+←"><i class="ti ti-arrow-left"></i> Atrás</button>
+  <button class="btn btn-primary ripple" id="btn-next" onclick="nextStep()" title="Alt+→">Siguiente <i class="ti ti-arrow-right"></i></button>
 </div>
 
-<!-- ── DATA INTERNA (inline para funcionar como SPA) ─────── -->
+<input type="file" id="import-file" accept=".json,application/json" hidden>
+
 <script>
-// Los globales FACTIONS, KEYWORDS y UNIVERSAL_EQUIPMENT
-// se declaran en el bloque inline previo a los <script src>.
+// ============================================================
+//  CONSTRUCTOR DE COMANDOS
+//  El estado solo guarda datos serializables (claves, cantidades,
+//  índices). Operativos y entradas se resuelven siempre desde
+//  FACTIONS, así un comando guardado sobrevive a cambios de datos.
+// ============================================================
 
-// ─── ESTADO ─────────────────────────────────────────────────
-const state = {
-  step: 1,
-  factionId: null,
-  // roster: { [opId]: { op, entry, qty, loadoutIdx } }
-  roster: {},
-  equipment: [],   // array de ids seleccionados
-};
+const DRAFT_KEY  = 'builder.draft';
+const SAVED_KEY  = 'rosters';
+const MOD        = /Mac|iPhone|iPad/.test(navigator.platform || '') ? '⌘' : 'Ctrl';
 
-// ─── NAVEGACIÓN PASOS ────────────────────────────────────────
+const newState = () => ({
+  step: 1, factionId: null, name: '', editingId: null,
+  roster: {},      // { [key]: { qty, loadoutIdx, ploys: [] } }
+  equipment: [],   // ids
+  open: {},        // paneles abiertos (UI)
+});
+let state = newState();
+
+// ── Utilidades de datos ──────────────────────────────────────
+const slug = s => KT.norm(s).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const F = () => FACTIONS[state.factionId];
+
+function entriesOf(f) {
+  const out = [];
+  (f.roster.required || []).forEach((entry, i) => out.push({
+    key: 'req_' + i, entry, required: true, op: f.ops.find(o => o.type === entry.type) || null,
+  }));
+  (f.roster.pool?.entries || []).forEach(entry => out.push({
+    key: 'pool_' + (entry.key || entry.type), entry, required: false,
+    op: entry.type === 'ARDID_0PM' ? null : (f.ops.find(o => o.type === entry.type) || null),
+  }));
+  return out;
+}
+
+function item(key, e) {
+  if (!state.roster[key]) state.roster[key] = {
+    qty: e && e.required ? e.entry.count : 0,
+    loadoutIdx: e && e.entry.loadouts?.length ? -1 : null,
+    ploys: [],
+  };
+  return state.roster[key];
+}
+
+const cost = entry => entry.cost != null ? entry.cost : entry.half ? 0.5 : 1;
+
+function slots(f = F()) {
+  const list = entriesOf(f);
+  let poolUsed = 0, reqTotal = 0;
+  list.forEach(e => {
+    const it = item(e.key, e);
+    if (e.required) reqTotal += e.entry.count;
+    else poolUsed += it.qty * cost(e.entry);
+  });
+  const poolSlots = f.roster.pool?.slots || 0;
+  return { poolUsed, poolSlots, reqTotal, used: reqTotal + poolUsed, total: reqTotal + poolSlots };
+}
+
+function maxFor(e) {
+  if (e.required) return e.entry.count;
+  const { poolUsed, poolSlots } = slots();
+  const it = item(e.key, e);
+  const free = poolSlots - poolUsed + it.qty * cost(e.entry);
+  const bySlots = Math.floor(free / cost(e.entry) + 1e-9);
+  return e.entry.max == null ? bySlots : Math.min(e.entry.max, bySlots);
+}
+
+// Cuenta agentes que cumplen una restricción: por tipo, por clave de entrada
+// o por texto (regex) en la etiqueta / armamento elegido (p. ej. "plasma|fusión").
+function countFor(f, c) {
+  const re = c.match ? new RegExp(c.match, 'i') : null;
+  return entriesOf(f).reduce((n, e) => {
+    const it = item(e.key, e);
+    if (!it.qty) return n;
+    const lo = e.entry.loadouts && it.loadoutIdx >= 0 ? e.entry.loadouts[it.loadoutIdx].label : '';
+    const hit = (c.types && c.types.includes(e.entry.type)) || (c.keys && c.keys.includes(e.key)) ||
+                (re && re.test((e.entry.label || '') + ' ' + lo));
+    return hit ? n + it.qty : n;
+  }, 0);
+}
+const typeCount = (f, types) => countFor(f, { types });
+
+function allPloys(f) {
+  return [
+    ...(f.pl?.s || []).map(p => ({ n: p.n, t: p.t, k: 'Estrategia' })),
+    ...(f.pl?.f || []).map(p => ({ n: p.n, t: p.t, k: 'Tiroteo' })),
+  ];
+}
+
+function factionEq(f) {
+  if (f.roster.equipment?.faction) return f.roster.equipment.faction.map(e => ({ id: e.id, n: e.n, t: e.note || e.t || '' }));
+  return (f.eq || []).map(e => ({ id: 'f-' + slug(e.n), n: e.n, t: e.t }));
+}
+const universalEq = f => (window.UNIVERSAL_EQUIPMENT || []).filter(u => (f.roster.equipment?.universal || []).includes(u.id));
+
+// ── Validación declarativa: avisa en vivo, bloquea al avanzar ─
+function checks(f = F()) {
+  const out = [];
+  const s = slots(f);
+  const half = n => Math.round(n * 2) / 2;
+  out.push({ ok: half(s.poolUsed) === s.poolSlots, msg: `Plazas ${half(s.used)}/${s.total}`,
+             err: half(s.poolUsed) < s.poolSlots ? `Faltan ${s.poolSlots - half(s.poolUsed)} plaza(s) por cubrir.` : `Te sobran ${half(s.poolUsed) - s.poolSlots} plaza(s).` });
+
+  entriesOf(f).forEach(e => {
+    const it = item(e.key, e);
+    if (it.qty > 0 && e.entry.loadouts?.length && it.loadoutIdx < 0)
+      out.push({ ok: false, msg: 'Armamento', err: `“${e.entry.label || e.op?.name || e.entry.type}” necesita un armamento elegido.` });
+    if (e.entry.type === 'ARDID_0PM' && it.qty > 0) {
+      const n = it.ploys.length;
+      out.push({ ok: n === it.qty, msg: `Ardides 0PM ${n}/${it.qty}`, err: `Elige ${it.qty - n} ardid(es) más para que cuesten 0PM.` });
+    }
+  });
+
+  (f.roster.constraints || []).forEach(c => {
+    const n = countFor(f, c);
+    const ok = (c.min == null || n >= c.min) && (c.max == null || n <= c.max);
+    const label = c.label || (c.min != null ? `Mín. ${c.min} ${(c.types || ['agentes'])[0].toLowerCase()}` : `Máx. ${c.max}`);
+    out.push({ ok, msg: label, err: c.msg });
+  });
+  return out;
+}
+const firstError = f => (checks(f).find(c => !c.ok) || {}).err || null;
+
+// ── Borrador automático y comandos guardados ─────────────────
+const saveDraft = () => { if (state.factionId) KT.store.set(DRAFT_KEY, { ...state, open: {} }); };
+const savedList = () => KT.store.get(SAVED_KEY, []);
+
+function serialize() {
+  const f = F();
+  const ops = [], ploys0 = [];
+  entriesOf(f).forEach(e => {
+    const it = item(e.key, e);
+    if (!it.qty) return;
+    if (e.entry.type === 'ARDID_0PM') { ploys0.push(...it.ploys); return; }
+    ops.push({
+      key: e.key, type: e.entry.type, opId: e.op?.id || null, qty: it.qty,
+      label: e.entry.label || e.op?.name || e.entry.type,
+      loadout: e.entry.loadouts && it.loadoutIdx >= 0 ? e.entry.loadouts[it.loadoutIdx].label : null,
+    });
+  });
+  const now = new Date().toISOString();
+  return {
+    schema: 'kt-roster/1',
+    id: state.editingId || ('r' + Date.now().toString(36)),
+    name: state.name.trim() || defaultName(),
+    factionId: state.factionId, factionVersion: f.version || null,
+    ops, ploys0, equipment: [...state.equipment],
+    created: (savedList().find(r => r.id === state.editingId) || {}).created || now, updated: now,
+  };
+}
+
+function deserialize(r) {
+  const f = FACTIONS[r.factionId];
+  if (!f?.roster) throw new Error('El comando “' + r.factionId + '” no existe o no tiene reglas de composición.');
+  state = newState();
+  state.factionId = r.factionId; state.name = r.name || ''; state.editingId = r.id || null;
+  const list = entriesOf(f);
+  (r.ops || []).forEach(o => {
+    const e = list.find(x => x.key === o.key) || list.find(x => x.entry.type === o.type && !x.required);
+    if (!e) return;
+    const it = item(e.key, e);
+    if (!e.required) it.qty = o.qty;
+    if (o.loadout && e.entry.loadouts) it.loadoutIdx = e.entry.loadouts.findIndex(l => l.label === o.loadout);
+  });
+  if (r.ploys0?.length) {
+    const e = list.find(x => x.entry.type === 'ARDID_0PM');
+    if (e) { const it = item(e.key, e); it.ploys = [...r.ploys0]; it.qty = r.ploys0.length; }
+  }
+  state.equipment = [...(r.equipment || [])];
+}
+
+const defaultName = () => (F()?.name || 'Comando') + ' ' + new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+
+function saveRoster() {
+  const err = firstError();
+  if (err) { KT.toast('No se puede guardar: ' + err, { type: 'err' }); return; }
+  const r = serialize();
+  const list = savedList().filter(x => x.id !== r.id);
+  list.unshift(r);
+  if (!KT.store.set(SAVED_KEY, list)) { KT.toast('El navegador no permite guardar (¿modo privado?). Usa Exportar.', { type: 'err', ms: 4000 }); return; }
+  state.editingId = r.id; state.name = r.name;
+  saveDraft();
+  KT.toast(`“${KT.esc(r.name)}” guardado`, { type: 'ok' });
+}
+
+function download(name, text, type = 'application/json') {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function exportRoster(r = serialize()) { download(slug(r.name) + '.killteam.json', JSON.stringify(r, null, 2)); KT.toast('Exportado como JSON', { type: 'ok' }); }
+
+function rosterText() {
+  const f = F(), r = serialize();
+  const lines = [`${r.name} — ${f.name}`, ''];
+  r.ops.forEach(o => lines.push(`${o.qty > 1 ? o.qty + '× ' : ''}${o.label}${o.loadout ? ' (' + o.loadout + ')' : ''}`));
+  if (r.ploys0.length) lines.push('', 'Ardides a 0PM: ' + r.ploys0.join(', '));
+  const eqAll = [...factionEq(f), ...universalEq(f)];
+  if (r.equipment.length) lines.push('', 'Equipo: ' + r.equipment.map(id => eqAll.find(e => e.id === id)?.n || id).join(', '));
+  return lines.join('\n');
+}
+async function copyText() {
+  try { await navigator.clipboard.writeText(rosterText()); KT.toast('Lista copiada al portapapeles', { type: 'ok' }); }
+  catch { KT.toast('No se pudo copiar', { type: 'err' }); }
+}
+
+function openSaved(id) {
+  const r = savedList().find(x => x.id === id);
+  if (!r) return;
+  try { deserialize(r); setStep(4); KT.toast(`“${KT.esc(r.name)}” cargado`); }
+  catch (e) { KT.toast(e.message, { type: 'err' }); }
+}
+function duplicateSaved(id, ev) {
+  ev.stopPropagation();
+  const list = savedList(), r = list.find(x => x.id === id);
+  if (!r) return;
+  const copy = { ...r, id: 'r' + Date.now().toString(36), name: r.name + ' (copia)', created: new Date().toISOString(), updated: new Date().toISOString() };
+  list.unshift(copy); KT.store.set(SAVED_KEY, list); render(true);
+  KT.toast('Duplicado', { type: 'ok' });
+}
+function deleteSaved(id, ev) {
+  ev.stopPropagation();
+  const list = savedList(), idx = list.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  const [gone] = list.splice(idx, 1);
+  KT.store.set(SAVED_KEY, list); render();
+  KT.toast(`“${KT.esc(gone.name)}” borrado`, { action: 'Deshacer', ms: 5000, onAction: () => {
+    const l = savedList(); l.splice(idx, 0, gone); KT.store.set(SAVED_KEY, l); render();
+  } });
+}
+function exportSaved(id, ev) { ev.stopPropagation(); const r = savedList().find(x => x.id === id); if (r) exportRoster(r); }
+
+document.getElementById('import-file').addEventListener('change', async e => {
+  const file = e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  try {
+    const r = JSON.parse(await file.text());
+    if (r.schema !== 'kt-roster/1') throw new Error('No es un comando exportado desde esta app.');
+    deserialize(r); state.editingId = null;
+    setStep(4); KT.toast(`“${KT.esc(r.name)}” importado. Pulsa Guardar para conservarlo.`, { type: 'ok', ms: 3500 });
+  } catch (err) { KT.toast('Importación fallida: ' + err.message, { type: 'err', ms: 4000 }); }
+});
+
+// ── Navegación de pasos ──────────────────────────────────────
+let lastStep = 1;
+function maxReachable() {
+  if (!state.factionId) return 1;
+  return firstError() ? 2 : 4;
+}
+
 function setStep(n) {
+  const dir = Math.sign(n - lastStep);
+  lastStep = n;
   state.step = n;
-  [1,2,3,4].forEach(i => {
+  const reach = maxReachable();
+  [1, 2, 3, 4].forEach(i => {
     const el = document.getElementById('step' + i);
-    el.className = 'step' + (i === n ? ' active' : i < n ? ' done' : '');
+    el.className = 'step' + (i === n ? ' active' : i < n ? ' done' : '') + (i <= reach && i !== n ? ' reach' : '');
+    el.setAttribute('aria-selected', i === n);
   });
   document.getElementById('btn-prev').style.display = n > 1 ? '' : 'none';
-  document.getElementById('btn-next').textContent = n === 3 ? 'Ver resumen →' : n === 4 ? '' : 'Siguiente →';
-  document.getElementById('btn-next').style.display = n === 4 ? 'none' : '';
+  const next = document.getElementById('btn-next');
+  next.innerHTML = n === 3 ? 'Ver resumen <i class="ti ti-arrow-right"></i>' : n === 4 ? '<i class="ti ti-device-floppy"></i> Guardar' : 'Siguiente <i class="ti ti-arrow-right"></i>';
+  next.style.display = n === 1 ? 'none' : '';
   hideError();
-  render();
+  render(true, dir);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (state.factionId) history.replaceState(null, '', '#' + state.factionId);
+  else history.replaceState(null, '', location.pathname);
 }
 
 function nextStep() {
@@ -247,612 +602,431 @@ function nextStep() {
     if (!state.factionId) { showError('Selecciona un comando primero.'); return; }
     setStep(2);
   } else if (state.step === 2) {
-    const err = validateRoster();
-    if (err) { showError(err); return; }
+    const err = firstError();
+    if (err) { showError(err); KT.shake(document.querySelector('.status')); return; }
     setStep(3);
   } else if (state.step === 3) {
     setStep(4);
+  } else if (state.step === 4) {
+    saveRoster();
   }
 }
+function prevStep() { if (state.step > 1) setStep(state.step - 1); }
 
-function prevStep() {
-  if (state.step > 1) setStep(state.step - 1);
-}
+document.getElementById('stepper').addEventListener('click', e => {
+  const st = e.target.closest('.step.reach');
+  if (st) setStep(+st.dataset.step);
+});
 
-function goHome() {
-  // En producción: window.history.back() o goHome() de app.js
-  window.location.href = 'index.html';
-}
-
-// ─── ERRORES ─────────────────────────────────────────────────
+// ── Errores ──────────────────────────────────────────────────
 function showError(msg) {
   const el = document.getElementById('error-pill');
   document.getElementById('error-msg').textContent = msg;
-  el.classList.add('show');
-  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  el.classList.add('show'); KT.shake(el);
 }
-function hideError() {
-  document.getElementById('error-pill').classList.remove('show');
-}
+function hideError() { document.getElementById('error-pill').classList.remove('show'); }
 
-// ─── RENDER PRINCIPAL ────────────────────────────────────────
-function render() {
+// ── Render ───────────────────────────────────────────────────
+function render(animate = false, dir = 0) {
   const view = document.getElementById('view');
-  if (state.step === 1) view.innerHTML = renderStep1();
-  else if (state.step === 2) view.innerHTML = renderStep2();
-  else if (state.step === 3) view.innerHTML = renderStep3();
-  else if (state.step === 4) view.innerHTML = renderStep4();
+  const html = state.step === 1 ? renderStep1() : state.step === 2 ? renderStep2() : state.step === 3 ? renderStep3() : renderStep4();
+  view.innerHTML = html;
+  if (animate) {
+    view.style.setProperty('--dir', (dir * 18) + 'px');
+    view.classList.remove('pane-anim'); void view.offsetWidth; view.classList.add('pane-anim');
+  } else view.querySelectorAll('.reveal').forEach(x => x.classList.remove('reveal'));
   updateActionInfo();
+  if (state.step > 1) saveDraft();
+  // Pasos alcanzables (el stepper refleja la validez en vivo)
+  const reach = maxReachable();
+  [1, 2, 3, 4].forEach(i => document.getElementById('step' + i).classList.toggle('reach', i <= reach && i !== state.step));
 }
 
+let lastUsed = null;
 function updateActionInfo() {
   const el = document.getElementById('action-info');
   if (state.step === 2 && state.factionId) {
-    const f = FACTIONS[state.factionId];
-    const { used, total } = rosterSlots();
-    el.textContent = `Operativos: ${used} / ${total}`;
+    const s = slots();
+    const pct = Math.min(100, (s.used / s.total) * 100);
+    el.innerHTML = `<span>Plazas: <b id="ai-n" style="color:var(--orange)">${s.used}</b> / ${s.total}</span><div class="pbar${pct >= 100 ? ' done' : ''}" style="--p:${pct}%"><span></span></div>`;
+    if (lastUsed !== null && lastUsed !== s.used) KT.bump(document.getElementById('ai-n'));
+    lastUsed = s.used;
   } else if (state.step === 3 && state.factionId) {
-    const f = FACTIONS[state.factionId];
-    const slots = f.roster.equipment.slots;
-    el.textContent = `Equipo: ${state.equipment.length} / ${slots} piezas`;
-  } else {
-    el.textContent = '';
-  }
+    const n = state.equipment.length, max = F().roster.equipment?.slots || 4;
+    el.innerHTML = `<span>Equipo: <b style="color:var(--orange)">${n}</b> / ${max}</span><div class="pbar${n >= max ? ' done' : ''}" style="--p:${(n / max) * 100}%"><span></span></div>`;
+  } else if (state.step === 4) {
+    el.innerHTML = `<span>${state.editingId ? 'Editando comando guardado' : 'Sin guardar'} · <kbd>${MOD}</kbd><kbd>S</kbd></span>`;
+  } else el.textContent = '';
 }
 
-// ═══════════════════════════════════════════════════════════
-//  PASO 1 — SELECCIÓN DE FACCIÓN
-// ═══════════════════════════════════════════════════════════
+// ═══ PASO 1 — COMANDO ══════════════════════════════════════
 function renderStep1() {
-  const factions = Object.values(FACTIONS).filter(f => f.roster);
-  if (!factions.length) {
-    return `<div style="color:var(--text-3);padding:20px;text-align:center;font-family:var(--font-mono)">
-      <i class="ti ti-alert-circle" style="font-size:24px;display:block;margin-bottom:8px"></i>
-      No se encontraron comandos.<br>
-      <span style="font-size:11px">Comprueba que los archivos js/data/*.js están cargados correctamente.</span>
-    </div>`;
-  }
-  const cards = factions.map(f => {
-    const archetypes = (f.roster?.archetypes || []).map(a => `<span class="ftag">${a}</span>`).join('');
+  const saved = savedList();
+  const savedHtml = saved.length
+    ? `<div class="saved-grid">${saved.map((r, i) => {
+        const f = FACTIONS[r.factionId];
+        const n = (r.ops || []).reduce((s, o) => s + o.qty, 0);
+        const d = new Date(r.updated).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+        return `<div class="saved spot lift reveal" style="--i:${i}" tabindex="0" onclick="openSaved('${r.id}')"
+                  onkeydown="if(event.key==='Enter')openSaved('${r.id}')">
+          <div class="saved-name">${KT.esc(r.name)}</div>
+          <div class="saved-meta"><b>${KT.esc(f?.name || r.factionId)}</b> · ${n} agentes · ${d}</div>
+          <div class="saved-acts">
+            <button class="icon-btn" title="Duplicar" aria-label="Duplicar" onclick="duplicateSaved('${r.id}', event)"><i class="ti ti-copy"></i></button>
+            <button class="icon-btn" title="Exportar JSON" aria-label="Exportar" onclick="exportSaved('${r.id}', event)"><i class="ti ti-download"></i></button>
+            <button class="icon-btn" title="Borrar" aria-label="Borrar" onclick="deleteSaved('${r.id}', event)"><i class="ti ti-trash"></i></button>
+          </div>
+        </div>`; }).join('')}</div>`
+    : `<div class="empty-saved reveal"><i class="ti ti-folder-open" style="font-size:22px;display:block;margin-bottom:4px"></i>Aún no has guardado comandos. Crea uno abajo.</div>`;
+
+  const all = Object.values(FACTIONS);
+  const cards = all.map((f, i) => {
+    const ok = !!f.roster;
+    const archetypes = (f.roster?.archetypes || f.tags || []).map(a => `<span class="ftag">${a}</span>`).join('');
     const img = f.img
-      ? `<img class="faction-card-img" src="${f.img}" alt="${f.name}" onerror="this.outerHTML='<div class=faction-card-ph>${f.icon || '⚔'}</div>'">`
+      ? `<img class="faction-card-img" src="${f.img}" alt="" loading="lazy" onerror="this.outerHTML='<div class=faction-card-ph>${f.icon || '⚔'}</div>'">`
       : `<div class="faction-card-ph">${f.icon || '⚔'}</div>`;
-    return `<div class="faction-card" onclick="selectFaction('${f.id}')">
+    return `<div class="faction-card ${ok ? 'spot lift' : 'no-roster'} reveal" style="--i:${i}" ${ok ? `tabindex="0" onclick="selectFaction('${f.id}')" onkeydown="if(event.key==='Enter')selectFaction('${f.id}')"` : 'aria-disabled="true"'}>
       ${img}
       <div class="faction-card-body">
         <div class="faction-card-sub">${f.subfaction}</div>
         <div class="faction-card-name">${f.name}</div>
         <div class="faction-card-tags">${archetypes}</div>
+        ${ok ? '' : '<div class="nr"><i class="ti ti-lock"></i> Sin reglas de composición todavía</div>'}
       </div>
     </div>`;
   }).join('');
+
   return `
-    <div class="sec-lbl">Elige un comando</div>
+    <div class="sec-lbl">Mis comandos <span style="font-family:var(--font-mono);font-weight:400;color:var(--orange)">${saved.length || ''}</span></div>
+    <div class="tools-row">
+      <button class="icon-btn" onclick="document.getElementById('import-file').click()"><i class="ti ti-upload"></i> Importar JSON</button>
+    </div>
+    ${savedHtml}
+    <div class="sec-lbl">Nuevo comando</div>
     <div class="faction-grid">${cards}</div>`;
 }
 
 function selectFaction(id) {
-  state.factionId = id;
-  state.roster = {};
-  state.equipment = [];
-
-  const f = FACTIONS[id];
-  if (!f?.roster?.required) { nextStep(); return; }
-
-  f.roster.required.forEach((req, i) => {
-    // Buscar el op por type; si hay varios obligatorios del mismo type (ej. SOLDADO ×4)
-    // usamos un key único por índice
-    const op = f.ops.find(o => o.type === req.type);
-    const key = 'req_' + i + '_' + req.type;
-    state.roster[key] = {
-      op: op || null,
-      entry: req,
-      qty: req.count,
-      loadoutIdx: (req.loadouts && req.loadouts.length > 0) ? -1 : null,
-      isRequired: true,
-    };
-  });
-
-  console.log('[Builder] Roster initialized:', Object.keys(state.roster));
-  nextStep();
+  const keepDraft = state.factionId === id && Object.keys(state.roster).length;
+  if (!keepDraft) { state = newState(); state.factionId = id; }
+  entriesOf(F()).forEach(e => item(e.key, e));
+  setStep(2);
 }
 
-// ═══════════════════════════════════════════════════════════
-//  PASO 2 — SELECCIÓN DE OPERATIVOS
-// ═══════════════════════════════════════════════════════════
-
-// Renderiza un obligatorio simple sin tarjeta de operativo completa (ej. SOLDADO ×4)
-function renderRequiredSimple(req, key, item) {
-  return `
-    <div class="op-entry required-op selected" id="oe-${key}">
-      <div class="op-row">
-        <div class="op-meta">
-          <div class="op-type-badge">${req.type}</div>
-          <div class="op-name">${req.type} <small style="font-weight:400;font-size:11px;text-transform:none">${req.note || ''}</small></div>
-        </div>
-        <div class="op-actions">
-          <span class="badge-req">FIJO ×${req.count}</span>
-        </div>
-      </div>
-    </div>`;
-}
-
-// Calcula slots usados vs total
-function rosterSlots() {
-  const f = FACTIONS[state.factionId];
-  if (!f?.roster) return { used: 0, total: 0 };
-  const poolSlots = f.roster.pool?.slots || 0;
-
-  // Count pool slots used
-  let poolUsed = 0;
-  Object.values(state.roster).forEach(item => {
-    if (item.isRequired) return;
-    poolUsed += item.entry.half ? item.qty * 0.5 : item.qty;
-  });
-
-  // Required total
-  const reqTotal = (f.roster.required || []).reduce((s, r) => s + r.count, 0);
-  const reqUsed  = (f.roster.required || []).reduce((s, r, i) => {
-    const key = 'req_' + i + '_' + r.type;
-    return s + (state.roster[key]?.qty || 0);
-  }, 0);
-
-  return {
-    used:  reqUsed + poolUsed,
-    total: reqTotal + poolSlots,
-    poolUsed, poolSlots, reqUsed, reqTotal,
-  };
-}
-
+// ═══ PASO 2 — OPERATIVOS ═══════════════════════════════════
 function renderStep2() {
-  const f = FACTIONS[state.factionId];
-  const { used, total, poolUsed, poolSlots } = rosterSlots();
-  const full = Math.round(poolUsed * 2) >= poolSlots * 2;
+  const f = F();
+  const s = slots(f);
+  const list = entriesOf(f);
+  const cs = checks(f);
+  const pct = Math.min(100, s.used / s.total * 100);
 
   let html = `
-    <div class="counter-bar${full ? ' full' : ''}">
-      <div class="counter-bar-label">Operativos seleccionados</div>
-      <span class="counter-val">${used}</span>
-      <span class="counter-max"> / ${total}</span>
+    <div class="status">
+      <div class="counter-bar${pct >= 100 ? ' full' : ''}">
+        <div class="counter-bar-label">${f.name} · plazas cubiertas</div>
+        <span class="counter-val">${s.used}</span><span class="counter-max"> / ${s.total}</span>
+      </div>
+      <div class="pbar${pct >= 100 && cs.every(c => c.ok) ? ' done' : ''}" style="--p:${pct}%"><span></span></div>
+      <div class="checks">${cs.map(c => `<span class="chk ${c.ok ? 'ok' : 'bad'}" title="${KT.esc(c.ok ? 'Correcto' : c.err)}"><i class="ti ti-${c.ok ? 'check' : 'x'}"></i>${c.msg}</span>`).join('')}</div>
     </div>`;
 
-  // Pool note
-  if (f.roster.pool?.note) {
-    html += `<div class="note-box">${f.roster.pool.note}</div>`;
-  }
+  if (f.roster.pool?.note) html += `<div class="note-box"><i class="ti ti-info-circle"></i> ${f.roster.pool.note}</div>`;
 
-  // ── OBLIGATORIOS ──
-  html += `<div class="sec-lbl">Obligatorios</div>`;
-  (f.roster.required || []).forEach((req, i) => {
-    const key = 'req_' + i + '_' + req.type;
-    // Garantizar que el item existe en state.roster antes de renderizar
-    // (evita que chooseLoadout falle por key ausente)
-    if (!state.roster[key]) {
-      const op = f.ops.find(o => o.type === req.type);
-      state.roster[key] = {
-        op: op || null,
-        entry: req,
-        qty: req.count,
-        loadoutIdx: (req.loadouts && req.loadouts.length > 0) ? -1 : null,
-        isRequired: true,
-      };
+  if (list.some(e => e.required)) html += `<div class="sec-lbl">Obligatorios</div>`;
+  list.filter(e => e.required).forEach((e, i) => { html += renderEntry(e, i); });
+
+  html += `<div class="sec-lbl">Agentes disponibles <span style="font-size:10px;font-weight:400;font-family:var(--font-mono);letter-spacing:0;color:var(--text-3)">${s.poolUsed} / ${s.poolSlots}</span></div>`;
+  let sec = null;
+  list.filter(e => !e.required).forEach((e, i) => {
+    if (e.entry.section && e.entry.section !== sec) {
+      sec = e.entry.section;
+      html += `<div class="sec-lbl" style="margin-top:18px">${sec}</div>`;
     }
-    const item = state.roster[key];
-    const op = f.ops.find(o => o.type === req.type);
-    if (!op) {
-      html += renderRequiredSimple(req, key, item);
-      return;
-    }
-    html += renderOpEntry(op, req, key, item, true);
+    html += renderEntry(e, i + 2);
   });
-
-  // ── POOL ──
-  if (f.roster.pool?.entries?.length) {
-    html += `<div class="sec-lbl">Agentes disponibles <span style="font-size:10px;font-weight:400;font-family:var(--font-body);text-transform:none;letter-spacing:0;color:var(--text-3)">${Math.round(poolUsed)} / ${poolSlots} slots</span></div>`;
-    f.roster.pool.entries.forEach(entry => {
-      if (entry.type === 'ARDID_0PM') {
-        // Special entry for korps
-        const key = 'ardid_0pm';
-        const item = state.roster[key] || { qty: 0, loadoutIdx: null };
-        html += renderArdidEntry(entry, key, item, poolUsed, poolSlots);
-        return;
-      }
-      const op = f.ops.find(o => o.type === entry.type);
-      if (!op) return;
-      const key = 'pool_' + entry.type;
-      const item = state.roster[key] || { qty: 0, loadoutIdx: entry.loadouts ? -1 : null };
-      html += renderOpEntry(op, entry, key, item, false, poolUsed, poolSlots);
-    });
-  }
-
   return html;
 }
 
-function renderOpEntry(op, entry, key, item, isRequired, poolUsed = 0, poolSlots = 0) {
-  const qty = item.qty || 0;
-  // maxQty calculado dinámicamente en canAdd para respetar pool slots
-  const hasLoadout = entry.loadouts && entry.loadouts.length > 0;
-  const chosenLoadout = hasLoadout ? (entry.loadouts[item.loadoutIdx] || null) : null;
-  const halfCost = entry.half ? 0.5 : 1;
+function renderEntry(e, i) {
+  if (e.entry.type === 'ARDID_0PM') return renderArdid(e, i);
+  const op = e.op;
+  const it = item(e.key, e);
+  const qty = it.qty;
+  const max = maxFor(e);
+  const hasLoadout = e.entry.loadouts?.length > 0;
+  const isOpen = !!state.open[e.key] || (hasLoadout && qty > 0 && it.loadoutIdx < 0);
+  const name = e.entry.label || op?.name || e.entry.type;
 
-  // Can add? — para max:null usamos los slots libres como tope
-  const realMax   = (entry.max !== null && entry.max !== undefined) ? entry.max
-                  : Math.max(0, Math.floor((poolSlots - poolUsed + (qty * halfCost)) / halfCost));
-  const poolFull  = !isRequired && Math.round((poolUsed + halfCost) * 2) > poolSlots * 2;
-  const atMax     = qty >= realMax;
-  const canAdd    = !isRequired && !poolFull && !atMax;
-  const canRemove = !isRequired && qty > 0;
-  const isSelected = qty > 0;
-
-  let cls = 'op-entry';
-  if (isRequired) cls += ' required-op';
-  if (isSelected) cls += ' selected';
-
-  // Stats mini
-  const stats = `<span class="op-stat">LPA <span>${op.s.lpa}</span></span>
+  const stats = op ? `<span class="op-stat">LPA <span>${op.s.lpa}</span></span>
     <span class="op-stat">MOV <span>${op.s.mov}</span></span>
     <span class="op-stat">SALV <span>${op.s.salv}</span></span>
-    <span class="op-stat">H <span>${op.s.h}</span></span>`;
+    <span class="op-stat">H <span>${op.s.h}</span></span>` : '';
 
-  // Loadout display — se muestra si hay loadouts Y (está seleccionado O es obligatorio)
-  let loadoutInfo = '';
-  const showLoadout = hasLoadout && (isSelected || isRequired);
-  if (showLoadout) {
-    if (item.loadoutIdx >= 0) {
-      loadoutInfo = `<div class="op-note"><i class="ti ti-sword" style="font-size:10px"></i> ${entry.loadouts[item.loadoutIdx].label}</div>`;
-    } else {
-      loadoutInfo = `<div class="op-note" style="color:#f07070"><i class="ti ti-alert-circle" style="font-size:10px"></i> Elige armamento</div>`;
-    }
-  }
+  let info = '';
+  if (hasLoadout && qty > 0) info = it.loadoutIdx >= 0
+    ? `<div class="op-note"><i class="ti ti-sword" style="font-size:10px"></i> ${e.entry.loadouts[it.loadoutIdx].label}</div>`
+    : `<div class="op-note" style="color:#f07070"><i class="ti ti-alert-circle" style="font-size:10px"></i> Elige armamento</div>`;
+  if (e.entry.note) info += `<div class="op-note" style="color:var(--text-3)">${e.entry.note}</div>`;
 
-  // Action controls
-  let actions = '';
-  if (isRequired) {
-    actions = `<span class="badge-req">FIJO ×${entry.count}</span>`;
-  } else {
-    actions = `
-      <div class="qty-box">
-        <button class="qty-btn" onclick="changeQty('${key}', -1, event)" ${qty <= 0 ? 'disabled' : ''}>−</button>
-        <span class="qty-num ${qty > 0 ? 'on' : ''}">${qty}</span>
-        <button class="qty-btn" onclick="changeQty('${key}', +1, event)" ${!canAdd ? 'disabled' : ''}>+</button>
-      </div>
-      ${entry.half ? '<span class="badge-half">½ slot</span>' : ''}`;
-  }
+  const actions = e.required
+    ? `<span class="badge-req">FIJO ×${e.entry.count}</span>`
+    : `<div class="qty-box">
+        <button class="qty-btn" aria-label="Quitar" onclick="changeQty('${e.key}', -1, event)" ${qty <= 0 ? 'disabled' : ''}>−</button>
+        <span class="qty-num ${qty > 0 ? 'on' : ''}" id="q-${e.key}">${qty}</span>
+        <button class="qty-btn" aria-label="Añadir" onclick="changeQty('${e.key}', 1, event)" ${qty >= max ? 'disabled' : ''}>+</button>
+      </div>${e.entry.half ? '<span class="badge-half">½</span>' : ''}${e.entry.cost > 1 ? `<span class="badge-half">×${e.entry.cost}</span>` : ''}`;
 
-  // Loadout panel — visible para obligatorios también
-  let loadoutPanel = '';
-  if (hasLoadout && (isSelected || isRequired)) {
-    const opts = entry.loadouts.map((lo, idx) => {
-      const chosen = item.loadoutIdx === idx;
-      const weapons = lo.w.map(w => `
-        <span class="wpill">${w.n}</span>
-        ${w.r?.length ? `<span class="wpill wpill-rules">${w.r.join(', ')}</span>` : ''}`).join('');
-      return `
-        <div class="loadout-opt ${chosen ? 'chosen' : ''}" onclick="chooseLoadout('${key}', ${idx}, event)">
+  // Panel desplegable: armamento elegible o perfil de armas
+  let panel = '';
+  if (hasLoadout) {
+    panel = `<div class="loadout-title"><i class="ti ti-sword"></i> Elige el armamento</div><div class="loadout-opts">` +
+      e.entry.loadouts.map((lo, idx) => `
+        <div class="loadout-opt ${it.loadoutIdx === idx ? 'chosen' : ''}" onclick="chooseLoadout('${e.key}', ${idx}, event)">
           <div class="loadout-label">${lo.label}</div>
-          <div class="loadout-weapons">${weapons}</div>
-        </div>`;
-    }).join('');
-    loadoutPanel = `
-      <div class="loadout-panel open" id="lp-${key}">
-        <div class="loadout-title"><i class="ti ti-sword"></i> Elige el armamento</div>
-        <div class="loadout-opts">${opts}</div>
-      </div>`;
+          <div class="loadout-weapons">${lo.w.map(w => `<span class="wpill">${w.n}</span>${w.r?.length ? `<span class="wpill wpill-rules">${w.r.join(', ')}</span>` : ''}`).join('')}</div>
+        </div>`).join('') + `</div>`;
+  } else if (op) {
+    panel = `<div class="loadout-title"><i class="ti ti-sword"></i> Armamento</div><div class="loadout-weapons">` +
+      op.w.map(w => `<span class="wpill">${w.n} · ${w.a}/${w.i}/${w.d}</span>${w.r?.length ? `<span class="wpill wpill-rules">${w.r.join(', ')}</span>` : ''}`).join('') + `</div>` +
+      ((op.ru || []).length ? `<div class="loadout-title" style="margin-top:10px">Habilidades</div><div style="font-size:11px;color:var(--text-2);line-height:1.5">${op.ru.map(r => `<b style="color:var(--text);font-family:var(--font-display);text-transform:uppercase;letter-spacing:.04em">${r.n}</b> — ${r.t}`).join('<br>')}</div>` : '');
   }
+
+  let cls = 'op-entry spot reveal';
+  if (e.required) cls += ' required-op';
+  if (qty > 0) cls += ' selected';
+  if (isOpen) cls += ' open';
+  if (!e.required && qty === 0 && max === 0) cls += ' unavail';
 
   return `
-    <div class="op-entry ${cls}" id="oe-${key}">
-      <div class="op-row" onclick="toggleOpPanel('${key}')">
+    <div class="${cls}" id="oe-${e.key}" style="--i:${Math.min(i, 14)}">
+      <div class="op-row" tabindex="0" role="button" aria-expanded="${isOpen}" onclick="togglePanel('${e.key}')"
+           onkeydown="entryKey(event, '${e.key}')">
         <div class="op-meta">
-          <div class="op-type-badge">${op.type}</div>
-          <div class="op-name">${op.name}</div>
+          <div class="op-type-badge">${e.entry.type}</div>
+          <div class="op-name">${name}</div>
           <div class="op-stats">${stats}</div>
-          ${loadoutInfo}
+          ${info}
         </div>
-        <div class="op-actions">${actions}</div>
+        <div class="op-actions">${actions}${panel ? '<i class="ti ti-chevron-down chv"></i>' : ''}</div>
       </div>
-      ${loadoutPanel}
+      ${panel ? `<div class="acc loadout-panel"><div class="acc-in"><div class="lp-in">${panel}</div></div></div>` : ''}
     </div>`;
 }
 
-function renderArdidEntry(entry, key, item, poolUsed, poolSlots) {
-  const qty = item.qty || 0;
-  const maxQty = entry.max || 4;
-  const poolFull = Math.round((poolUsed + 1) * 2) > poolSlots * 2 && qty === 0;
-  const atMax = qty >= maxQty;
-  const canAdd = !poolFull && !atMax;
-
+function renderArdid(e, i) {
+  const f = F();
+  const it = item(e.key, e);
+  const qty = it.qty, max = maxFor(e);
+  const isOpen = qty > 0 || !!state.open[e.key];
+  const ploys = allPloys(f);
+  const chips = ploys.map(p => {
+    const on = it.ploys.includes(p.n);
+    const dis = !on && it.ploys.length >= qty;
+    return `<button class="ploy ${on ? 'on' : ''}" ${dis ? 'disabled' : ''} title="${KT.esc(p.t)}" onclick="togglePloy('${e.key}', ${JSON.stringify(p.n).replace(/"/g, '&quot;')}, event)">
+      <small>${p.k}</small><b>${p.n}</b></button>`;
+  }).join('');
   return `
-    <div class="op-entry ${qty > 0 ? 'selected' : ''}" id="oe-${key}">
-      <div class="op-row">
+    <div class="op-entry spot reveal ${qty > 0 ? 'selected' : ''} ${isOpen ? 'open' : ''}" id="oe-${e.key}" style="--i:${Math.min(i, 14)};${qty > 0 ? 'border-color:var(--action);border-left-color:var(--action)' : ''}">
+      <div class="op-row" tabindex="0" role="button" aria-expanded="${isOpen}" onclick="togglePanel('${e.key}')" onkeydown="entryKey(event, '${e.key}')">
         <div class="op-meta">
-          <div class="op-type-badge" style="color:var(--action)">ARDID 0PM</div>
-          <div class="op-name" style="font-size:14px">Ardid Korps de la Muerte <small>(coste 0PM en batalla)</small></div>
-          <div style="font-size:10px;color:var(--text-3);margin-top:2px">${entry.note}</div>
+          <div class="op-type-badge" style="color:var(--action)">ARDID A 0PM</div>
+          <div class="op-name" style="font-size:15px">Sustituir un Soldado por un ardid</div>
+          <div class="op-note" style="color:var(--text-3)">${e.entry.note || ''}</div>
+          ${qty > 0 ? `<div class="op-note">${it.ploys.length}/${qty} elegidos${it.ploys.length ? ': ' + it.ploys.join(', ') : ''}</div>` : ''}
         </div>
         <div class="op-actions">
           <div class="qty-box">
-            <button class="qty-btn" onclick="changeQty('${key}', -1, event)" ${qty <= 0 ? 'disabled' : ''}>−</button>
-            <span class="qty-num ${qty > 0 ? 'on' : ''}">${qty}</span>
-            <button class="qty-btn" onclick="changeQty('${key}', +1, event)" ${!canAdd ? 'disabled' : ''}>+</button>
+            <button class="qty-btn" aria-label="Quitar" onclick="changeQty('${e.key}', -1, event)" ${qty <= 0 ? 'disabled' : ''}>−</button>
+            <span class="qty-num ${qty > 0 ? 'on' : ''}" id="q-${e.key}">${qty}</span>
+            <button class="qty-btn" aria-label="Añadir" onclick="changeQty('${e.key}', 1, event)" ${qty >= max ? 'disabled' : ''}>+</button>
           </div>
+          <i class="ti ti-chevron-down chv"></i>
         </div>
       </div>
+      <div class="acc loadout-panel"><div class="acc-in"><div class="lp-in">
+        <div class="loadout-title"><i class="ti ti-chess-knight"></i> ${qty ? `Elige ${qty} ardid${qty > 1 ? 'es' : ''} que costarán 0PM` : 'Añade al menos uno con + para elegir'}</div>
+        <div class="ploy-grid">${chips}</div>
+      </div></div></div>
     </div>`;
 }
 
-function toggleOpPanel(key) {
-  // No-op visual — panels are auto-shown when selected
+function entryKey(ev, key) {
+  if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); togglePanel(key); }
+  else if (ev.key === '+' || ev.key === 'ArrowRight') { ev.preventDefault(); changeQty(key, 1, ev, true); }
+  else if (ev.key === '-' || ev.key === 'ArrowLeft') { ev.preventDefault(); changeQty(key, -1, ev, true); }
 }
 
-function changeQty(key, delta, event) {
-  event.stopPropagation();
-  const f = FACTIONS[state.factionId];
-  if (!state.roster[key]) {
-    // Initialize from pool entry
-    const entry = f.roster.pool.entries.find(e => 'pool_' + e.type === key)
-               || (key === 'ardid_0pm' ? { type: 'ARDID_0PM', max: 4 } : null);
-    if (!entry) return;
-    const op = key === 'ardid_0pm' ? null : f.ops.find(o => o.type === entry.type);
-    state.roster[key] = {
-      op, entry,
-      qty: 0,
-      loadoutIdx: entry.loadouts ? -1 : null,
-      isRequired: false,
-    };
-  }
-  const item = state.roster[key];
-  const newQty = Math.max(0, item.qty + delta);
-  const maxQty = effectiveMax(item.entry, key);
-  item.qty = Math.min(newQty, maxQty);
-  if (item.qty === 0) item.loadoutIdx = item.entry?.loadouts ? -1 : null;
+function togglePanel(key) {
+  const el = document.getElementById('oe-' + key);
+  if (!el || !el.querySelector('.acc')) return;
+  const open = !el.classList.contains('open');
+  el.classList.toggle('open', open);
+  el.querySelector('.op-row').setAttribute('aria-expanded', open);
+  state.open[key] = open;
+}
+
+function changeQty(key, delta, ev, refocus = false) {
+  ev && ev.stopPropagation();
+  const e = entriesOf(F()).find(x => x.key === key);
+  if (!e || e.required) return;
+  const it = item(key, e);
+  const max = maxFor(e);
+  const next = Math.max(0, Math.min(max, it.qty + delta));
+  if (next === it.qty) { if (delta > 0) KT.shake(document.getElementById('oe-' + key)); return; }
+  it.qty = next;
+  if (next === 0) { it.loadoutIdx = e.entry.loadouts ? -1 : null; }
+  if (it.ploys.length > next) it.ploys = it.ploys.slice(0, next);
+  if (delta > 0 && e.entry.type === 'ARDID_0PM') state.open[key] = true;
   hideError();
   render();
+  KT.bump(document.getElementById('q-' + key));
+  if (refocus) document.querySelector(`#oe-${CSS.escape(key)} .op-row`)?.focus();
 }
 
-// Calcula el máximo real de un entry del pool:
-// - Si tiene max numérico, ese es el límite de tipo
-// - Si max es null (ilimitado), el límite es los slots libres restantes del pool
-//   (evita que SOLDADO u ORKORRASO superen el total del pool)
-function effectiveMax(entry, key) {
-  if (entry.max !== null && entry.max !== undefined) return entry.max;
-  // max: null → limitado solo por slots libres
-  const f = FACTIONS[state.factionId];
-  const poolSlots = f.roster.pool?.slots || 0;
-  const halfCost  = entry.half ? 0.5 : 1;
-  // Slots usados por OTROS operativos del pool (no este)
-  let otherUsed = 0;
-  Object.entries(state.roster).forEach(([k, item]) => {
-    if (item.isRequired) return;
-    if (k === key) return;
-    otherUsed += item.entry.half ? item.qty * 0.5 : item.qty;
-  });
-  const freeSlots = poolSlots - otherUsed;
-  return Math.max(0, Math.floor(freeSlots / halfCost));
-}
-
-function chooseLoadout(key, idx, event) {
-  event.stopPropagation();
-  // Si el item no existe en state.roster, intentamos recuperarlo
-  // (puede pasar si selectFaction no lo inicializó bien)
-  if (!state.roster[key]) {
-    const f = FACTIONS[state.factionId];
-    // Buscar en required
-    const reqMatch = (f.roster?.required || []).find((r, i) => 'req_' + i + '_' + r.type === key);
-    if (reqMatch) {
-      const op = f.ops.find(o => o.type === reqMatch.type);
-      state.roster[key] = { op, entry: reqMatch, qty: reqMatch.count, loadoutIdx: -1, isRequired: true };
-    } else {
-      console.warn('[Builder] chooseLoadout: key not found in roster:', key);
-      return;
-    }
-  }
-  state.roster[key].loadoutIdx = idx;
+function chooseLoadout(key, idx, ev) {
+  ev.stopPropagation();
+  item(key).loadoutIdx = idx;
+  state.open[key] = false;
   render();
 }
 
-// Validate roster before moving to step 3
-function validateRoster() {
-  const f = FACTIONS[state.factionId];
-  // Check required ops all have loadouts chosen if needed
-  for (const [key, item] of Object.entries(state.roster)) {
-    if (item.qty > 0 && item.loadoutIdx === -1) {
-      return `"${item.op?.name || item.entry?.type || 'Operativo'}" necesita un armamento elegido.`;
-    }
-  }
-  // Check pool slots exactly filled
-  const { poolUsed, poolSlots } = rosterSlots();
-  if (Math.round(poolUsed * 2) < poolSlots * 2) {
-    return `Faltan ${poolSlots - Math.round(poolUsed * 2) / 2} slot(s) por cubrir en el pool.`;
-  }
-  return null;
+function togglePloy(key, name, ev) {
+  ev.stopPropagation();
+  const it = item(key);
+  if (it.ploys.includes(name)) it.ploys = it.ploys.filter(p => p !== name);
+  else if (it.ploys.length < it.qty) it.ploys.push(name);
+  state.open[key] = true;
+  render();
 }
 
-// ═══════════════════════════════════════════════════════════
-//  PASO 3 — EQUIPO
-// ═══════════════════════════════════════════════════════════
+// ═══ PASO 3 — EQUIPO ═══════════════════════════════════════
 function renderStep3() {
-  const f = FACTIONS[state.factionId];
-  const eq = f.roster.equipment;
-  const slots = eq.slots;
-  const used  = state.equipment.length;
-  const full  = used >= slots;
-
-  let html = `
-    <div class="eq-bar">
-      <div class="eq-bar-label">Piezas de equipo seleccionadas</div>
-      <span class="eq-slots${full ? ' full' : ''}">${used} / ${slots}</span>
+  const f = F();
+  const max = f.roster.equipment?.slots || 4;
+  const used = state.equipment.length;
+  const full = used >= max;
+  const card = (e, badge, i) => {
+    const sel = state.equipment.includes(e.id);
+    const dis = !sel && full;
+    return `<div class="eq-card spot reveal${sel ? ' selected' : ''}${dis ? ' disabled-card' : ''}" style="--i:${i}" tabindex="${dis ? -1 : 0}" role="checkbox" aria-checked="${sel}"
+        onclick="${dis ? '' : `toggleEquip('${e.id}')`}" onkeydown="if(!${dis}&&(event.key===' '||event.key==='Enter')){event.preventDefault();toggleEquip('${e.id}')}">
+      <div class="eq-check"><i class="ti ti-check"></i></div>
+      <div class="eq-info">
+        ${badge ? `<div class="eq-faction-badge">${badge}</div>` : ''}
+        <div class="eq-name">${e.n}${e.q ? `<span class="eq-qty">×${e.q}</span>` : ''}</div>
+        <div class="eq-txt">${e.t ? e.t.replace(/\n/g, '<br>') : '<span style="color:var(--text-3)">Sin texto.</span>'}</div>
+      </div>
     </div>`;
-
-  // Faction equipment
-  if (eq.faction?.length) {
-    html += `<div class="sec-lbl">Equipo de facción</div>`;
-    eq.faction.forEach(e => {
-      const selected = state.equipment.includes(e.id);
-      const disabled = !selected && full;
-      html += `
-        <div class="eq-card${selected ? ' selected' : ''}${disabled ? ' disabled-card' : ''}"
-             onclick="${disabled ? '' : `toggleEquip('${e.id}')`}">
-          <div class="eq-check"><i class="ti ti-check"></i></div>
-          <div class="eq-info">
-            <div class="eq-faction-badge">Facción</div>
-            <div class="eq-name">${e.n} ${e.qty > 1 ? `<span class="eq-qty">×${e.qty}</span>` : ''}</div>
-            <div class="eq-txt">${e.note}</div>
-          </div>
-        </div>`;
-    });
-  }
-
-  // Universal equipment
-  const univIds = eq.universal || [];
-  const univItems = (window.UNIVERSAL_EQUIPMENT || []).filter(u => univIds.includes(u.id));
-  if (univItems.length) {
-    html += `<div class="sec-lbl">Equipo universal</div>`;
-    univItems.forEach(e => {
-      const selected = state.equipment.includes(e.id);
-      const disabled = !selected && full;
-      html += `
-        <div class="eq-card${selected ? ' selected' : ''}${disabled ? ' disabled-card' : ''}"
-             onclick="${disabled ? '' : `toggleEquip('${e.id}')`}">
-          <div class="eq-check"><i class="ti ti-check"></i></div>
-          <div class="eq-info">
-            <div class="eq-name">${e.n} ${e.qty > 1 ? `<span class="eq-qty">×${e.qty}</span>` : e.qty === 1 ? '<span class="eq-qty">×1</span>' : ''}</div>
-            <div class="eq-txt">${e.t}</div>
-          </div>
-        </div>`;
-    });
-  }
-
-  return html;
+  };
+  const fe = factionEq(f), ue = universalEq(f);
+  return `
+    <div class="status">
+      <div class="eq-bar" style="background:none;border:none;padding:0 0 8px;margin:0">
+        <div class="eq-bar-label">Piezas de equipo</div>
+        <span class="eq-slots${full ? ' full' : ''}">${used} / ${max}</span>
+      </div>
+      <div class="pbar${full ? ' done' : ''}" style="--p:${used / max * 100}%"><span></span></div>
+    </div>
+    ${fe.length ? `<div class="sec-lbl">Equipo de facción</div>${fe.map((e, i) => card(e, 'Facción', i)).join('')}` : ''}
+    ${ue.length ? `<div class="sec-lbl">Equipo universal</div>${ue.map((e, i) => card(e, '', i + fe.length)).join('')}` : ''}`;
 }
 
 function toggleEquip(id) {
-  const f = FACTIONS[state.factionId];
-  const slots = f.roster.equipment.slots;
-  if (state.equipment.includes(id)) {
-    state.equipment = state.equipment.filter(x => x !== id);
-  } else {
-    if (state.equipment.length >= slots) return;
-    state.equipment.push(id);
-  }
+  const max = F().roster.equipment?.slots || 4;
+  if (state.equipment.includes(id)) state.equipment = state.equipment.filter(x => x !== id);
+  else { if (state.equipment.length >= max) { KT.toast(`Máximo ${max} piezas de equipo`, { type: 'err' }); return; } state.equipment.push(id); }
   hideError();
-  render();
+  const y = scrollY; render(); scrollTo(0, y);
 }
 
-// ═══════════════════════════════════════════════════════════
-//  PASO 4 — RESUMEN
-// ═══════════════════════════════════════════════════════════
+// ═══ PASO 4 — RESUMEN ══════════════════════════════════════
 function renderStep4() {
-  const f = FACTIONS[state.factionId];
-
-  // Ops
-  const opRows = Object.values(state.roster)
-    .filter(item => item.qty > 0)
-    .map(item => {
-      const times = item.qty > 1 ? ` ×${item.qty}` : '';
-      let loadoutLabel = '';
-      if (item.entry?.loadouts && item.loadoutIdx >= 0) {
-        loadoutLabel = `<div class="summary-op-loadout">${item.entry.loadouts[item.loadoutIdx].label}</div>`;
-      }
-      if (item.entry?.type === 'ARDID_0PM') {
-        return `
-          <div class="summary-op">
-            <div class="summary-op-type" style="color:var(--action)">Ardid 0PM</div>
-            <div>
-              <div class="summary-op-name" style="font-size:12px">Ardid Korps de la Muerte${times}</div>
-            </div>
-          </div>`;
-      }
-      return `
-        <div class="summary-op">
-          <div class="summary-op-type">${item.op?.type || ''}</div>
-          <div>
-            <div class="summary-op-name">${item.op?.name || ''}${times}</div>
-            ${loadoutLabel}
-          </div>
-        </div>`;
-    }).join('');
-
-  // Equipment
-  const allEq = [
-    ...(f.roster.equipment.faction || []),
-    ...(window.UNIVERSAL_EQUIPMENT || []).filter(u => f.roster.equipment.universal?.includes(u.id)),
-  ];
-  const eqPills = state.equipment.map(id => {
-    const e = allEq.find(x => x.id === id);
-    return e ? `<span class="summary-eq-pill">${e.n}</span>` : '';
+  const f = F();
+  const r = serialize();
+  const rows = r.ops.map((o, i) => {
+    const op = f.ops.find(x => x.id === o.opId);
+    return `<tr class="reveal" style="--i:${i}">
+      <td><span class="t">${o.type}</span><span class="n">${o.label}</span>${o.qty > 1 ? ` <span class="x">×${o.qty}</span>` : ''}${o.loadout ? `<div class="summary-op-loadout">${o.loadout}</div>` : ''}</td>
+      <td>${op?.s.lpa ?? '—'}</td><td>${op?.s.mov ?? '—'}</td><td>${op?.s.salv ?? '—'}</td><td>${op?.s.h ?? '—'}</td>
+    </tr>`;
   }).join('');
+  const eqAll = [...factionEq(f), ...universalEq(f)];
+  const eqPills = r.equipment.map(id => `<span class="summary-eq-pill">${eqAll.find(e => e.id === id)?.n || id}</span>`).join('');
+  const ployPills = r.ploys0.map(p => `<span class="summary-eq-pill zero-pill">${p} · 0PM</span>`).join('');
+  const total = r.ops.reduce((n, o) => n + o.qty, 0);
 
   return `
-    <div class="summary-card">
-      <div class="summary-title">${f.name}</div>
+    <div class="summary-card reveal">
+      <input class="name-in" id="name-in" value="${KT.esc(state.name || r.name)}" aria-label="Nombre del comando" placeholder="Nombre del comando"
+             oninput="state.name=this.value; saveDraft()" onkeydown="if(event.key==='Enter')this.blur()">
+      <div class="sum-sub">${f.name} · ${total} agentes${f.version ? ' · v' + f.version : ''}</div>
       <div class="sec-lbl">Operativos</div>
-      ${opRows || '<div style="color:var(--text-3);font-size:12px">Sin operativos</div>'}
+      <table class="sum-tbl">
+        <thead><tr><th>Agente</th><th>LPA</th><th>MOV</th><th>SALV</th><th>H</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="5" style="color:var(--text-3)">Sin operativos</td></tr>'}</tbody>
+      </table>
+      ${ployPills ? `<div class="sec-lbl" style="margin-top:14px">Ardides a 0PM</div><div class="summary-eq">${ployPills}</div>` : ''}
       <div class="sec-lbl" style="margin-top:14px">Equipo</div>
-      ${state.equipment.length
-        ? `<div class="summary-eq">${eqPills}</div>`
-        : `<div style="color:var(--text-3);font-size:12px">Sin equipo seleccionado</div>`}
+      ${eqPills ? `<div class="summary-eq">${eqPills}</div>` : '<div style="color:var(--text-3);font-size:12px">Sin equipo seleccionado</div>'}
     </div>
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="btn btn-ghost" onclick="setStep(2)"><i class="ti ti-edit"></i> Editar operativos</button>
-      <button class="btn btn-ghost" onclick="setStep(3)"><i class="ti ti-package"></i> Editar equipo</button>
-      <button class="btn btn-print" onclick="window.print()"><i class="ti ti-printer"></i> Imprimir</button>
+    <div class="sum-acts">
+      <button class="icon-btn accent ripple" onclick="saveRoster()"><i class="ti ti-device-floppy"></i> Guardar</button>
+      <button class="icon-btn" onclick="copyText()"><i class="ti ti-clipboard-text"></i> Copiar lista</button>
+      <button class="icon-btn" onclick="exportRoster()"><i class="ti ti-download"></i> Exportar</button>
+      <button class="icon-btn" onclick="window.print()"><i class="ti ti-printer"></i> Imprimir</button>
+      <span style="flex:1"></span>
+      <button class="icon-btn" onclick="setStep(2)"><i class="ti ti-users"></i> Operativos</button>
+      <button class="icon-btn" onclick="setStep(3)"><i class="ti ti-package"></i> Equipo</button>
+      <button class="icon-btn" onclick="newRoster()"><i class="ti ti-plus"></i> Nuevo</button>
     </div>`;
 }
 
-// ─── INIT ────────────────────────────────────────────────────
-// render() se llama desde DOMContentLoaded para garantizar
-// que todos los scripts de datos han sido ejecutados.
-</script>
+function newRoster() {
+  const prev = state.factionId ? JSON.parse(JSON.stringify(state)) : null;
+  KT.store.del(DRAFT_KEY);
+  state = newState();
+  setStep(1);
+  if (prev) KT.toast('Borrador descartado', { action: 'Deshacer', ms: 5000, onAction: () => { state = prev; setStep(prev.step || 2); } });
+}
 
-<!-- Datos globales: deben cargarse ANTES del init -->
-<!-- Datos embebidos directamente en el HTML -->
+// ── Atajos ───────────────────────────────────────────────────
+function showHelp() {
+  KT.helpModal([
+    ['Alt →', 'Siguiente paso'],
+    ['Alt ←', 'Paso anterior'],
+    ['Tab', 'Moverse entre agentes'],
+    ['+ −', 'Añadir / quitar el agente con foco'],
+    ['↵', 'Abrir / cerrar detalles del agente'],
+    [MOD + ' S', 'Guardar comando'],
+    ['?', 'Mostrar esta ayuda'],
+  ]);
+}
+KT.keys({
+  'alt+ArrowRight': () => nextStep(),
+  'alt+ArrowLeft': () => prevStep(),
+  'mod+s': () => { if (state.factionId && state.step > 1) saveRoster(); },
+  '?': showHelp,
+}, { allowInInput: ['Escape', 'mod+s'] });
 
-<script>
+// ── Init: hash > borrador > inicio ───────────────────────────
 window.addEventListener('load', () => {
+  KT.initFx();
   const factions = Object.values(FACTIONS).filter(f => f.roster);
-  const count    = factions.length;
+  console.log('[Builder] Facciones con roster:', factions.map(f => f.id), '· equipo universal:', (window.UNIVERSAL_EQUIPMENT || []).length);
 
-  console.log('[Builder] Facciones con roster:', count, factions.map(f => f.id));
-  console.log('[Builder] Equipo universal:', (window.UNIVERSAL_EQUIPMENT || []).length, 'piezas');
-
-  if (count === 0) {
-    const allFactions = Object.keys(FACTIONS);
-    const noRoster    = allFactions.filter(id => !FACTIONS[id].roster);
-
-    document.getElementById('view').innerHTML = `
-      <div style="background:#1a0505;border:1px solid #5a1010;border-radius:6px;padding:16px 20px;font-family:monospace;font-size:12px;color:#f07070;line-height:1.9">
-        <div style="font-size:15px;font-weight:700;margin-bottom:10px;color:#ff8080">⚠ No se encontraron comandos</div>
-        <div style="color:#aaa;margin-bottom:10px">
-          Facciones en FACTIONS: <strong style="color:#fff">${allFactions.length}</strong>
-          ${allFactions.length ? ' (' + allFactions.join(', ') + ')' : ''}<br>
-          Facciones con bloque roster: <strong style="color:#fff">${count}</strong>
-          ${noRoster.length ? '<br>Sin roster (usan archivos viejos): <strong style="color:#f07070">' + noRoster.join(', ') + '</strong>' : ''}
-        </div>
-        <div style="color:#aaa;margin-bottom:10px">
-          Posibles causas:<br>
-          ① Los archivos JS no se encuentran → F12 → Console → busca errores 404<br>
-          ② Los archivos JS son los originales sin bloque <strong>roster:</strong> → usa los actualizados<br>
-          ③ El builder.html no está en la carpeta raíz del proyecto
-        </div>
-        <div style="color:#888;border-top:1px solid #3a1010;padding-top:10px">
-          Estructura esperada:<br>
-          <pre style="color:#aaa;margin-top:6px;line-height:1.7">  builder.html
-  index.html
-  js/data/
-    universal_equipment.js
-    korps.js
-    sucesores.js
-    ala-asesina.js
-    garra-nemesis.js
-    tempestus-aquilons.js
-    orkomandos.js</pre>
-        </div>
-      </div>`;
-    return;
+  const hash = location.hash.replace('#', '');
+  const draft = KT.store.get(DRAFT_KEY);
+  if (draft && FACTIONS[draft.factionId]?.roster && (!hash || hash === draft.factionId)) {
+    state = { ...newState(), ...draft, open: {} };
+    setStep(Math.min(draft.step || 2, maxReachable()));
+    KT.toast('Borrador recuperado', { action: 'Descartar', ms: 4500, onAction: newRoster });
+  } else if (hash && FACTIONS[hash]?.roster) {
+    selectFaction(hash);
+  } else {
+    setStep(1);
   }
-
-  render();
 });
 </script>
 </body>

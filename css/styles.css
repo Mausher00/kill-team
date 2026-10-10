@@ -2,45 +2,7 @@
    KILL TEAM — SPA unificada
    ============================================================ */
 
-/* ── TIPOGRAFÍA D-DIN (local) ───────────────────────────────
-   Archivos en: recursos/d-din/
-   Ajusta la extensión (.otf / .ttf / .woff2) si es necesario
-   ─────────────────────────────────────────────────────────── */
-@font-face {
-  font-family: 'D-DIN';
-  src: url('../recursos/d-din/D-DIN.otf') format('opentype');
-  font-weight: 400; font-style: normal;
-}
-@font-face {
-  font-family: 'D-DIN';
-  src: url('../recursos/d-din/D-DIN-Bold.otf') format('opentype');
-  font-weight: 700; font-style: normal;
-}
-@font-face {
-  font-family: 'D-DIN';
-  src: url('../recursos/d-din/D-DIN-Italic.otf') format('opentype');
-  font-weight: 400; font-style: italic;
-}
-@font-face {
-  font-family: 'D-DINCondensed';
-  src: url('../recursos/d-din/D-DINCondensed.otf') format('opentype');
-  font-weight: 400; font-style: normal;
-}
-@font-face {
-  font-family: 'D-DINCondensed';
-  src: url('../recursos/d-din/D-DINCondensed-Bold.otf') format('opentype');
-  font-weight: 700; font-style: normal;
-}
-@font-face {
-  font-family: 'D-DINExp';
-  src: url('../recursos/d-din/D-DINExp.otf') format('opentype');
-  font-weight: 400; font-style: normal;
-}
-@font-face {
-  font-family: 'D-DINExp';
-  src: url('../recursos/d-din/D-DINExp-Bold.otf') format('opentype');
-  font-weight: 700; font-style: normal;
-}
+/* Tipografía D-DIN: ver css/fonts.css (enlazado desde cada página) */
 
 :root {
   --bg:          #0a0a0a;
@@ -185,7 +147,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .op-hd-chv i { color: var(--text-3); font-size: 14px; transition: transform .2s; }
 
 /* Cuerpo operativo */
-.op-body { padding: 12px 14px 14px; border-top: 1px solid var(--border); animation: slideDown .15s ease; }
+.op-body { padding: 12px 14px 14px; border-top: 1px solid var(--border); }
 @keyframes slideDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 .kw-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
 .kpill { font-size: 10px; padding: 2px 7px; border-radius: var(--radius-sm); background: var(--bg-3); color: var(--text-2); border: .5px solid var(--border-2); font-family: var(--font-mono); letter-spacing: .04em; text-transform: uppercase; }
@@ -264,3 +226,101 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .close-btn:hover { color: var(--text); border-color: var(--text-3); }
 
 .page-footer { border-top: 1px solid var(--border); padding: .8rem 0; text-align: center; font-size: 11px; color: var(--text-3); font-family: var(--font-display); letter-spacing: .06em; text-transform: uppercase; margin-top: 2rem; }
+
+
+/* ══════════════════════════════════════════════════════════
+   MEJORAS DE INTERFAZ (v2) — mismos tokens y tipografía
+   ══════════════════════════════════════════════════════════ */
+
+/* Home */
+.home-nav .nav-link { display: inline-flex; align-items: center; gap: 5px; }
+.home-nav .nav-link i { font-size: 13px; }
+.sl-count { font-family: var(--font-mono); font-size: 10px; color: var(--orange); background: var(--orange-bg); border: .5px solid var(--orange-dim); padding: 1px 6px; border-radius: 2px; letter-spacing: .05em; }
+.faction-card-imgwrap { overflow: hidden; background: var(--bg-3); }
+.faction-card:focus-visible { border-color: var(--orange); }
+.fc-meta { font-family: var(--font-mono); font-size: 10px; font-weight: 400; color: var(--text-3); letter-spacing: .04em; text-transform: none; display: inline-flex; align-items: center; gap: 4px; }
+.fc-meta i { color: var(--orange); font-size: 12px; }
+.faction-card-soon { transition: border-color .2s, opacity .2s; }
+.faction-card-soon:hover { border-color: var(--orange-dim); }
+.soon-img { width: 64px; height: 64px; object-fit: contain; opacity: .35; filter: grayscale(1); }
+
+.search-trigger {
+  width: 100%; display: flex; align-items: center; gap: 10px; margin: -0.6rem 0 1.6rem;
+  padding: 11px 14px; background: var(--bg-2); border: 1px solid var(--border-2); border-radius: var(--radius-md);
+  color: var(--text-3); font-family: var(--font-body); font-size: 13px; cursor: text; text-align: left;
+  transition: border-color .15s, color .15s, box-shadow .2s;
+}
+.search-trigger i { font-size: 16px; color: var(--orange); }
+.search-trigger span:nth-child(2) { flex: 1; }
+.search-trigger:hover { border-color: var(--orange-dim); color: var(--text-2); box-shadow: 0 0 0 3px rgba(232,73,15,.08); }
+.st-keys { display: inline-flex; gap: 3px; }
+.page-footer kbd { margin: 0 2px; }
+
+/* Vista de facción */
+.faction-actions { display: flex; align-items: center; gap: 12px; margin-top: 6px; flex-wrap: wrap; }
+.btn-back:hover { color: var(--orange); }
+.srch input { padding-right: 36px; }
+.srch input:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(232,73,15,.12); }
+.srch-kbd { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); pointer-events: none; opacity: .7; }
+.srch input:focus ~ .srch-kbd, .srch input:not(:placeholder-shown) ~ .srch-kbd { opacity: 0; }
+.sticky-head .srch { margin-top: 0; margin-bottom: 10px; padding-top: 10px; }
+.sticky-head .tabs { margin-bottom: 0; }
+#pane { padding-top: 1rem; min-height: 50vh; }
+
+.list-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 8px; }
+.list-bar .cnt { margin-bottom: 0; }
+.link-btn { background: none; border: none; color: var(--text-3); font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px; border-radius: var(--radius-sm); transition: color .15s, background .15s; }
+.link-btn:hover { color: var(--orange); background: var(--bg-2); }
+
+/* Operativo: estado abierto + chevron animado */
+.op-card { transition: border-color .2s, box-shadow .25s; }
+.op-card.open { border-color: var(--orange-dim); box-shadow: 0 10px 30px -18px rgba(232,73,15,.5); }
+.op-card.open .op-hd-chv i { transform: rotate(180deg); color: var(--orange); }
+.op-hd-chv i { transition: transform .3s var(--ease-out, ease), color .2s; }
+.op-hd-card { transition: background .15s; }
+.op-hd-card:focus-visible { outline-offset: -2px; }
+.op-hd-left { transition: background-size .5s ease; }
+.op-card:hover .op-hd-left { background-size: auto 112%; }
+.op-stat-box { transition: background .2s; }
+.op-card.open .op-stat-box { background: #120c09; }
+
+/* Keywords */
+.rkw { border-radius: 2px; transition: background .15s, color .15s; }
+.rkw:hover, .rkw.on { background: rgba(232,73,15,.18); color: #fff; }
+.kpill[data-kw] { transition: border-color .15s, color .15s; }
+.kpill[data-kw]:hover { border-color: var(--orange-dim); color: var(--text); }
+.kw-footer { transition: box-shadow .3s, border-color .3s; }
+.kw-footer.lit { box-shadow: 0 -12px 40px -16px rgba(232,73,15,.55); }
+.kw-swap { animation: kw-in .28s var(--ease-out, ease) both; }
+@keyframes kw-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* Tarjetas filtrables */
+.gr-card, .pl-card, .eq-card, .er-entry, .ord-card { transition: border-color .15s, transform .15s; }
+.gr-card:hover, .pl-card:hover, .eq-card:hover, .er-entry:hover { border-color: var(--orange-dim); }
+
+@media (max-width: 480px) {
+  .home-h1 { font-size: 40px; }
+  .faction-hdr-title { font-size: 26px; }
+  .st-keys { display: none; }
+}
+
+/* Tabla de armas en móvil: las reglas pasan a una segunda línea */
+@media (max-width: 520px) {
+  .wt, .wt thead, .wt tbody { display: block; }
+  .wt thead tr, .wt tbody tr { display: grid; grid-template-columns: 1fr 34px 34px 46px; align-items: center; }
+  .wt th { width: auto !important; }
+  .wt th:last-child { display: none; }
+  .wt tbody tr { border-bottom: .5px solid var(--border); }
+  .wt td { border-bottom: none; }
+  .wt td.rt { grid-column: 1 / -1; padding-top: 0; padding-left: 29px; }
+  .wt td.rt.none { display: none; }
+}
+
+/* Filtros de la portada */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: -0.4rem 0 1rem; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--border-2); background: var(--bg-2); color: var(--text-2); font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; transition: color .15s, border-color .15s, background .15s; }
+.chip span { font-family: var(--font-mono); font-weight: 400; font-size: 9px; color: var(--text-3); letter-spacing: .04em; }
+.chip:hover { color: var(--text); border-color: var(--orange-dim); }
+.chip.on { background: var(--orange); border-color: var(--orange); color: #fff; }
+.chip.on span { color: rgba(255,255,255,.75); }
+.fr-card + .fr-card { margin-top: 10px; }
