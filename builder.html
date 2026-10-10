@@ -299,6 +299,7 @@ button { cursor: pointer; font-family: var(--font-body); }
 <script src="js/data/rastreadores.js"></script>
 <script src="js/data/vespid.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/comandos.js"></script>
 <script src="js/vendor/qrcode.js"></script>
 
 <div class="wrap">
@@ -311,6 +312,7 @@ button { cursor: pointer; font-family: var(--font-body); }
     <nav class="hdr-nav">
       <a class="btn-back" href="index.html"><i class="ti ti-arrow-left"></i> Volver a la app</a>
       <a class="btn-back" href="misiones/misiones.html"><i class="ti ti-map"></i> Misiones</a>
+      <a class="btn-back" href="comandos.html"><i class="ti ti-file-plus"></i> Añadir comando</a>
       <span style="flex:1"></span>
       <button class="btn-back" onclick="showHelp()" title="Atajos (?)"><i class="ti ti-keyboard"></i> Atajos</button>
     </nav>
@@ -492,7 +494,7 @@ function serialize() {
 
 function deserialize(r) {
   const f = FACTIONS[r.factionId];
-  if (!f?.roster) throw new Error('El comando “' + r.factionId + '” no existe o no tiene reglas de composición.');
+  if (!f?.roster) throw new Error('El comando “' + KT.esc(r.factionId) + '” no existe en este dispositivo o no tiene reglas de composición.');
   state = newState();
   state.factionId = r.factionId; state.name = r.name || ''; state.editingId = r.id || null;
   const list = entriesOf(f);
@@ -585,7 +587,8 @@ async function decodeRoster(code) {
   const bytes = unb64u(code.slice(1));
   const raw = code[0] === 'z' ? await pipe(bytes, new DecompressionStream('deflate-raw')) : bytes;
   const r = JSON.parse(new TextDecoder().decode(raw));
-  if (r.schema !== 'kt-roster/1' || !FACTIONS[r.factionId]) throw new Error('El enlace no contiene un comando válido.');
+  if (r.schema !== 'kt-roster/1') throw new Error('El enlace no contiene un comando válido.');
+  if (!FACTIONS[r.factionId]) throw new Error('Esta lista usa un comando que no está en este dispositivo (' + KT.esc(r.factionId) + '). Pide a quien te la envió el paquete del comando y súbelo en «Añadir comando».');
   return r;
 }
 async function shareRoster(r) {

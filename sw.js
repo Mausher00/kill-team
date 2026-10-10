@@ -2,12 +2,13 @@
 //  sw.js — Service worker: la app funciona sin conexión.
 //  GENERADO por herramientas/pwa/generar_sw.py — no editar a mano.
 // ============================================================
-const VERSION = '8bcc764847';
+const VERSION = '4bbc896e91';
 const CORE = [
 "index.html",
 "builder.html",
 "partida.html",
 "historial.html",
+"comandos.html",
 "misiones/misiones.html",
 "manifest.webmanifest",
 "css/fonts.css",
@@ -16,6 +17,7 @@ const CORE = [
 "css/partida.css",
 "css/styles.css",
 "js/app.js",
+"js/comandos.js",
 "js/data/ala-asesina.js",
 "js/data/angeles-muerte.js",
 "js/data/asaltantes-phobos.js",

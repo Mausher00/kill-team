@@ -37,3 +37,13 @@ Regenera `sw.js` con la lista de archivos. Así la app instalada y el modo sin c
 
 ## Comandos (PDF oficiales)
 Ver `pdf/LEEME.md`.
+
+## Comandos añadidos por otros usuarios (paquetes `kt-comando/1`)
+- En la app: **Añadir comando** (`comandos.html`). Copia la instrucción para la IA, se adjunta el PDF del comando
+  y lo que devuelva la IA se sube o se pega allí. Se valida, se previsualiza y se guarda en ese navegador
+  (`localStorage` → `kt.comandos`); `js/comandos.js` lo registra en `FACTIONS` en todas las páginas.
+- Un paquete con el mismo `id` que un comando incluido lo sustituye en ese dispositivo (sirve para actualizar reglas);
+  al borrarlo vuelve el original.
+- **Archivo para la app** descarga `js/data/<id>.js`: cópialo a `js/data/`, añade su `<script>` en
+  `index.html`, `builder.html`, `partida.html`, `historial.html` y `comandos.html`, y regenera `sw.js`.
+- En partidas a dos dispositivos el comando se envía solo al otro jugador (queda como «recibido en partida»).

@@ -1427,11 +1427,11 @@ function newGame() {
 // ════════════════════════════════════════════════════════════
 let SEAT = null;
 const Net = {
-  cfg: null, synced: false, pending: new Set(), snapT: null,
+  cfg: null, synced: false, pending: new Set(), snapT: null, facSent: new Set(),
   rid: () => Math.random().toString(36).slice(2, 10),
   bind() {
     KTD.onMessage = (m, retained) => this.receive(m, retained);
-    KTD.onPeer = on => { renderNet(); if ($('#setup').classList.contains('on')) renderSetup(); if (on && SEAT === 0) this.snapSoon(0); KT.toast(on ? `${esc(pname(1 - SEAT))} está conectado` : `${esc(pname(1 - SEAT))} se ha desconectado`, { type: on ? 'ok' : 'err' }); };
+    KTD.onPeer = on => { if (on) this.facSent.clear(); renderNet(); if ($('#setup').classList.contains('on')) renderSetup(); if (on && SEAT === 0) this.snapSoon(0); KT.toast(on ? `${esc(pname(1 - SEAT))} está conectado` : `${esc(pname(1 - SEAT))} se ha desconectado`, { type: on ? 'ok' : 'err' }); };
     KTD.onState = () => renderNet();
   },
   async host() {
@@ -1479,19 +1479,35 @@ const Net = {
     if (!this.cfg || !ops || !ops.length) return;
     if (ch === 'S' && S?.dual !== this.cfg.room) return;
     const id = this.rid();
+    this.sendFacs();
     if (SEAT === 0) { KTD.send({ t: 'ops', ch, id, ops, h: this.hash(ch) }); this.snapSoon(); }
     else { this.pending.add(id); KTD.send({ t: 'ops', ch, id, ops }); setTimeout(() => this.pending.delete(id), 8000); }
   },
   hash(ch) { return ch === 'S' ? hashOf(S) : hashOf(sharedOf(draft)); },
   phase() { return draft ? 'lobby' : 'game'; },
-  data() { return { phase: this.phase(), L: draft ? sharedOf(draft) : null, S: S?.dual === this.cfg?.room ? S : null }; },
+  data() { return { phase: this.phase(), L: draft ? sharedOf(draft) : null, S: S?.dual === this.cfg?.room ? S : null, F: this.customs() }; },
+  // Comandos añadidos por el usuario (js/comandos.js) que están en juego: el otro dispositivo puede no tenerlos
+  customs() {
+    const ids = new Set([...(draft?.players || []), ...(S?.players || [])].filter(Boolean).map(P => P.factionId));
+    const out = {};
+    ids.forEach(id => { if (FACTIONS[id]?._user && window.KTC) out[id] = KTC.pack(FACTIONS[id]).comando; });
+    return out;
+  },
+  sendFacs() {
+    Object.entries(this.customs()).forEach(([id, f]) => { if (!this.facSent.has(id)) { this.facSent.add(id); KTD.send({ t: 'fac', f }); } });
+  },
+  gotFacs(F) {
+    let n = 0;
+    Object.values(F || {}).forEach(f => { try { if (KTC.receive(f)) { n++; KT.toast(`Recibido el comando «${esc(f.name)}» del otro jugador`, { type: 'ok' }); } } catch {} });
+    return n;
+  },
   snapSoon(ms = 1200) {
     if (SEAT !== 0 || !this.cfg) return;
     clearTimeout(this.snapT);
     this.snapT = setTimeout(() => { const d = this.data(); KTD.snapshot(d); }, ms);
   },
-  startGame() { KTD.send({ t: 'start', S }); this.snapSoon(0); },
-  lobby() { KTD.send({ t: 'lobby', L: sharedOf(draft) }); this.snapSoon(0); },
+  startGame() { this.sendFacs(); KTD.send({ t: 'start', S }); this.snapSoon(0); },
+  lobby() { this.sendFacs(); KTD.send({ t: 'lobby', L: sharedOf(draft) }); this.snapSoon(0); },
   checkStart() {
     if (SEAT === 0 && draft && draft.ready[0] && draft.ready[1] && draft.players[0] && draft.players[1]) {
       KT.toast('¡Los dos estáis listos!', { type: 'ok' });
@@ -1503,6 +1519,11 @@ const Net = {
     SHARED.forEach(k => { if (k in L) draft[k] = clone(L[k]); });
   },
   receive(m, retained) {
+    if (m.t === 'fac') {
+      if (this.gotFacs({ x: m.f })) { if ($('#setup').classList.contains('on')) renderSetup(); else if (S) render(); }
+      return;
+    }
+    if (m.F) this.gotFacs(m.F);
     if (SEAT === 0) {                                   // ── anfitrión
       if (m.t === 'hello' || m.t === 'snap?') { KTD.send({ t: 'snap', ...this.data() }); return; }
       if (m.t === 'ops') {
@@ -1670,6 +1691,11 @@ window.addEventListener('load', () => {
   if (S && S.v === 2) { try { migrate2(); save(); } catch { S = null; } }
   if (S && S.v !== V) { S = null; legacy = true; }
   if (legacy) KT.toast('La partida guardada era de una versión anterior: empieza una nueva', { ms: 5000 });
+  // Comando borrado de este dispositivo (añadido por el usuario): no se puede reanudar
+  if (S && !S.dual && (S.players || []).some(P => P && !FACTIONS[P.factionId])) {
+    S = null; KT.store.del(KEY);
+    KT.toast('La partida guardada usaba un comando que ya no está en este dispositivo: empieza una nueva', { type: 'err', ms: 5000 });
+  }
   // Partida en dos dispositivos: invitación en la URL o sala guardada
   const inv = KTD.fromUrl(), sala = KT.store.get('sala');
   if (inv) {
