@@ -1345,7 +1345,8 @@ function begin({ players, ini, ini0, dz }) {
   const d = draft;
   draft = null; pop = null;
   S = { v: V, gid: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), started: true, ended: false, tp: 1, ini, ini0,
-    zone: d.zone, map: d.map, crit: d.crit, dz, players, obj: initObjs(d.zone, d.map, d.crit), dual: isDual() ? Net.cfg.room : null };
+    zone: d.zone, map: d.map, crit: d.crit, dz, players, obj: initObjs(d.zone, d.map, d.crit), dual: isDual() ? Net.cfg.room : null,
+    start: { ini, cards: players.map(P => clone(P.cards)) } };
   save();
   if (isDual()) Net.startGame();
   enterGame();
@@ -1357,6 +1358,60 @@ function enterGame() {
   KT.toast('¡Que empiece la batalla!', { type: 'ok' });
   prefetch(); keepAwake();
 }
+// ── Reiniciar la partida en curso (mismos comandos y misión, todo a cero) ──
+function restartGame() {
+  if (!S?.started) return;
+  commit(() => {
+    const st = S.start || {};
+    S.gid = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    Object.assign(S, { tp: 1, ended: false, ini: st.ini ?? null, iniRoll: null, obj: initObjs(S.zone, S.map, S.crit) });
+    S.players.forEach((P, i) => {
+      P.ops.forEach(o => { o.w = opData(P, o)?.s.h ?? o.w; o.order = 'conceal'; o.used = false; });
+      Object.assign(P, { cp: 2, tacShown: false, ployUsed: {}, score: { crit: 0, tac: 0, killAdj: 0 }, cards: clone(st.cards?.[i]) || { rr: 0, i1: 0, i2: 0, i3: 0 } });
+    });
+  });
+  OPEN.clear(); KT.store.set('partida.abiertos', []);
+  pop = null; closeSheet(); renderBoard();
+  KT.toast('Partida reiniciada: punto de inflexión 1', { type: 'ok', action: 'Deshacer', onAction: undo });
+}
+function askRestart() {
+  if (!S?.started) return;
+  const close = KT.modal('Reiniciar partida', `
+    <div class="g-resume">
+      <p>Se vuelve al <b>punto de inflexión 1</b> con los mismos comandos, operaciones y misión: heridas, PM, PV, cartas y marcadores a cero.${S.dual ? ' Se reinicia también en el otro dispositivo.' : ''}</p>
+      <p class="g-hint">Si quieres otros comandos u otra misión, usa «Nueva partida».</p>
+      <div class="g-row"><button class="icon-btn accent" data-r="restart"><i class="ti ti-refresh"></i> Reiniciar</button>
+        <button class="icon-btn" data-r="new"><i class="ti ti-plus"></i> Nueva partida</button><span style="flex:1"></span>
+        <button class="icon-btn" data-r="cancel">Cancelar</button></div>
+    </div>`, 'refresh');
+  resumeButtons(close);
+}
+// Al abrir la página con una partida guardada: continuar, reiniciar o empezar otra
+function askResume() {
+  const z = zoneOf(S.zone), m = mapOf(z, S.map), c = critOf(S.crit);
+  const sc = [scoreOf(0), scoreOf(1)];
+  const close = KT.modal(S.ended ? 'Última partida' : 'Partida en curso', `
+    <div class="g-resume">
+      <div class="g-resume-vs">${[0, 1].map(i => { const f = FACTIONS[S.players[i].factionId]; return `<div class="p${i + 1}"><img src="${f.img}" alt=""><b>${esc(pname(i))}</b><small>${esc(f.name)}</small><span>${sc[i].total} PV</span></div>`; }).join('<i>vs</i>')}</div>
+      <p class="g-hint" style="text-align:center">${S.ended ? 'Batalla terminada' : 'Punto de inflexión ' + S.tp}${z ? ' · ' + esc(z.name) : ''}${m ? ' · mapa ' + esc(m.label) : ''}${c ? ' · ' + esc(c.name) : ''}</p>
+      <div class="g-row" style="justify-content:center">
+        ${S.ended ? '' : '<button class="icon-btn accent" data-r="cancel"><i class="ti ti-player-play"></i> Continuar</button>'}
+        <button class="icon-btn ${S.ended ? 'accent' : ''}" data-r="new"><i class="ti ti-plus"></i> Nueva partida</button>
+        <button class="icon-btn" data-r="restart"><i class="ti ti-refresh"></i> ${S.ended ? 'Jugar otra vez igual' : 'Reiniciar'}</button>
+        ${S.ended ? '<button class="icon-btn" data-r="result"><i class="ti ti-eye"></i> Ver resultado</button>' : ''}
+      </div>
+    </div>`, 'swords');
+  resumeButtons(close);
+}
+function resumeButtons(close) {
+  document.querySelectorAll('.cmdk [data-r]').forEach(b => b.addEventListener('click', () => {
+    close();
+    if (b.dataset.r === 'restart') restartGame();
+    else if (b.dataset.r === 'new') newGame();
+    else if (b.dataset.r === 'result') openSheet('end');
+  }));
+}
+
 function closeSetup() { if (S && S.started) { $('#setup').classList.remove('on'); syncBody(); draft = null; if (isDual() && SEAT === 0 && S.dual === Net.cfg?.room) Net.snapSoon(0); } }
 function newGame() {
   if (isDual() && SEAT === 1) { KT.toast('El anfitrión es quien prepara la siguiente partida'); return; }
@@ -1547,6 +1602,7 @@ function showHelp() {
     ['S', 'Secuencia de juego'],
     ['F', 'Pantalla completa'],
     ['M', 'Ampliar el mapa'],
+    ['R', 'Reiniciar la partida (mismos comandos y misión)'],
     ['N', 'Nueva partida / preparación'],
   ]);
 }
@@ -1576,6 +1632,7 @@ window.addEventListener('load', () => {
   $('#btn-mode').addEventListener('click', () => { draft.mode = draft.mode === 'wiz' ? 'panel' : 'wiz'; renderSetup(); });
   $('#btn-close-setup').addEventListener('click', closeSetup);
   $('#btn-setup').addEventListener('click', newGame);
+  $('#btn-restart').addEventListener('click', askRestart);
   $('#btn-undo').addEventListener('click', undo);
   $('#btn-fs').addEventListener('click', toggleFS);
   $('#btn-help').addEventListener('click', showHelp);
@@ -1596,6 +1653,7 @@ window.addEventListener('load', () => {
     'f': () => toggleFS(),
     'm': () => openViewer(),
     'n': () => newGame(),
+    'r': () => { if (playing()) askRestart(); else return false; },
     'c': () => { if (playing()) openSheet('crit'); else return false; },
     's': () => { if (playing()) openSheet('seq'); else return false; },
     '?': showHelp,
@@ -1626,7 +1684,7 @@ window.addEventListener('load', () => {
   }
   else if (sala) { Net.resume(sala); openSetup(); }
   else if (new URLSearchParams(location.search).get('p1')) { $('#app').hidden = !(S && S.started); openSetup(); if (S?.started) render(); }
-  else render();
+  else { render(); if (S?.started && !S.dual) askResume(); }
   syncUndo();
   if (S?.started) keepAwake();
 });
