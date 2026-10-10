@@ -9,7 +9,7 @@ FACTIONS['ala-asesina'] = {
   name: "Ala Asesina",
   subfaction: "Astartes Herejes del Caos",
   icon: "🦅",
-  img: "imagenes/alaasesina.png",
+  img: "imagenes/alaasesina.webp",
   desc: "Guerreros del Caos con propulsores de salto que atacan desde las alturas con velocidad y ferocidad devastadoras.",
   tags: ["Caos", "Reconocimiento", "Buscar y destruir"],
   version: "Agosto 2026",

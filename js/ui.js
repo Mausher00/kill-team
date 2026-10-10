@@ -5,6 +5,7 @@
 // ============================================================
 (function () {
   const KT = (window.KT = window.KT || {});
+  const ROOT = document.currentScript ? new URL('../', document.currentScript.src) : new URL('./', location.href);
   const reduced = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ── Texto ────────────────────────────────────────────────
@@ -228,4 +229,38 @@
     const l = on.offsetLeft - tabs.scrollLeft, r = l + on.offsetWidth;
     if (l < 0 || r > tabs.clientWidth) tabs.scrollTo({ left: on.offsetLeft - 24, behavior: 'smooth' });
   };
+  // ── Sin conexión (service worker en la raíz: sw.js) ───────
+  // Guarda la app al visitarla; KT.offline.download() descarga además todas las imágenes.
+  KT.offline = {
+    supported: 'serviceWorker' in navigator && /^https?:$/.test(location.protocol),
+    ready: null,
+    async status() {
+      if (!this.supported) return null;
+      const reg = await this.ready; if (!reg?.active) return null;
+      return new Promise(res => {
+        const ch = new MessageChannel();
+        ch.port1.onmessage = e => res(e.data);
+        reg.active.postMessage({ type: 'status' }, [ch.port2]);
+        setTimeout(() => res(null), 3000);
+      });
+    },
+    async download(onProgress) {
+      if (!this.supported) { KT.toast('Este navegador no permite guardar la app sin conexión', { type: 'err' }); return false; }
+      const reg = await this.ready; const sw = reg?.active || reg?.waiting || reg?.installing;
+      if (!sw) { KT.toast('Vuelve a intentarlo en unos segundos', { type: 'err' }); return false; }
+      return new Promise(res => {
+        const ch = new MessageChannel();
+        ch.port1.onmessage = e => {
+          const d = e.data || {};
+          if (d.type === 'progress') onProgress && onProgress(d.done, d.total);
+          if (d.type === 'done') { res(d.failed === 0); }
+        };
+        sw.postMessage({ type: 'cacheAll' }, [ch.port2]);
+      });
+    },
+  };
+  if (KT.offline.supported) {
+    KT.offline.ready = navigator.serviceWorker.register(new URL('sw.js', ROOT), { scope: ROOT.pathname })
+      .then(() => navigator.serviceWorker.ready).catch(() => null);
+  }
 })();

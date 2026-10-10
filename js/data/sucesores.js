@@ -9,7 +9,7 @@ FACTIONS['sucesores'] = {
   name: "Sucesores Recuperadores",
   subfaction: "Ligas de los Votann",
   icon: "⛏️",
-  img: "imagenes/sucesores.png",
+  img: "imagenes/sucesores.webp",
   desc: "Guerreros Kin especializados en recuperación de recursos en pecios espaciales y zonas hostiles.",
   tags: ["Votann", "Reconocimiento", "Seguridad"],
   version: "Abril 2026",

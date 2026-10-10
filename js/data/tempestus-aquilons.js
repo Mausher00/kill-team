@@ -9,7 +9,7 @@ FACTIONS['tempestus-aquilons'] = {
   name: "Tempestus Aquilons",
   subfaction: "Militarum Tempestus",
   icon: "⚡",
-  img: "imagenes/tempestus-aquilons.png",
+  img: "imagenes/tempestus-aquilons.webp",
   desc: "Soldados de élite que descienden en paracaídas gravíticos. Maestros del ataque por inserción, combinan potencia de fuego con posicionamiento táctico.",
   tags: ["Imperium", "Reconocimiento", "Buscar y destruir"],
   version: "Agosto 2026",

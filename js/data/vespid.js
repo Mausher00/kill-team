@@ -9,7 +9,7 @@ FACTIONS['vespid'] = {
   name: "Aguijones Alados Véspid",
   subfaction: "Imperio T'au",
   icon: "🐝",
-  img: "imagenes/vespid.png",
+  img: "imagenes/vespid.webp",
   desc: "Insectoides voladores aliados del Imperio T'au, armados con neutrones y guiados por un dron de vigilancia.",
   tags: ["T'au", "Reconocimiento", "Buscar y destruir"],
   version: "Agosto 2026",

@@ -9,7 +9,7 @@ FACTIONS['garra-nemesis'] = {
   name: "Garra Némesis",
   subfaction: "Astartes Herejes del Caos",
   icon: "🦀",
-  img: "imagenes/garra-nemesis.png",
+  img: "imagenes/garra-nemesis.webp",
   desc: "Comandos de los Amos de la Noche que usan el miedo como arma: venenos, terror psíquico y violencia obscena para aniquilar a sus presas.",
   tags: ["Caos", "Infiltración", "Buscar y destruir"],
   version: "Junio 2026",

@@ -1,9 +1,9 @@
 """Extrae cartas y mapas del mazo Approved Ops 2025 (recopilación de aficionado).
 Uso: python extraer.py deck.pdf <raíz del proyecto>
- - Cartas (vectoriales): se renderizan a JPG  -> imagenes/misiones/
+ - Cartas (vectoriales): se renderizan a WebP  -> imagenes/misiones/
  - Mapas (raster): se extraen a su resolución nativa y se giran a horizontal
    (la zona de despliegue inferior queda a la izquierda, la superior a la derecha)
-   -> imagenes/mapas/<zona>/<id>.jpg ; claves de terreno -> imagenes/mapas/<zona>/clave-N.jpg
+   -> imagenes/mapas/<zona>/<id>.webp ; claves de terreno -> imagenes/mapas/<zona>/clave-N.webp
 """
 import sys, os, io
 import pymupdf as fitz
@@ -34,11 +34,11 @@ CLAVES = {'generica': [38], 'volkus': [46, 47, 61], 'bheta-decima': [65], 'gallo
 
 def render(pn, path, zoom=ZOOM):
     pix = d[pn - 1].get_pixmap(matrix=fitz.Matrix(zoom, zoom))
-    Image.open(io.BytesIO(pix.tobytes('png'))).convert('RGB').save(path, quality=84, optimize=True, progressive=True)
+    Image.open(io.BytesIO(pix.tobytes('png'))).convert('RGB').save(path, 'WEBP', quality=82, method=6)
 
 out = os.path.join(root, 'imagenes', 'misiones'); os.makedirs(out, exist_ok=True)
 for pn, name in CARTAS.items():
-    render(pn, os.path.join(out, name + '.jpg'))
+    render(pn, os.path.join(out, name + '.webp'))
 
 for zona, pages in MAPAS.items():
     od = os.path.join(root, 'imagenes', 'mapas', zona); os.makedirs(od, exist_ok=True)
@@ -46,7 +46,7 @@ for zona, pages in MAPAS.items():
         page = d[pn - 1]
         info = max(page.get_image_info(xrefs=True), key=lambda i: (i['bbox'][2] - i['bbox'][0]) * (i['bbox'][3] - i['bbox'][1]))
         im = Image.open(io.BytesIO(fitz.Pixmap(d, info['xref']).tobytes('png'))).convert('RGB')
-        im.transpose(Image.Transpose.ROTATE_270).save(os.path.join(od, mid + '.jpg'), quality=86, optimize=True, progressive=True)
+        im.transpose(Image.Transpose.ROTATE_270).save(os.path.join(od, mid + '.webp'), 'WEBP', quality=82, method=6)
     for k, pn in enumerate(CLAVES[zona], 1):
-        render(pn, os.path.join(od, f'clave-{k}.jpg'))
+        render(pn, os.path.join(od, f'clave-{k}.webp'))
 print('ok')

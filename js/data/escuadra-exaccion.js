@@ -9,7 +9,7 @@ FACTIONS['escuadra-exaccion'] = {
   name: "Escuadra de Exacción",
   subfaction: "Adeptus Arbites",
   icon: "⚖️",
-  img: "imagenes/escuadra-exaccion.png",
+  img: "imagenes/escuadra-exaccion.webp",
   desc: "Agentes del Adeptus Arbites que imponen la Lex Imperialis a golpe de escopeta, cibermastín y escudo de asalto.",
   tags: ["Imperium", "Seguridad", "Buscar y destruir"],
   version: "Junio 2026",
@@ -19,7 +19,7 @@ FACTIONS['escuadra-exaccion'] = {
       id: "proctojuez",
       name: "Arbites Proctojuez",
       type: "PROCTOJUEZ",
-      img: "imagenes/escuadra-exaccion-img/arbites-proctojuez.jpg",
+      img: "imagenes/escuadra-exaccion-img/arbites-proctojuez.webp",
       s: { lpa: 2, mov: "6\"", salv: "4+", h: 9 },
       kw: ["ESCUADRA DE EXACCIÓN", "IMPERIUM", "ADEPTUS ARBITES", "LÍDER", "PROCTOJUEZ"],
       w: [
@@ -46,7 +46,7 @@ FACTIONS['escuadra-exaccion'] = {
       id: "martirizador",
       name: "Arbites Martirizador",
       type: "MARTIRIZADOR",
-      img: "imagenes/escuadra-exaccion-img/arbites-martirizador.jpg",
+      img: "imagenes/escuadra-exaccion-img/arbites-martirizador.webp",
       s: { lpa: 2, mov: "6\"", salv: "4+", h: 8 },
       kw: ["ESCUADRA DE EXACCIÓN", "IMPERIUM", "ADEPTUS ARBITES", "MÉDICO", "MARTIRIZADOR"],
       w: [
@@ -70,7 +70,7 @@ FACTIONS['escuadra-exaccion'] = {
       id: "amo-adiestrador",
       name: "Arbites Amo Adiestrador",
       type: "AMO ADIESTRADOR",
-      img: "imagenes/escuadra-exaccion-img/arbites-amo-adiestrador.jpg",
+      img: "imagenes/escuadra-exaccion-img/arbites-amo-adiestrador.webp",
       s: { lpa: 2, mov: "6\"", salv: "4+", h: 8 },
       kw: ["ESCUADRA DE EXACCIÓN", "IMPERIUM", "ADEPTUS ARBITES", "AMO ADIESTRADOR"],
       w: [
@@ -99,7 +99,7 @@ FACTIONS['escuadra-exaccion'] = {
       id: "r-vr-cibermastin",
       name: "R-VR Cibermastín",
       type: "R-VR CIBERMASTÍN",
-      img: "imagenes/escuadra-exaccion-img/r-vr-cibermastin.jpg",
+      img: "imagenes/escuadra-exaccion-img/r-vr-cibermastin.webp",
       s: { lpa: 2, mov: "6\"", salv: "4+", h: 8 },
       kw: ["ESCUADRA DE EXACCIÓN", "IMPERIUM", "ADEPTUS ARBITES", "R-VR CIBERMASTÍN"],
       w: [{ n: "Mordisco mecánico", a: 4, i: "4+", d: "3/5", r: ["Letal 5+"] }],
@@ -119,7 +119,7 @@ FACTIONS['escuadra-exaccion'] = {
       id: "castigador",
       name: "Arbites Castigador",
       type: "CASTIGADOR",
-      img: "imagenes/escuadra-exaccion-img/arbites-castigador.jpg",
+      img: "imagenes/escuadra-exaccion-img/arbites-castigador.webp",
       s: { lpa: 2, mov: "6\"", salv: "4+", h: 8 },
       kw: ["ESCUADRA DE EXACCIÓN", "IMPERIUM", "ADEPTUS ARBITES", "CASTIGADOR"],
       w: [
@@ -146,7 +146,7 @@ FACTIONS['escuadra-exaccion'] = {
       id: "tirador",
       name: "Arbites Tirador",
       type: "TIRADOR",
-      img: "imagenes/escuadra-exaccion-img/arbites-tirador.jpg",
+      img: "imagenes/escuadra-exaccion-img/arbites-tirador.webp",
       s: { lpa: 2, mov: "6\"", salv: "4+", h: 8 },
       kw: ["ESCUADRA DE EXACCIÓN", "IMPERIUM", "ADEPTUS ARBITES", "TIRADOR"],
       w: [
@@ -162,7 +162,7 @@ FACTIONS['escuadra-exaccion'] = {
       id: "doctoforense",
       name: "Arbites Doctoforense",
       type: "DOCTOFORENSE",
-      img: "imagenes/escuadra-exaccion-img/arbites-doctoforense.jpg",
+      img: "imagenes/escuadra-exaccion-img/arbites-doctoforense.webp",
       s: { lpa: 2, mov: "6\"", salv: "4+", h: 8 },
       kw: ["ESCUADRA DE EXACCIÓN", "IMPERIUM", "ADEPTUS ARBITES", "DOCTOFORENSE"],
       w: [
@@ -186,7 +186,7 @@ FACTIONS['escuadra-exaccion'] = {
       id: "ojo-preciso",
       name: "Arbites Ojo Preciso",
       type: "OJO PRECISO",
-      img: "imagenes/escuadra-exaccion-img/arbites-ojo-preciso.jpg",
+      img: "imagenes/escuadra-exaccion-img/arbites-ojo-preciso.webp",
       s: { lpa: 2, mov: "6\"", salv: "4+", h: 8 },
       kw: ["ESCUADRA DE EXACCIÓN", "IMPERIUM", "ADEPTUS ARBITES", "OJO PRECISO"],
       w: [
@@ -208,7 +208,7 @@ FACTIONS['escuadra-exaccion'] = {
       id: "revelatum",
       name: "Arbites Revelatum",
       type: "REVELATUM",
-      img: "imagenes/escuadra-exaccion-img/arbites-revelatum.jpg",
+      img: "imagenes/escuadra-exaccion-img/arbites-revelatum.webp",
       s: { lpa: 2, mov: "6\"", salv: "4+", h: 8 },
       kw: ["ESCUADRA DE EXACCIÓN", "IMPERIUM", "ADEPTUS ARBITES", "REVELATUM"],
       w: [
@@ -236,7 +236,7 @@ FACTIONS['escuadra-exaccion'] = {
       id: "sojuzgador",
       name: "Arbites Sojuzgador",
       type: "SOJUZGADOR",
-      img: "imagenes/escuadra-exaccion-img/arbites-sojuzgador.jpg",
+      img: "imagenes/escuadra-exaccion-img/arbites-sojuzgador.webp",
       s: { lpa: 2, mov: "6\"", salv: "3+", h: 8 },
       kw: ["ESCUADRA DE EXACCIÓN", "IMPERIUM", "ADEPTUS ARBITES", "SOJUZGADOR"],
       w: [
@@ -249,7 +249,7 @@ FACTIONS['escuadra-exaccion'] = {
       id: "vigilante",
       name: "Arbites Vigilante",
       type: "VIGILANTE",
-      img: "imagenes/escuadra-exaccion-img/arbites-vigilante.jpg",
+      img: "imagenes/escuadra-exaccion-img/arbites-vigilante.webp",
       s: { lpa: 2, mov: "6\"", salv: "4+", h: 8 },
       kw: ["ESCUADRA DE EXACCIÓN", "IMPERIUM", "ADEPTUS ARBITES", "VIGILANTE"],
       w: [
@@ -268,7 +268,7 @@ FACTIONS['escuadra-exaccion'] = {
       id: "vocotransmisor",
       name: "Arbites Vocotransmisor",
       type: "VOCOTRANSMISOR",
-      img: "imagenes/escuadra-exaccion-img/arbites-vocotransmisor.jpg",
+      img: "imagenes/escuadra-exaccion-img/arbites-vocotransmisor.webp",
       s: { lpa: 2, mov: "6\"", salv: "4+", h: 8 },
       kw: ["ESCUADRA DE EXACCIÓN", "IMPERIUM", "ADEPTUS ARBITES", "VOCOTRANSMISOR"],
       w: [

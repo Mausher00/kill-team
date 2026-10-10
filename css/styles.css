@@ -235,6 +235,11 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 /* Home */
 .home-nav .nav-link { display: inline-flex; align-items: center; gap: 5px; }
 .home-nav .nav-link i { font-size: 13px; }
+.home-nav { flex-wrap: wrap; }
+button.nav-link { background: none; cursor: pointer; }
+#btn-offline { margin-left: auto; }
+#btn-offline.done { color: #4caf70; border-color: #1f4d2c; }
+#btn-offline.busy { color: var(--orange); border-color: var(--orange-dim); }
 .sl-count { font-family: var(--font-mono); font-size: 10px; color: var(--orange); background: var(--orange-bg); border: .5px solid var(--orange-dim); padding: 1px 6px; border-radius: 2px; letter-spacing: .05em; }
 .faction-card-imgwrap { overflow: hidden; background: var(--bg-3); }
 .faction-card:focus-visible { border-color: var(--orange); }

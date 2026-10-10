@@ -9,7 +9,7 @@ FACTIONS['orkomandos'] = {
   name: "Orkomandos",
   subfaction: "Orkos",
   icon: "🔧",
-  img: "imagenes/orkomandos.png",
+  img: "imagenes/orkomandos.webp",
   desc: "Kommandos Orkos que combinan la brutalidad de su especie con una astucia sorprendente. Expertos en infiltración y emboscada.",
   tags: ["Orkos", "Infiltración", "Buscar y destruir"],
   version: "Junio 2026",

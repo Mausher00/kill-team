@@ -4,12 +4,12 @@
 // ============================================================
 
 const ICONS = {
-  lpa:    'imagenes/lpa.png',
-  mov:    'imagenes/mov.png',
-  def:    'imagenes/def.png',
-  her:    'imagenes/her.png',
-  ranged: 'imagenes/ranged.png',
-  cac:    'imagenes/cac.png',
+  lpa:    'imagenes/lpa.webp',
+  mov:    'imagenes/mov.webp',
+  def:    'imagenes/def.webp',
+  her:    'imagenes/her.webp',
+  ranged: 'imagenes/ranged.webp',
+  cac:    'imagenes/cac.webp',
 };
 
 
@@ -159,6 +159,7 @@ function renderHome() {
           <a class="nav-link" href="builder.html"><i class="ti ti-hammer"></i> Constructor</a>
           <a class="nav-link" href="misiones/misiones.html"><i class="ti ti-map"></i> Misiones</a>
           <a class="nav-link" href="partida.html"><i class="ti ti-swords"></i> Partida</a>
+          <button class="nav-link" id="btn-offline" onclick="offlineDownload()" title="Guardar todo en este dispositivo para usar la app sin conexión" hidden><i class="ti ti-download"></i> <span>Sin conexión</span></button>
         </nav>
       </header>
       <button class="search-trigger spot reveal" style="--i:1" onclick="openPalette()" aria-label="Buscar en todos los comandos">

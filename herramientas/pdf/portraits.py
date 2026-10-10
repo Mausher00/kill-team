@@ -1,5 +1,5 @@
 """Retratos de operativo sin texto, 700x210 como las imágenes existentes.
-python3 portraits.py nombre  -> sobrescribe out/img/nombre/*.jpg usando out/nombre.json
+python3 portraits.py nombre  -> sobrescribe out/img/nombre/*.webp usando out/nombre.json
 """
 import sys, json, os, re, unicodedata
 import pymupdf as fitz
@@ -98,8 +98,8 @@ for c in data['cards']:
     hh = b1 - t0
     ww = int(hh * 700 / 210)
     box = (max(0, x1 - ww), t0, x1, b1)
-    fn = os.path.join(imgdir, slug(c['name']) + '.jpg')
-    im.crop(box).resize((700, 210), Image.LANCZOS).save(fn, quality=86)
+    fn = os.path.join(imgdir, slug(c['name']) + '.webp')
+    im.crop(box).resize((700, 210), Image.LANCZOS).save(fn, 'WEBP', quality=82, method=6)
     c['img'] = os.path.basename(fn); ok += 1
 json.dump(data, open(f'out/{name}.json', 'w'), ensure_ascii=False, indent=1)
 print(name, ok, '/', len(data['cards']))

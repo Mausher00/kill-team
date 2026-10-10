@@ -9,7 +9,7 @@ FACTIONS['demoledorez'] = {
   name: "Demoledorez",
   subfaction: "Orkos",
   icon: "💥",
-  img: "imagenes/demoledorez.png",
+  img: "imagenes/demoledorez.webp",
   desc: "Orkos obsesionados con la destrucción. Cuanto más atacan, más puntos de Demolizión generan y más letales se vuelven.",
   tags: ["Orkos", "Seguridad", "Buscar y destruir"],
   version: "Junio 2026",

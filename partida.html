@@ -7,7 +7,10 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>Partida · Kill Team</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="imagenes/app/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="imagenes/app/icono-192.png">
+  <link rel="stylesheet" href="css/iconos.css">
   <link rel="stylesheet" href="css/fonts.css">
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/fx.css">
@@ -15,9 +18,11 @@
 </head>
 <body class="game">
   <script>const FACTIONS = {}; const KEYWORDS = {}; window.UNIVERSAL_EQUIPMENT = [];</script>
+  <script src="js/data/keywords.js"></script>
   <script src="js/data/universal_equipment.js"></script>
   <script src="js/data/misiones.js"></script>
   <script src="js/data/zonas.js"></script>
+  <script src="js/data/marcadores.js"></script>
   <script src="js/data/korps.js"></script>
   <script src="js/data/sucesores.js"></script>
   <script src="js/data/ala-asesina.js"></script>
@@ -57,13 +62,11 @@
     <div class="g-setup-hd">
       <a class="btn-back" href="index.html"><i class="ti ti-arrow-left"></i></a>
       <h2>Preparar partida</h2>
+      <button class="icon-btn" id="btn-mode" title="Cambiar entre la preparación guiada y el panel rápido"></button>
       <button class="icon-btn" id="btn-close-setup" title="Volver a la partida (Esc)"><i class="ti ti-x"></i> Volver</button>
     </div>
     <div class="g-setup-body" id="setup-body"></div>
-    <div class="g-setup-ft">
-      <span class="sp" id="setup-info"></span>
-      <button class="icon-btn accent ripple" id="btn-start" style="height:38px;padding:0 18px;font-size:13px"><i class="ti ti-swords"></i> Empezar partida</button>
-    </div>
+    <div class="g-setup-ft" id="setup-ft"></div>
   </div>
 
   <!-- Hoja de detalles (operaciones, puntuación, secuencia…) -->
