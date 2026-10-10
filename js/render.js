@@ -158,6 +158,7 @@ function renderHome() {
           <span class="nav-link active"><i class="ti ti-books"></i> Comandos</span>
           <a class="nav-link" href="builder.html"><i class="ti ti-hammer"></i> Constructor</a>
           <a class="nav-link" href="misiones/misiones.html"><i class="ti ti-map"></i> Misiones</a>
+          <a class="nav-link" href="partida.html"><i class="ti ti-swords"></i> Partida</a>
         </nav>
       </header>
       <button class="search-trigger spot reveal" style="--i:1" onclick="openPalette()" aria-label="Buscar en todos los comandos">

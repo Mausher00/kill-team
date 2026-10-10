@@ -125,6 +125,37 @@
     .mision-tag { font-size: 9px; padding: 2px 6px; border-radius: 2px; background: var(--bg-3); color: var(--text-3); border: .5px solid var(--border-2); font-family: var(--font-d); letter-spacing: .06em; text-transform: uppercase; }
     .mision-footer { padding: 7px 14px; border-top: 1px solid var(--border); font-family: var(--font-d); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--orange); display: flex; justify-content: space-between; }
 
+    /* operaciones aprobadas */
+    .op-sec { font-family: var(--font-d); font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--orange); margin: 22px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+    .op-sub { font-family: var(--font-d); font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); margin: 12px 0 6px; }
+    .op-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; align-items: start; }
+    .op-card { background: var(--bg-2); border: 1px solid var(--border-2); border-left: 3px solid var(--orange); border-radius: 4px; }
+    .op-card summary { list-style: none; cursor: pointer; padding: 9px 12px; display: grid; grid-template-columns: 1fr auto; gap: 0 8px; }
+    .op-card summary::-webkit-details-marker { display: none; }
+    .op-card summary .mision-num { grid-column: 1 / -1; }
+    .op-card .op-en { font-family: var(--font-mono); font-size: 9px; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; align-self: end; }
+    .op-card[open] { border-color: var(--orange-dim); border-left-color: var(--orange); }
+    .op-body { padding: 0 12px 12px; font-size: 12px; line-height: 1.55; color: var(--text-2); }
+    .op-body h5 { font-family: var(--font-d); font-size: 9px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--orange); margin: 10px 0 3px; }
+    .op-body p { margin-bottom: 3px; }
+    .op-body p.b { padding-left: 12px; position: relative; }
+    .op-body p.b::before { content: ''; position: absolute; left: 2px; top: .6em; width: 4px; height: 4px; background: var(--orange); transform: rotate(45deg); }
+    .op-act { border-left: 2px solid var(--orange); background: var(--bg-3); padding: 5px 8px; margin: 4px 0; border-radius: 0 2px 2px 0; }
+    .op-act-hd { display: flex; justify-content: space-between; font-family: var(--font-d); font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: #fff; }
+    .op-act-hd span { color: var(--orange); }
+    .op-act p.ef::before { content: '▶ '; color: #3fa34d; font-size: 8px; }
+    .op-act p.no { color: var(--text-3); font-size: 11px; }
+    .op-act p.no::before { content: '◆ '; color: #d33; font-size: 9px; }
+    .op-orig { display: inline-block; margin-top: 8px; font-family: var(--font-d); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--orange); text-decoration: none; }
+    .map-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+    .map-grid a { position: relative; display: block; border: 1px solid var(--border-2); border-radius: 4px; overflow: hidden; aspect-ratio: 873 / 645; transition: border-color .15s, transform .15s; }
+    .map-grid a:hover { border-color: var(--orange); transform: translateY(-2px); }
+    .map-grid img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .map-grid span { position: absolute; left: 4px; top: 4px; font-family: var(--font-d); font-weight: 800; font-size: 12px; color: #fff; background: rgba(0,0,0,.7); padding: 0 5px; border-radius: 2px; }
+    .op-ktab { border-collapse: collapse; font-family: var(--font-mono); font-size: 11px; text-align: center; margin-top: 8px; width: 100%; max-width: 520px; }
+    .op-ktab th { font-family: var(--font-d); font-size: 10px; letter-spacing: .08em; color: var(--text-3); padding: 4px; border-bottom: 1px solid var(--border-2); text-transform: uppercase; }
+    .op-ktab td { padding: 3px; border-bottom: .5px solid var(--border); color: var(--text-2); }
+    .op-ktab td:first-child { color: var(--orange); }
     .mision-card-soon { background: transparent; border: 1px dashed var(--border-2); border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 1.5rem; color: var(--text-3); min-height: 160px; cursor: default; }
     .mision-card-soon-icon { font-size: 24px; }
     .mision-card-soon-name { font-family: var(--font-d); font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; text-align: center; }
@@ -164,6 +195,7 @@
 
 <footer>Kill Team Companion — uso personal · <kbd>1</kbd> <kbd>2</kbd> pestañas · <kbd>E</kbd> expandir terreno</footer>
 <script src="../js/ui.js"></script>
+<script src="../js/data/misiones.js"></script>
 
 <script>
   /* ─────────────────────────────────────────────
@@ -441,44 +473,39 @@
   ───────────────────────────────────────────── */
   function renderMisiones(zona) {
     const el = document.getElementById('tab-misiones');
-    el.innerHTML = '';
-
-    const grid = document.createElement('div');
-    grid.className = 'misiones-grid';
-
-    if (zona.misiones.length === 0) {
-      // Placeholder misiones
-      const placeholder = [
-        { num: 'Misión 1', name: 'Por añadir', icon: '📋' },
-        { num: 'Misión 2', name: 'Por añadir', icon: '📋' },
-        { num: 'Misión 3', name: 'Por añadir', icon: '📋' },
-        { num: 'Misión 4', name: 'Por añadir', icon: '📋' },
-      ];
-      placeholder.forEach(m => {
-        const card = document.createElement('div');
-        card.className = 'mision-card-soon';
-        card.innerHTML = `<div class="mision-card-soon-icon">${m.icon}</div><div class="mision-card-soon-name">${m.num}</div><div class="mision-card-soon-badge">Pendiente de añadir</div>`;
-        grid.appendChild(card);
-      });
-    } else {
-      zona.misiones.forEach(m => {
-        const card = document.createElement('a');
-        card.className = 'mision-card';
-        card.href = m.url || '#';
-        card.innerHTML = `
-          <div class="mision-img-ph">${m.icon}</div>
-          <div class="mision-body">
-            <span class="mision-num">${m.num}</span>
-            <span class="mision-name">${m.name}</span>
-            <p class="mision-desc">${m.desc}</p>
-            <div class="mision-tags">${(m.tags||[]).map(t=>`<span class="mision-tag">${t}</span>`).join('')}</div>
-          </div>
-          <div class="mision-footer">Ver misión <span>→</span></div>`;
-        grid.appendChild(card);
-      });
-    }
-
-    el.appendChild(grid);
+    const O = window.OPS, R = '../';
+    if (!O) { el.innerHTML = '<p class="mision-desc">No se han podido cargar las operaciones.</p>'; return; }
+    const e = KT.esc;
+    const deckZone = (window.ZONAS || []).find(z => z.id === ({ 'mundo-necropolis': 'necropolis' }[zona.id] || zona.id));
+    const lines = a => (a || []).map(l => `<p class="${l.startsWith('•') ? 'b' : ''}">${e(l.replace(/^•\s*/, ''))}</p>`).join('');
+    const acts = a => (a || []).map(x => `<div class="op-act"><div class="op-act-hd"><b>${e(x.n)}</b><span>${x.pa}PA</span></div>
+        ${x.ef.map(t => `<p class="${t.startsWith('•') ? 'b' : 'ef'}">${e(t.replace(/^•\s*/, ''))}</p>`).join('')}${x.no ? `<p class="no">${e(x.no)}</p>` : ''}</div>`).join('');
+    const card = (o, tag) => `
+      <details class="op-card">
+        <summary><span class="mision-num">${tag}</span><span class="mision-name">${e(o.name)}</span><span class="op-en">${e(o.en)}</span></summary>
+        <div class="op-body">
+          ${o.revelar ? `<h5>Revelar</h5><p>${e(o.revelar)}</p>` : ''}
+          ${o.reglas ? `<h5>Reglas adicionales</h5>${lines(o.reglas)}` : ''}
+          ${o.acciones ? `<h5>Acción de misión</h5>${acts(o.acciones)}` : ''}
+          <h5>Puntos de victoria</h5>${lines(o.pv)}
+          <a class="op-orig" href="${R + o.img}" target="_blank" rel="noopener">Carta original (inglés) →</a>
+        </div>
+      </details>`;
+    const arqs = ['Seguridad', 'Reconocimiento', 'Buscar y destruir', 'Infiltración'];
+    el.innerHTML = `
+      <p class="mision-desc" style="margin-bottom:12px">${e(O.version)} · juego equilibrado. Cada jugador puntúa con tres operaciones (máx. 6PV cada una): la <b>crítica</b> (común a ambos), la de <b>eliminación</b> y una <b>táctica</b> secreta de sus arquetipos. <a href="../partida.html" style="color:var(--orange)">Jugar una partida →</a></p>
+      ${deckZone ? `<div class="op-sec">Mapas de ${e(deckZone.name)}</div>
+        <div class="map-grid">${deckZone.maps.filter(m => !m.old).map(m => `<a href="${R + m.img}" target="_blank" rel="noopener"><img src="${R + m.img}" alt="Mapa ${e(m.label)}" loading="lazy"><span>${e(m.label)}</span></a>`).join('')}</div>` : ''}
+      <div class="op-sec">Operaciones críticas</div>
+      <div class="op-grid">${O.crit.map(c => card(c, 'Crítica ' + c.n)).join('')}</div>
+      <div class="op-sec">Operaciones tácticas</div>
+      ${arqs.map(a => `<div class="op-sub">${a}</div><div class="op-grid">${O.tac.filter(t => t.arq === a).map(t => card(t, a)).join('')}</div>`).join('')}
+      <div class="op-sec">Operación de eliminación</div>
+      <p class="mision-desc">${e(O.kill.txt)}</p>
+      <table class="op-ktab"><tr><th>Enemigos al inicio</th>${[1, 2, 3, 4, 5].map(g => `<th>Grado ${g}</th>`).join('')}</tr>
+        ${Object.entries(O.kill.tabla).map(([n, r]) => `<tr><td>${n}</td>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</table>
+      <div class="op-sec">Operación principal</div>
+      <p class="mision-desc">${e(O.primaria.txt)}</p>`;
   }
 
   /* ─────────────────────────────────────────────

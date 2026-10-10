@@ -973,6 +973,7 @@ function renderStep4() {
     </div>
     <div class="sum-acts">
       <button class="icon-btn accent ripple" onclick="saveRoster()"><i class="ti ti-device-floppy"></i> Guardar</button>
+      <button class="icon-btn" onclick="playRoster()" title="Guarda y abre el modo de juego con este comando"><i class="ti ti-swords"></i> Jugar</button>
       <button class="icon-btn" onclick="copyText()"><i class="ti ti-clipboard-text"></i> Copiar lista</button>
       <button class="icon-btn" onclick="exportRoster()"><i class="ti ti-download"></i> Exportar</button>
       <button class="icon-btn" onclick="window.print()"><i class="ti ti-printer"></i> Imprimir</button>
@@ -981,6 +982,12 @@ function renderStep4() {
       <button class="icon-btn" onclick="setStep(3)"><i class="ti ti-package"></i> Equipo</button>
       <button class="icon-btn" onclick="newRoster()"><i class="ti ti-plus"></i> Nuevo</button>
     </div>`;
+}
+
+function playRoster() {
+  if (firstError()) { KT.toast('Completa el comando antes de jugar', { type: 'err' }); return; }
+  saveRoster();
+  if (state.editingId) location.href = 'partida.html?p1=' + encodeURIComponent(state.editingId);
 }
 
 function newRoster() {

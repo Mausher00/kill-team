@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Partida · Kill Team</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/fx.css">
+  <link rel="stylesheet" href="css/partida.css">
+</head>
+<body class="game">
+  <script>const FACTIONS = {}; const KEYWORDS = {}; window.UNIVERSAL_EQUIPMENT = [];</script>
+  <script src="js/data/universal_equipment.js"></script>
+  <script src="js/data/misiones.js"></script>
+  <script src="js/data/zonas.js"></script>
+  <script src="js/data/korps.js"></script>
+  <script src="js/data/sucesores.js"></script>
+  <script src="js/data/ala-asesina.js"></script>
+  <script src="js/data/garra-nemesis.js"></script>
+  <script src="js/data/demoledorez.js"></script>
+  <script src="js/data/ork-kommandos.js"></script>
+  <script src="js/data/tempestus-aquilons.js"></script>
+  <script src="js/data/angeles-muerte.js"></script>
+  <script src="js/data/asaltantes-phobos.js"></script>
+  <script src="js/data/escuadra-exaccion.js"></script>
+  <script src="js/data/mano-arconte.js"></script>
+  <script src="js/data/mandragoras.js"></script>
+  <script src="js/data/novicias.js"></script>
+  <script src="js/data/rastreadores.js"></script>
+  <script src="js/data/vespid.js"></script>
+  <script src="js/ui.js"></script>
+
+  <div class="g-root" id="app" hidden>
+    <header class="g-top">
+      <a class="btn-back" href="index.html" title="Volver a la app"><i class="ti ti-arrow-left"></i></a>
+      <div class="g-title" id="g-title"></div>
+      <button class="icon-btn" id="btn-undo" title="Deshacer (Ctrl+Z)" aria-label="Deshacer"><i class="ti ti-arrow-back-up"></i></button>
+      <button class="icon-btn" id="btn-setup" title="Preparación / nueva partida (N)"><i class="ti ti-settings"></i><span class="hide-sm">Preparar</span></button>
+      <button class="icon-btn" id="btn-fs" title="Pantalla completa (F)" aria-label="Pantalla completa"><i class="ti ti-maximize"></i></button>
+      <button class="icon-btn" id="btn-help" title="Ayuda (?)" aria-label="Ayuda"><i class="ti ti-help"></i></button>
+    </header>
+    <aside class="g-col p1" id="col-0" aria-label="Operativos del jugador 1"></aside>
+    <main class="g-center">
+      <div class="g-board" id="board"></div>
+      <div class="g-bar" id="bar"></div>
+    </main>
+    <aside class="g-col p2" id="col-1" aria-label="Operativos del jugador 2"></aside>
+  </div>
+
+  <!-- Preparación -->
+  <div class="g-setup" id="setup" role="dialog" aria-modal="true" aria-label="Preparar partida">
+    <div class="g-setup-hd">
+      <a class="btn-back" href="index.html"><i class="ti ti-arrow-left"></i></a>
+      <h2>Preparar partida</h2>
+      <button class="icon-btn" id="btn-close-setup" title="Volver a la partida (Esc)"><i class="ti ti-x"></i> Volver</button>
+    </div>
+    <div class="g-setup-body" id="setup-body"></div>
+    <div class="g-setup-ft">
+      <span class="sp" id="setup-info"></span>
+      <button class="icon-btn accent ripple" id="btn-start" style="height:38px;padding:0 18px;font-size:13px"><i class="ti ti-swords"></i> Empezar partida</button>
+    </div>
+  </div>
+
+  <!-- Hoja de detalles (operaciones, puntuación, secuencia…) -->
+  <div class="g-sheet" id="sheet" role="dialog" aria-modal="true">
+    <div class="g-sheet-box">
+      <div class="g-sheet-hd"><div class="g-sheet-t" id="sheet-t"></div><button class="icon-btn" id="sheet-close" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ti ti-x"></i></button></div>
+      <div class="g-sheet-body" id="sheet-body"></div>
+    </div>
+  </div>
+
+  <!-- Visor de mapa -->
+  <div class="g-viewer" id="viewer">
+    <div class="g-vtools">
+      <button class="icon-btn" id="viewer-fit" title="Ajustar (doble clic)"><i class="ti ti-arrows-minimize"></i></button>
+      <button class="icon-btn accent" id="viewer-close" title="Cerrar (Esc)"><i class="ti ti-x"></i></button>
+    </div>
+    <img id="viewer-img" alt="Mapa ampliado">
+  </div>
+
+  <!-- Girar el dispositivo -->
+  <div class="g-rotate">
+    <i class="ti ti-device-mobile-rotated big"></i>
+    <h3>Gira el dispositivo</h3>
+    <p>El modo de juego está pensado para verse en horizontal: operativos a los lados y el terreno en el centro.</p>
+    <button class="icon-btn accent" id="rot-fs"><i class="ti ti-maximize"></i> Pantalla completa</button>
+    <button class="link-btn" id="rot-continue" style="background:none;border:none;color:var(--text-3);font-family:var(--font-display);letter-spacing:.1em;text-transform:uppercase;cursor:pointer">Continuar en vertical</button>
+  </div>
+
+  <style>@media (max-width: 1000px) { .hide-sm { display: none; } }</style>
+  <script src="js/partida.js"></script>
+</body>
+</html>
