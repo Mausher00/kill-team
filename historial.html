@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>Historial · Kill Team</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="imagenes/app/icono-192.png">
+  <link rel="stylesheet" href="css/iconos.css">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/fx.css">
+  <style>
+    .h-wrap { max-width: 1040px; margin: 0 auto; padding: 1.4rem 1.2rem 3rem; }
+    .h-hd { display: flex; align-items: flex-end; gap: 12px; border-bottom: 3px solid var(--orange); padding-bottom: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+    .h-hd h1 { font-family: var(--font-display); font-size: 40px; letter-spacing: .04em; text-transform: uppercase; color: #fff; line-height: 1; flex: 1; }
+    .h-hd .back { font-family: var(--font-display); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-3); text-decoration: none; display: inline-flex; gap: 6px; align-items: center; width: 100%; }
+    .h-hd .back:hover { color: var(--orange); }
+    .h-tools { display: flex; gap: 6px; flex-wrap: wrap; }
+    .h-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 18px; }
+    .h-tile { background: var(--bg-2); border: 1px solid var(--border-2); border-top: 3px solid var(--orange); border-radius: 6px; padding: 10px 12px; }
+    .h-tile small { display: block; font-family: var(--font-display); font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); }
+    .h-tile b { font-family: var(--font-display); font-size: 32px; font-weight: 800; color: #fff; line-height: 1.1; }
+    .h-tile span { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); margin-left: 4px; }
+    .h-sec { font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--orange); margin: 22px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+    .h-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .h-tab { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .h-tab th { text-align: left; font-family: var(--font-display); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); padding: 5px 6px; border-bottom: 1px solid var(--border-2); }
+    .h-tab td { padding: 6px; border-bottom: 1px solid var(--border); color: var(--text-2); }
+    .h-tab td.n { color: #fff; font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+    .h-tab td.num { font-family: var(--font-mono); text-align: right; }
+    .h-tab img { width: 20px; height: 20px; object-fit: contain; vertical-align: middle; margin-right: 6px; }
+    .h-bar { height: 6px; background: var(--bg-3); border-radius: 3px; overflow: hidden; min-width: 60px; }
+    .h-bar span { display: block; height: 100%; background: var(--orange); }
+    .h-games { display: flex; flex-direction: column; gap: 8px; }
+    .h-game { background: var(--bg-2); border: 1px solid var(--border-2); border-radius: 6px; padding: 10px 12px; display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 10px; align-items: center; }
+    .h-p { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .h-p.r { flex-direction: row-reverse; text-align: right; }
+    .h-p img { width: 34px; height: 34px; object-fit: contain; flex-shrink: 0; }
+    .h-p b { display: block; font-family: var(--font-display); font-size: 15px; text-transform: uppercase; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .h-p small { font-family: var(--font-mono); font-size: 10px; color: var(--text-3); text-transform: uppercase; }
+    .h-p.win b::after { content: ' ★'; color: var(--action); }
+    .h-score { text-align: center; font-family: var(--font-display); font-weight: 800; font-size: 28px; color: #fff; line-height: 1; white-space: nowrap; }
+    .h-score small { display: block; font-family: var(--font-mono); font-size: 10px; font-weight: 400; color: var(--text-3); letter-spacing: .04em; margin-top: 4px; }
+    .h-del { background: none; border: none; color: var(--text-3); cursor: pointer; font-size: 16px; padding: 4px; }
+    .h-del:hover { color: #f07070; }
+    .h-det { grid-column: 1 / -1; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-3); display: flex; gap: 14px; flex-wrap: wrap; border-top: 1px solid var(--border); padding-top: 6px; }
+    .h-empty { text-align: center; color: var(--text-3); padding: 40px 10px; border: 1px dashed var(--border-2); border-radius: 6px; }
+    .h-empty i { font-size: 34px; display: block; margin-bottom: 8px; }
+    @media (max-width: 720px) { .h-cols { grid-template-columns: 1fr; } .h-game { grid-template-columns: 1fr auto 1fr; } .h-del { grid-column: 3; justify-self: end; grid-row: 1; position: relative; top: -6px; } }
+  </style>
+</head>
+<body>
+  <script>const FACTIONS = {}; const KEYWORDS = {};</script>
+  <script src="js/data/misiones.js"></script>
+  <script src="js/data/zonas.js"></script>
+  <script src="js/data/korps.js"></script>
+  <script src="js/data/sucesores.js"></script>
+  <script src="js/data/ala-asesina.js"></script>
+  <script src="js/data/garra-nemesis.js"></script>
+  <script src="js/data/demoledorez.js"></script>
+  <script src="js/data/ork-kommandos.js"></script>
+  <script src="js/data/tempestus-aquilons.js"></script>
+  <script src="js/data/angeles-muerte.js"></script>
+  <script src="js/data/asaltantes-phobos.js"></script>
+  <script src="js/data/escuadra-exaccion.js"></script>
+  <script src="js/data/mano-arconte.js"></script>
+  <script src="js/data/mandragoras.js"></script>
+  <script src="js/data/novicias.js"></script>
+  <script src="js/data/rastreadores.js"></script>
+  <script src="js/data/vespid.js"></script>
+  <script src="js/ui.js"></script>
+
+  <div class="h-wrap">
+    <header class="h-hd">
+      <a class="back" href="index.html"><i class="ti ti-arrow-left"></i> Kill Team</a>
+      <h1>Historial</h1>
+      <div class="h-tools">
+        <a class="icon-btn accent" href="partida.html"><i class="ti ti-swords"></i> Nueva partida</a>
+        <button class="icon-btn" id="h-export"><i class="ti ti-download"></i> Exportar</button>
+        <label class="icon-btn" style="cursor:pointer"><i class="ti ti-upload"></i> Importar<input type="file" id="h-import" accept=".json,application/json" hidden></label>
+      </div>
+    </header>
+    <main id="h-main"></main>
+  </div>
+
+<script>
+const $ = s => document.querySelector(s), esc = KT.esc;
+const fac = id => FACTIONS[id] || { name: id, img: '' };
+const critName = n => (OPS.crit.find(c => c.n === n) || {}).name || '—';
+const zoneName = id => (ZONAS.find(z => z.id === id) || {}).name || '—';
+const mapLabel = (z, m) => ((ZONAS.find(x => x.id === z) || { maps: [] }).maps.find(x => x.id === m) || {}).label || m || '—';
+const list = () => KT.store.get('historial', []) || [];
+const fmt = iso => new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+
+function tally(key) {
+  const out = {};
+  list().forEach(g => g.players.forEach((p, i) => {
+    const k = key(p, g); if (!k) return;
+    const t = out[k] = out[k] || { k, n: 0, w: 0, l: 0, d: 0, vp: 0 };
+    t.n++; t.vp += p.total;
+    if (g.winner == null) t.d++; else if (g.winner === i) t.w++; else t.l++;
+  }));
+  return Object.values(out).sort((a, b) => b.n - a.n || b.w - a.w);
+}
+function count(key) {
+  const out = {};
+  list().forEach(g => { const k = key(g); if (k != null) out[k] = (out[k] || 0) + 1; });
+  return Object.entries(out).sort((a, b) => b[1] - a[1]);
+}
+function wlTable(rows, label, cell) {
+  if (!rows.length) return '<p style="color:var(--text-3);font-size:12px">Sin datos todavía.</p>';
+  return `<table class="h-tab"><tr><th>${label}</th><th>Partidas</th><th>V · D · E</th><th>% victorias</th><th>PV medios</th></tr>
+    ${rows.map(r => `<tr><td class="n">${cell(r.k)}</td><td class="num">${r.n}</td><td class="num">${r.w} · ${r.l} · ${r.d}</td>
+      <td><div class="h-bar" title="${Math.round(r.w / r.n * 100)} %"><span style="width:${r.w / r.n * 100}%"></span></div></td><td class="num">${(r.vp / r.n).toFixed(1)}</td></tr>`).join('')}</table>`;
+}
+
+function render() {
+  const L = list();
+  if (!L.length) {
+    $('#h-main').innerHTML = `<div class="h-empty"><i class="ti ti-history"></i>Aún no hay partidas terminadas.<br>Cuando acabes una batalla (tras el punto de inflexión 4) se guardará aquí.</div>`;
+    return;
+  }
+  const draws = L.filter(g => g.winner == null).length;
+  const avg = (L.reduce((a, g) => a + g.players[0].total + g.players[1].total, 0) / (L.length * 2)).toFixed(1);
+  const top = tally(p => p.faction)[0];
+  $('#h-main').innerHTML = `
+    <div class="h-tiles">
+      <div class="h-tile"><small>Partidas</small><b>${L.length}</b><span>${draws} empates</span></div>
+      <div class="h-tile"><small>PV medios</small><b>${avg}</b><span>por jugador</span></div>
+      <div class="h-tile"><small>Comando más jugado</small><b style="font-size:20px">${esc(fac(top.k).name)}</b><span>${top.n} partidas</span></div>
+      <div class="h-tile"><small>Última</small><b style="font-size:20px">${fmt(L[0].date)}</b></div>
+    </div>
+    <div class="h-cols">
+      <div><div class="h-sec">Jugadores</div>${wlTable(tally(p => p.name.trim()), 'Jugador', k => esc(k))}</div>
+      <div><div class="h-sec">Comandos</div>${wlTable(tally(p => p.faction), 'Comando', k => `<img src="${fac(k).img}" alt="">${esc(fac(k).name)}`)}</div>
+    </div>
+    <div class="h-cols">
+      <div><div class="h-sec">Operaciones críticas</div><table class="h-tab">${count(g => g.crit).map(([k, n]) => `<tr><td class="n">${esc(k + '. ' + critName(+k))}</td><td class="num">${n}</td></tr>`).join('')}</table></div>
+      <div><div class="h-sec">Zonas</div><table class="h-tab">${count(g => g.zone).map(([k, n]) => `<tr><td class="n">${esc(zoneName(k))}</td><td class="num">${n}</td></tr>`).join('')}</table></div>
+    </div>
+    <div class="h-sec">Partidas</div>
+    <div class="h-games">${L.map(g => {
+      const [a, b] = g.players, pl = (p, i, cls) => `<div class="h-p ${cls} ${g.winner === i ? 'win' : ''}"><img src="${fac(p.faction).img}" alt=""><div style="min-width:0"><b>${esc(p.name)}</b><small>${esc(fac(p.faction).name)}</small></div></div>`;
+      const vp = p => `C${p.vp.crit} E${p.vp.kill} T${p.vp.tac}${p.vp.prim ? ' P' + p.vp.prim : ''}`;
+      return `<div class="h-game">
+        ${pl(a, 0, '')}
+        <div class="h-score">${a.total} – ${b.total}<small>${fmt(g.date)}</small></div>
+        ${pl(b, 1, 'r')}
+        <button class="h-del" data-del="${g.id}" title="Borrar esta partida" aria-label="Borrar"><i class="ti ti-trash"></i></button>
+        <div class="h-det"><span>${esc(zoneName(g.zone))} · mapa ${esc(mapLabel(g.zone, g.map))}</span><span>Op. crítica: ${esc(critName(g.crit))}</span>
+          <span>${esc(a.name)}: ${vp(a)} · bajas ${a.lost}/${a.ops}</span><span>${esc(b.name)}: ${vp(b)} · bajas ${b.lost}/${b.ops}</span>${g.dual ? '<span><i class="ti ti-devices"></i> dos dispositivos</span>' : ''}</div>
+      </div>`;
+    }).join('')}</div>`;
+}
+
+$('#h-main').addEventListener('click', e => {
+  const b = e.target.closest('[data-del]'); if (!b) return;
+  const all = list(), idx = all.findIndex(g => g.id === b.dataset.del); if (idx < 0) return;
+  const [gone] = all.splice(idx, 1); KT.store.set('historial', all); render();
+  KT.toast('Partida borrada', { action: 'Deshacer', onAction: () => { const l = list(); l.splice(idx, 0, gone); KT.store.set('historial', l); render(); } });
+});
+$('#h-export').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(list(), null, 1)], { type: 'application/json' });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'historial-killteam.json' });
+  a.click(); URL.revokeObjectURL(a.href);
+});
+$('#h-import').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const add = JSON.parse(await f.text());
+    if (!Array.isArray(add) || add.some(g => !g.id || !g.players)) throw new Error();
+    const cur = list(), ids = new Set(cur.map(g => g.id));
+    const merged = [...cur, ...add.filter(g => !ids.has(g.id))].sort((a, b) => b.date.localeCompare(a.date));
+    KT.store.set('historial', merged); render();
+    KT.toast(`${merged.length - cur.length} partidas importadas`, { type: 'ok' });
+  } catch { KT.toast('El archivo no es un historial válido', { type: 'err' }); }
+});
+KT.initFx();
+render();
+</script>
+</body>
+</html>

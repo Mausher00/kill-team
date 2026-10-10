@@ -226,6 +226,16 @@ button { cursor: pointer; font-family: var(--font-body); }
 .saved-acts { display: flex; gap: 4px; margin-top: 6px; }
 .saved-acts .icon-btn { height: 26px; min-width: 26px; padding: 0 7px; }
 .saved-acts .icon-btn i { font-size: 13px; }
+.share-box { display: grid; grid-template-columns: 170px 1fr; gap: 14px; align-items: center; padding: 6px 2px; }
+.share-box.imp { grid-template-columns: auto 1fr; }
+.share-qr { background: #fff; border-radius: 4px; padding: 4px; line-height: 0; }
+.share-qr svg { width: 100%; height: auto; }
+.share-b { display: flex; flex-direction: column; gap: 6px; }
+.share-b b { font-family: var(--font-display); font-size: 18px; text-transform: uppercase; color: #fff; letter-spacing: .03em; }
+.share-b small { font-family: var(--font-mono); font-size: 10px; color: var(--text-3); text-transform: uppercase; margin-bottom: 4px; }
+.share-b .icon-btn { justify-content: center; height: 34px; text-decoration: none; }
+.share-wa { background: #1f7a43 !important; border-color: #1f7a43 !important; color: #fff !important; }
+@media (max-width: 560px) { .share-box { grid-template-columns: 1fr; } .share-qr { max-width: 220px; margin: 0 auto; } }
 .empty-saved { border: 1px dashed var(--border-2); border-radius: var(--r-md); padding: 16px; color: var(--text-3); font-size: 12px; text-align: center; margin-bottom: 1.4rem; }
 .tools-row { display: flex; gap: 8px; flex-wrap: wrap; margin: -4px 0 14px; }
 
@@ -289,6 +299,7 @@ button { cursor: pointer; font-family: var(--font-body); }
 <script src="js/data/rastreadores.js"></script>
 <script src="js/data/vespid.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/vendor/qrcode.js"></script>
 
 <div class="wrap">
   <header class="hdr">
@@ -559,6 +570,71 @@ function deleteSaved(id, ev) {
     const l = savedList(); l.splice(idx, 0, gone); KT.store.set(SAVED_KEY, l); render();
   } });
 }
+// ── Compartir comandos por enlace / QR / WhatsApp ────────────
+// El comando viaja comprimido en el propio enlace: builder.html#c=…
+const b64u = bytes => { let s = ''; bytes.forEach(b => { s += String.fromCharCode(b); }); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+const unb64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+async function pipe(bytes, stream) { return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer()); }
+async function encodeRoster(r) {
+  const min = { schema: r.schema, name: r.name, factionId: r.factionId, factionVersion: r.factionVersion, ops: r.ops, ploys0: r.ploys0, equipment: r.equipment };
+  const raw = new TextEncoder().encode(JSON.stringify(min));
+  if (window.CompressionStream) { try { return 'z' + b64u(await pipe(raw, new CompressionStream('deflate-raw'))); } catch {} }
+  return 'j' + b64u(raw);
+}
+async function decodeRoster(code) {
+  const bytes = unb64u(code.slice(1));
+  const raw = code[0] === 'z' ? await pipe(bytes, new DecompressionStream('deflate-raw')) : bytes;
+  const r = JSON.parse(new TextDecoder().decode(raw));
+  if (r.schema !== 'kt-roster/1' || !FACTIONS[r.factionId]) throw new Error('El enlace no contiene un comando válido.');
+  return r;
+}
+async function shareRoster(r) {
+  if (!r || !r.ops?.length) { KT.toast('El comando está vacío', { type: 'err' }); return; }
+  const f = FACTIONS[r.factionId];
+  const url = new URL('builder.html', location.href).href + '#c=' + await encodeRoster(r);
+  const n = r.ops.reduce((a, o) => a + o.qty, 0);
+  const msg = `Mi comando de Kill Team «${r.name}» (${f.name}, ${n} agentes). Ábrelo para verlo o importarlo: ${url}`;
+  let qr = '';
+  try { const q = qrcode(0, 'L'); q.addData(url); q.make(); qr = q.createSvgTag({ cellSize: 3, margin: 2, scalable: true }); } catch { qr = '<p style="font-size:11px;color:var(--text-3)">El comando es demasiado grande para un QR: usa el enlace.</p>'; }
+  KT.modal('Compartir comando', `
+    <div class="share-box">
+      <div class="share-qr">${qr}</div>
+      <div class="share-b">
+        <b>${KT.esc(r.name)}</b><small>${KT.esc(f.name)} · ${n} agentes</small>
+        <a class="icon-btn share-wa" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener"><i class="ti ti-brand-whatsapp"></i> WhatsApp</a>
+        ${navigator.share ? '<button class="icon-btn" id="share-native"><i class="ti ti-share"></i> Compartir…</button>' : ''}
+        <button class="icon-btn" id="share-copy"><i class="ti ti-link"></i> Copiar enlace</button>
+      </div>
+    </div>`, 'share');
+  document.getElementById('share-copy').onclick = () => navigator.clipboard.writeText(url).then(() => KT.toast('Enlace copiado', { type: 'ok' }), () => KT.toast(url, { ms: 9000 }));
+  const nat = document.getElementById('share-native');
+  if (nat) nat.onclick = () => navigator.share({ title: r.name, text: msg.replace(url, '').trim(), url }).catch(() => {});
+}
+function shareSaved(id, ev) { ev.stopPropagation(); const r = savedList().find(x => x.id === id); if (r) shareRoster(r); }
+async function importFromLink(code) {
+  let r;
+  try { r = await decodeRoster(code); }
+  catch (e) { KT.toast('No se pudo leer el comando del enlace', { type: 'err', ms: 4000 }); return false; }
+  history.replaceState(null, '', location.pathname);
+  const f = FACTIONS[r.factionId], n = r.ops.reduce((a, o) => a + o.qty, 0);
+  const close = KT.modal('Comando recibido', `
+    <div class="share-box imp">
+      <img src="${f.img}" alt="" style="width:56px;height:56px;object-fit:contain">
+      <div class="share-b"><b>${KT.esc(r.name)}</b><small>${KT.esc(f.name)} · ${n} agentes${r.equipment?.length ? ' · ' + r.equipment.length + ' de equipo' : ''}</small>
+        <button class="icon-btn accent" id="imp-save"><i class="ti ti-device-floppy"></i> Guardar en mis comandos</button>
+        <button class="icon-btn" id="imp-view"><i class="ti ti-eye"></i> Solo ver</button></div>
+    </div>`, 'download');
+  document.getElementById('imp-save').onclick = () => {
+    const now = new Date().toISOString();
+    const saved = { ...r, id: 'r' + Date.now().toString(36), created: now, updated: now };
+    const list = savedList(); list.unshift(saved); KT.store.set(SAVED_KEY, list);
+    close(); deserialize(saved); state.editingId = saved.id; setStep(4);
+    KT.toast(`«${KT.esc(r.name)}» guardado en tus comandos`, { type: 'ok' });
+  };
+  document.getElementById('imp-view').onclick = () => { close(); deserialize(r); state.editingId = null; setStep(4); };
+  return true;
+}
+
 function exportSaved(id, ev) { ev.stopPropagation(); const r = savedList().find(x => x.id === id); if (r) exportRoster(r); }
 
 document.getElementById('import-file').addEventListener('change', async e => {
@@ -676,6 +752,7 @@ function renderStep1() {
           <div class="saved-meta"><b>${KT.esc(f?.name || r.factionId)}</b> · ${n} agentes · ${d}</div>
           <div class="saved-acts">
             <button class="icon-btn" title="Duplicar" aria-label="Duplicar" onclick="duplicateSaved('${r.id}', event)"><i class="ti ti-copy"></i></button>
+            <button class="icon-btn" title="Compartir (WhatsApp, QR, enlace)" aria-label="Compartir" onclick="shareSaved('${r.id}', event)"><i class="ti ti-share"></i></button>
             <button class="icon-btn" title="Exportar JSON" aria-label="Exportar" onclick="exportSaved('${r.id}', event)"><i class="ti ti-download"></i></button>
             <button class="icon-btn" title="Borrar" aria-label="Borrar" onclick="deleteSaved('${r.id}', event)"><i class="ti ti-trash"></i></button>
           </div>
@@ -977,6 +1054,7 @@ function renderStep4() {
     <div class="sum-acts">
       <button class="icon-btn accent ripple" onclick="saveRoster()"><i class="ti ti-device-floppy"></i> Guardar</button>
       <button class="icon-btn" onclick="playRoster()" title="Guarda y abre el modo de juego con este comando"><i class="ti ti-swords"></i> Jugar</button>
+      <button class="icon-btn" onclick="shareRoster(serialize())"><i class="ti ti-share"></i> Compartir</button>
       <button class="icon-btn" onclick="copyText()"><i class="ti ti-clipboard-text"></i> Copiar lista</button>
       <button class="icon-btn" onclick="exportRoster()"><i class="ti ti-download"></i> Exportar</button>
       <button class="icon-btn" onclick="window.print()"><i class="ti ti-printer"></i> Imprimir</button>
@@ -1027,6 +1105,7 @@ window.addEventListener('load', () => {
   console.log('[Builder] Facciones con roster:', factions.map(f => f.id), '· equipo universal:', (window.UNIVERSAL_EQUIPMENT || []).length);
 
   const hash = location.hash.replace('#', '');
+  if (hash.startsWith('c=')) { setStep(1); importFromLink(hash.slice(2)); return; }
   const draft = KT.store.get(DRAFT_KEY);
   if (draft && FACTIONS[draft.factionId]?.roster && (!hash || hash === draft.factionId)) {
     state = { ...newState(), ...draft, open: {} };

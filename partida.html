@@ -39,11 +39,14 @@
   <script src="js/data/rastreadores.js"></script>
   <script src="js/data/vespid.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/vendor/qrcode.js"></script>
+  <script src="js/dual.js"></script>
 
   <div class="g-root" id="app" hidden>
     <header class="g-top">
       <a class="btn-back" href="index.html" title="Volver a la app"><i class="ti ti-arrow-left"></i></a>
       <div class="g-title" id="g-title"></div>
+      <span class="g-net-slot"></span>
       <button class="icon-btn" id="btn-undo" title="Deshacer (Ctrl+Z)" aria-label="Deshacer"><i class="ti ti-arrow-back-up"></i></button>
       <button class="icon-btn" id="btn-setup" title="Preparación / nueva partida (N)"><i class="ti ti-settings"></i><span class="hide-sm">Preparar</span></button>
       <button class="icon-btn" id="btn-fs" title="Pantalla completa (F)" aria-label="Pantalla completa"><i class="ti ti-maximize"></i></button>
@@ -62,6 +65,7 @@
     <div class="g-setup-hd">
       <a class="btn-back" href="index.html"><i class="ti ti-arrow-left"></i></a>
       <h2>Preparar partida</h2>
+      <span class="g-net-slot"></span>
       <button class="icon-btn" id="btn-mode" title="Cambiar entre la preparación guiada y el panel rápido"></button>
       <button class="icon-btn" id="btn-close-setup" title="Volver a la partida (Esc)"><i class="ti ti-x"></i> Volver</button>
     </div>

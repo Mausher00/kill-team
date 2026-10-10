@@ -18,31 +18,70 @@ const OPP = { l: 'r', r: 'l', t: 'b', b: 't' };
 
 let S = KT.store.get(KEY) || null;
 let legacy = false;           // se comprueba al cargar (migrate2 necesita los datos ya definidos)
-const hist = [];
+const hist = [];              // deshacer: operaciones inversas de MIS cambios
+const OPEN = new Set(KT.store.get('partida.abiertos', []) || []);   // fichas desplegadas (solo este dispositivo)
+let ROT = !!KT.store.get('partida.rot', false);                     // giro manual del mapa (solo este dispositivo)
 let sheet = null;          // { kind, i, peek, all }
 let pop = null;            // marcador abierto en el mapa: { k } · { add: true } · { move: k }
 let draft = null;          // preparación en curso
 
 function migrate2() {
-  S.v = V; S.rot = !!S.flip; delete S.flip; S.dz = 0; S.ini0 = null;
+  S.v = V; delete S.flip; S.dz = 0; S.ini0 = null;
   S.players.forEach(P => { P.ployUsed = {}; });
   S.obj = initObjs(S.zone, S.map, S.crit);
 }
 
 // ── Utilidades de estado ─────────────────────────────────────
+// Cada cambio se expresa como operaciones { p: ruta, v: valor } (o { p, d: 1 } para borrar).
+// Así se puede deshacer solo lo propio y sincronizar con el otro dispositivo.
+const clone = x => x === undefined ? undefined : JSON.parse(JSON.stringify(x));
+function diff(a, b, path = [], out = [], skip = null) {
+  if (a === b) return out;
+  if (a && b && typeof a === 'object' && typeof b === 'object' && Array.isArray(a) === Array.isArray(b)) {
+    if (Array.isArray(a) && a.length !== b.length) { out.push({ p: path, v: clone(b) }); return out; }
+    new Set([...Object.keys(a), ...Object.keys(b)]).forEach(k => {
+      if (skip && !path.length && skip.has(k)) return;
+      if (!(k in b) || b[k] === undefined) { if (k in a && a[k] !== undefined) out.push({ p: [...path, k], d: 1 }); }
+      else diff(a[k], b[k], [...path, k], out);
+    });
+    return out;
+  }
+  out.push({ p: path, v: clone(b) });
+  return out;
+}
+function applyOps(root, ops) {
+  ops.forEach(({ p, v, d }) => {
+    if (!p.length) { root = clone(v); return; }
+    let o = root;
+    for (let k = 0; k < p.length - 1; k++) { if (o[p[k]] == null || typeof o[p[k]] !== 'object') o[p[k]] = typeof p[k + 1] === 'number' || /^\d+$/.test(p[k + 1]) ? [] : {}; o = o[p[k]]; }
+    if (d) delete o[p[p.length - 1]]; else o[p[p.length - 1]] = clone(v);
+  });
+  return root;
+}
+// Huella del estado (orden de claves canónico) para comprobar que ambos dispositivos coinciden
+function canon(x) { return x && typeof x === 'object' ? (Array.isArray(x) ? '[' + x.map(canon).join(',') + ']' : '{' + Object.keys(x).sort().map(k => JSON.stringify(k) + ':' + canon(x[k])).join(',') + '}') : JSON.stringify(x ?? null); }
+function hashOf(x) { const s = canon(x); let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(16); }
+
 function save() { if (S) KT.store.set(KEY, S); }
 function commit(fn, opts = {}) {
-  hist.push(JSON.stringify(S));
-  if (hist.length > 60) hist.shift();
+  const before = clone(S);
   fn();
-  save();
+  const ops = diff(before, S);
+  if (ops.length) {
+    hist.push(diff(S, before));
+    if (hist.length > 80) hist.shift();
+    save();
+    Net.ops('S', ops);
+  }
   if (opts.render !== false) render(opts.only);
   syncUndo();
 }
 function undo() {
   if (!hist.length) { KT.toast('Nada que deshacer'); return; }
-  S = JSON.parse(hist.pop());
+  const inv = hist.pop();
+  S = applyOps(S, inv);
   save(); render(); syncUndo();
+  Net.ops('S', inv);
   KT.toast('Deshecho', { ms: 1200 });
 }
 function syncUndo() { const b = $('#btn-undo'); if (b) b.disabled = !hist.length; }
@@ -90,6 +129,25 @@ function scoreOf(i) {
   return { ...by, bonus, prim, k, total: by.crit + by.kill + by.tac + prim };
 }
 
+// ── Historial de partidas (kt.historial) ─────────────────────
+function saveHistory() {
+  if (!S) return;
+  const sc = [scoreOf(0), scoreOf(1)];
+  const win = sc[0].total === sc[1].total ? null : sc[0].total > sc[1].total ? 0 : 1;
+  const rec = {
+    id: S.gid || Date.now().toString(36), date: new Date().toISOString(),
+    zone: S.zone, map: S.map, crit: S.crit, dual: !!S.dual, seat: SEAT, winner: win,
+    players: S.players.map((P, i) => ({
+      name: P.name || 'Jugador ' + (i + 1), faction: P.factionId, title: P.title, tacOp: P.tac, primOp: P.prim,
+      vp: { crit: sc[i].crit, kill: sc[i].kill, tac: sc[i].tac, prim: sc[i].prim }, total: sc[i].total,
+      ops: P.ops.length, lost: P.ops.filter(o => o.w <= 0).length,
+    })),
+  };
+  const list = (KT.store.get('historial', []) || []).filter(r => r.id !== rec.id);
+  list.unshift(rec);
+  KT.store.set('historial', list.slice(0, 300));
+}
+
 // ── Construir jugador desde un comando guardado o un comando completo ─
 function weaponsFor(f, type, chosenText) {
   // Armas opcionales de este tipo (aparecen en alguna opción del constructor)
@@ -131,7 +189,7 @@ function buildPlayer(src, name) {
   ops.forEach(o => { if (count[o.opId] === 1) o.n = 0; });
   ops = ops.map((o, i) => {
     const od = f.ops.find(x => x.id === o.opId);
-    return { uid: 'o' + i, ...o, w: od.s.h, order: 'conceal', used: false, open: false };
+    return { uid: 'o' + i, ...o, w: od.s.h, order: 'conceal', used: false };
   });
   return {
     name: name || '', src, factionId: f.id, title, ploys0, equipment: [...equipment], ops,
@@ -145,7 +203,7 @@ function buildPlayer(src, name) {
 
 // ── Mapa: geometría y marcadores de objetivo ─────────────────
 // MARCADORES[img] = { o: [[x%, y%]…], j1: lado de la zona de despliegue naranja (l r t b) }
-// S.dz: jugador que despliega en la zona naranja · S.rot: giro manual de 180°
+// S.dz: jugador que despliega en la zona naranja · ROT: giro manual de 180° (local)
 function mapInfo(img) {
   const over = (KT.store.get('marcadores', {}) || {})[img];
   const base = (window.MARCADORES || {})[img] || { o: [], j1: 'l' };
@@ -156,7 +214,7 @@ function geom() {
   if (!m) return null;
   const info = mapInfo(m.img);
   const side = S.dz === 1 ? OPP[info.j1] : info.j1;        // dónde despliega J1 en la imagen original
-  const rot = (side === 'r') !== !!S.rot;                   // se gira para dejar a J1 a la izquierda
+  const rot = (side === 'r') !== ROT;                   // se gira para dejar a J1 a la izquierda
   return { z, m, info, side, rot, shown: rot ? OPP[side] : side };
 }
 // Propietario de un marcador (en coordenadas de la imagen): 'c' centro, 0 J1, 1 J2
@@ -182,6 +240,8 @@ function initObjs(zone, mapId, crit) {
 const objName = (o, side) => { const w = ownerOf(o.x, o.y, side); return w === 'c' ? 'Marcador central' : `Marcador de ${pname(w)}`; };
 
 // ── Render ───────────────────────────────────────────────────
+// En la preparación se puede usar el móvil en vertical (la partida, en horizontal)
+const syncBody = () => document.body.classList.toggle('setup-open', $('#setup').classList.contains('on'));
 function render(only) {
   if (!S || !S.started) { $('#app').hidden = true; openSetup(); return; }
   $('#app').hidden = false;
@@ -215,7 +275,9 @@ function renderCol(i) {
     ...P.equipment.map(id => `<button class="g-chip" data-tipeq="${esc(id)}">${esc(eqAll.find(e => e.id === id)?.n || id)}</button>`),
   ].join('');
   const t = tacOf(P.tac), k = killInfo(i);
-  const tacTxt = !t ? 'Elegir' : P.tacShown ? t.name : 'Oculta';
+  const own = isDual() && S.dual && SEAT === i;           // en su propio móvil cada jugador ve sus secretos
+  const tacTxt = !t ? (mine(i) ? 'Elegir' : '—') : P.tacShown || own ? t.name : 'Oculta';
+  const primTxt = P.prim ? (S.ended || own ? OPN[P.prim].replace('Op. ', '') : 'Oculta') : (mine(i) ? 'Elegir' : '—');
   const cards = CARDS.map(([id, l]) => {
     const st = P.cards[id];
     const tip = OPS.iniciativa.find(c => c.id === id);
@@ -225,12 +287,12 @@ function renderCol(i) {
   col.innerHTML = `
     <div class="g-ph">
       <img src="${f.img}" alt="" onerror="this.style.visibility='hidden'">
-      <div class="g-pn"><div class="g-pname">${esc(pname(i))}</div><div class="g-pfac">${esc(f.name)} · ${esc(P.title)}</div></div>
+      <div class="g-pn"><div class="g-pname">${esc(pname(i))}${isDual() && S.dual && SEAT === i ? ' <small class="g-you">tú</small>' : ''}</div><div class="g-pfac">${esc(f.name)} · ${esc(P.title)}</div></div>
       <div class="g-pcount" title="Por activar / en pie / total"><b>${ready}</b> por activar<br>${alive.length}/${P.ops.length} en pie</div>
     </div>
     <div class="g-mis">
       <button class="g-mchip ${t ? (P.tacShown ? 'shown' : 'secret') : 'todo'}" data-sheet="tac" data-p="${i}" title="Operación táctica"><i class="ti ti-${t && !P.tacShown ? 'lock' : 'target-arrow'}"></i><span>Táctica</span><b>${esc(tacTxt)}</b></button>
-      <button class="g-mchip ${P.prim ? 'secret' : 'todo'}" data-sheet="score" data-p="${i}" title="Operación principal y puntuación"><i class="ti ti-${P.prim && !S.ended ? 'lock' : 'star'}"></i><span>Principal</span><b>${P.prim ? (S.ended ? esc(OPN[P.prim].replace('Op. ', '')) : 'Oculta') : 'Elegir'}</b></button>
+      <button class="g-mchip ${P.prim ? 'secret' : 'todo'}" data-sheet="score" data-p="${i}" title="Operación principal y puntuación"><i class="ti ti-${P.prim && !S.ended ? 'lock' : 'star'}"></i><span>Principal</span><b>${esc(primTxt)}</b></button>
       <button class="g-mchip kill" data-sheet="score" data-p="${i}" title="Grado de eliminación: ${k.dead} de ${k.start} enemigos incapacitados"><i class="ti ti-skull"></i><span>Elim.</span><b>${k.grade}<small>/5</small></b></button>
       <button class="g-mchip ploy" data-sheet="ploys" data-p="${i}" title="Ardides estratégicos y de tiroteo"><i class="ti ti-cards"></i><span>Ardides</span>${nPloys ? `<b>${nPloys}<small> este PI</small></b>` : ''}</button>
     </div>
@@ -246,7 +308,7 @@ function opCard(i, P, o) {
   const name = (o.label || od.name) + (o.n ? ' #' + o.n : '');
   const ws = od.w.filter(w => o.wpn.includes(w.n));
   const worse = v => hurt ? Math.min(6, parseInt(v) + 1) + '+' : v;
-  const cls = ['g-op', o.used && 'used', dead && 'dead', hurt && 'hurt', o.open && 'open'].filter(Boolean).join(' ');
+  const cls = ['g-op', o.used && 'used', dead && 'dead', hurt && 'hurt', OPEN.has(i + ':' + o.uid) && 'open'].filter(Boolean).join(' ');
   const rules = w => w.r.map(r => `<button class="g-rule" data-rule="${esc(r)}">${esc(r)}</button>`).join('');
   return `
   <div class="${cls}" data-p="${i}" data-u="${o.uid}">
@@ -465,7 +527,7 @@ function renderBar() {
         <div class="g-tp-dots">${dots}</div>
         <button class="g-tp-dot ${S.tp === MAX_TP && !S.ended ? 'fin' : ''}" data-tpstep="1" title="${S.tp === MAX_TP ? 'Terminar la batalla' : 'Siguiente (reinicia activaciones)'}" aria-label="Siguiente punto de inflexión"><i class="ti ti-${S.tp === MAX_TP ? 'flag' : 'chevron-right'}"></i></button>
       </div>
-      <button class="g-ini ${S.ini == null ? '' : 'p' + (S.ini + 1)}" data-ini title="Cambiar quién tiene la iniciativa">Iniciativa: <b>${ini}</b></button>
+      <button class="g-ini ${S.ini == null ? '' : 'p' + (S.ini + 1)}" data-sheet="ini" title="Tirada de iniciativa del punto de inflexión">Iniciativa: <b>${ini}</b></button>
     </div>
     ${cp(1)}
     ${vp(1)}`;
@@ -551,12 +613,13 @@ function renderSheet() {
     B.innerHTML = c ? opBody(c) + `<p class="g-hint">Toca cada marcador de objetivo en el mapa para marcar quién lo controla y su estado en esta operación.</p><details class="g-more"><summary>Cambiar operación crítica</summary>${list}</details>` : list;
   } else if (k === 'tac') {
     const P = S.players[i], t = tacOf(P.tac);
-    T.innerHTML = `<small>${esc(pname(i))} · operación táctica</small>${t && (P.tacShown || sheet.peek) ? esc(t.name) : t ? 'Oculta' : 'Elegir'}`;
+    const see = P.tacShown || sheet.peek || (isDual() && mine(i));
+    T.innerHTML = `<small>${esc(pname(i))} · operación táctica</small>${t && see ? esc(t.name) : t ? 'Oculta' : 'Elegir'}`;
     const list = `<p class="g-hint">Se elige en secreto al revelar los agentes.</p>` + tacPicker(P, sheet.all, P.tac);
-    if (!t) B.innerHTML = list;
-    else if (!P.tacShown && !sheet.peek) B.innerHTML = `
+    if (!t) B.innerHTML = mine(i) ? list : `<div class="g-secret"><i class="ti ti-hourglass"></i><p>${esc(pname(i))} aún no ha elegido su operación táctica.</p></div>`;
+    else if (!P.tacShown && !sheet.peek && !(isDual() && mine(i))) B.innerHTML = `
       <div class="g-secret"><i class="ti ti-lock"></i><p>Operación táctica de <b>${esc(pname(i))}</b> oculta.</p>
-        <button class="icon-btn accent" data-peek><i class="ti ti-eye"></i> Ver (solo ${esc(pname(i))})</button></div>`;
+        ${mine(i) ? `<button class="icon-btn accent" data-peek><i class="ti ti-eye"></i> Ver (solo ${esc(pname(i))})</button>` : '<p class="g-hint">Se mostrará cuando la revele.</p>'}</div>`;
     else B.innerHTML = `
       <div class="g-row"><span class="g-arq">${esc(t.arq)}</span><span style="flex:1"></span>
         <button class="icon-btn ${P.tacShown ? '' : 'accent'}" data-reveal>${P.tacShown ? '<i class="ti ti-lock"></i> Volver a ocultar' : '<i class="ti ti-eye"></i> Revelar a ambos'}</button></div>
@@ -579,22 +642,23 @@ function renderSheet() {
     const P = S.players[i], s = scoreOf(i), kk = s.k, c = critOf(S.crit), t = tacOf(P.tac);
     T.innerHTML = `<small>${esc(pname(i))} · puntos de victoria</small><span class="g-total">${s.total} PV</span>`;
     const row = (key, name, sub, val, ctrl) => `
-      <div class="g-srow ${P.prim === key && (S.ended || sheet.peek) ? 'prim' : ''}">
+      <div class="g-srow ${P.prim === key && (S.ended || sheet.peek || (isDual() && mine(i))) ? 'prim' : ''}">
         <div class="n"><b>${name}</b><small>${sub}</small></div>
         ${ctrl}
         <div class="g-sbar"><span style="--p:${Math.min(6, val) / 6 * 100}%"></span></div>
       </div>`;
     const pmc = (op, v) => `<div class="g-spm"><button data-sc="${op}" data-v="-1" aria-label="Restar">−</button><b>${v}</b><button data-sc="${op}" data-v="1" aria-label="Sumar">+</button></div>`;
-    const showPrim = S.ended || sheet.peek;
+    const showPrim = S.ended || sheet.peek || (isDual() && mine(i));
+    const seeTac = P.tacShown || sheet.peek || (isDual() && mine(i));
     B.innerHTML = `
       ${row('crit', 'Operación crítica', c ? esc(c.n + '. ' + c.name) : 'sin elegir', s.crit, pmc('crit', s.crit))}
       ${row('kill', 'Operación de eliminación', `Grado ${kk.grade}/5 · ${kk.dead} de ${kk.start} enemigos incapacitados${kk.next != null ? ` · siguiente grado con ${kk.next}` : ''}${s.bonus ? ' · +1 por grado mayor' : ''}${kk.adj ? ` · ajuste ${kk.adj > 0 ? '+' : ''}${kk.adj}` : ''}`, s.kill,
         `<div class="g-spm" title="Ajuste manual del grado (agentes que no cuentan, etc.)"><button data-sc="killAdj" data-v="-1" aria-label="Bajar grado">−</button><b>${s.kill}</b><button data-sc="killAdj" data-v="1" aria-label="Subir grado">+</button></div>`)}
-      ${row('tac', 'Operación táctica', t ? (P.tacShown || sheet.peek ? esc(t.name) : 'oculta') : 'sin elegir', s.tac, pmc('tac', s.tac))}
+      ${row('tac', 'Operación táctica', t ? (seeTac ? esc(t.name) : 'oculta') : 'sin elegir', s.tac, pmc('tac', s.tac))}
       <h4>Operación principal <small>(gambito estratégico del PI 1, secreta)</small></h4>
-      ${showPrim || !P.prim
+      ${(showPrim || !P.prim) && (mine(i) || S.ended)
         ? `<div class="g-pick prim">${['crit', 'kill', 'tac'].map((o, n) => `<button class="${P.prim === o ? 'on' : ''}" data-prim="${o}"><b>${n + 1}</b>${OPN[o].replace('Op. ', '')}</button>`).join('')}</div>`
-        : `<div class="g-secret sm"><i class="ti ti-lock"></i><p>Elegida y oculta hasta el final.</p><button class="icon-btn" data-peek><i class="ti ti-eye"></i> Ver / cambiar</button></div>`}
+        : `<div class="g-secret sm"><i class="ti ti-lock"></i><p>${P.prim ? 'Elegida y oculta hasta el final.' : 'Aún no la ha elegido.'}</p>${mine(i) ? '<button class="icon-btn" data-peek><i class="ti ti-eye"></i> Ver / cambiar</button>' : ''}</div>`}
       <p class="g-hint">${S.ended ? (P.prim ? `Bonificación: la mitad de ${s[P.prim]} PV de la ${OPN[P.prim].toLowerCase()} → <b>+${s.prim} PV</b>.` : 'No se eligió operación principal.') : 'Al final de la batalla suma la mitad (redondeando hacia arriba) de lo puntuado con ella.'} Máximo 6PV por operación.</p>
       <div class="g-stot"><span>Total</span><b>${s.total}</b></div>`;
   } else if (k === 'seq') {
@@ -607,6 +671,19 @@ function renderSheet() {
         ${Object.entries(OPS.kill.tabla).map(([n, r]) => `<tr class="${S.players.some(P => P.ops.length === +n) ? 'on' : ''}"><td>${n}</td>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</table>
       <h4>Operación principal</h4><p>${esc(OPS.primaria.txt)}</p>
       <button class="icon-btn g-orig" data-img="imagenes/misiones/secuencia.webp"><i class="ti ti-cards"></i> Carta original (inglés)</button>`;
+  } else if (k === 'ini') {
+    const r = S.iniRoll && S.iniRoll.tp === S.tp ? S.iniRoll : null;
+    const prevNo = S.tp === 1 ? (S.ini0 != null ? 1 - S.ini0 : null) : (S.ini != null ? 1 - S.ini : null);
+    T.innerHTML = `<small>Punto de inflexión ${S.tp}</small>Iniciativa`;
+    const die = v => `<span class="g-die ${v ? '' : 'empty'}">${v || '?'}</span>`;
+    B.innerHTML = `
+      <p>Tirada enfrentada (aplicad antes las reglas de tirada de vuestros equipos y las cartas de iniciativa). ${prevNo != null ? `Si hay empate gana quien no tenía la iniciativa: <b>${esc(pname(prevNo))}</b>.` : ''}</p>
+      <div class="g-dice"><span class="p1">${esc(pname(0))}</span>${die(r?.roll[0])}<small>vs</small>${die(r?.roll[1])}<span class="p2">${esc(pname(1))}</span>
+        <button class="icon-btn accent ripple" data-iniroll><i class="ti ti-dice-5"></i> Tirar</button></div>
+      ${r ? `<p class="g-hint">Gana la tirada <b>${esc(pname(r.win))}</b>${S.tp < MAX_TP ? ` · ${esc(pname(1 - r.win))} recibe la carta <b>±${S.tp}</b>` : ''}.</p>` : ''}
+      <h4>¿Quién tiene la iniciativa?</h4>
+      <div class="g-pbtns">${[0, 1].map(p => `<button class="g-pbtn p${p + 1} ${S.ini === p ? 'on' : ''}" data-setini="${p}">${esc(pname(p))}</button>`).join('')}</div>
+      <p class="g-hint">El ganador de la tirada elige quién tiene la iniciativa. El perdedor (salvo en el PI 4) gana la carta de iniciativa del punto de inflexión.</p>`;
   } else if (k === 'keys') {
     const z = zoneOf(S.zone);
     T.innerHTML = `<small>Leyenda del terreno</small>${esc(z.name)}`;
@@ -621,7 +698,7 @@ function renderSheet() {
         <tr><td>Op. principal (½)</td>${[0, 1].map(j => `<td>+${s[j].prim}</td>`).join('')}</tr>
         <tr class="tot"><td>Total</td>${[0, 1].map(j => `<td>${s[j].total}</td>`).join('')}</tr></table>
       ${S.players.some(P => !P.prim) ? '<p class="g-hint">Algún jugador no tiene operación principal elegida: ábrela desde su puntuación.</p>' : ''}
-      <div class="g-row"><button class="icon-btn" data-sheet-go="score" data-p="0">Puntuación J1</button><button class="icon-btn" data-sheet-go="score" data-p="1">Puntuación J2</button><span style="flex:1"></span><button class="icon-btn accent" data-newgame><i class="ti ti-refresh"></i> Nueva partida</button></div>`;
+      <div class="g-row"><a class="icon-btn" href="historial.html"><i class="ti ti-history"></i> Historial</a><button class="icon-btn" data-sheet-go="score" data-p="0">Puntuación J1</button><button class="icon-btn" data-sheet-go="score" data-p="1">Puntuación J2</button><span style="flex:1"></span><button class="icon-btn accent" data-newgame><i class="ti ti-refresh"></i> Nueva partida</button></div>`;
   }
 }
 
@@ -658,7 +735,21 @@ function onSheetClick(e) {
       commit(() => { P.score[d.sc] = nv; }, { only: 'bar' });
     }
   } else if (d.sheetGo) openSheet(d.sheetGo, +d.p);
-  else if (t.hasAttribute('data-newgame')) { closeSheet(); draft = null; openSetup(); }
+  else if (t.hasAttribute('data-newgame')) { closeSheet(); newGame(); }
+  else if (t.hasAttribute('data-iniroll')) {
+    const prevNo = S.tp === 1 ? (S.ini0 != null ? 1 - S.ini0 : null) : (S.ini != null ? 1 - S.ini : null);
+    let a = d6(), b = d6();
+    while (a === b && prevNo == null) { a = d6(); b = d6(); }
+    const win = a === b ? prevNo : a > b ? 0 : 1, lose = 1 - win;
+    commit(() => {
+      S.iniRoll = { tp: S.tp, roll: [a, b], win };
+      S.ini = win;
+      const card = 'i' + S.tp;
+      if (S.tp < MAX_TP && S.players[lose].cards[card] === 0) S.players[lose].cards[card] = 1;
+    });
+    KT.toast(`${esc(pname(win))} gana la tirada (${a}–${b})${a === b ? ' por empate' : ''}`, { type: 'ok' });
+  }
+  else if (d.setini != null) commit(() => { S.ini = +d.setini; }, { only: 'bar' });
 }
 
 // ── Interacción (delegada) ───────────────────────────────────
@@ -690,8 +781,10 @@ function onColClick(e) {
   const P = S.players[i], o = P.ops.find(x => x.uid === uid);
   const act = b.dataset.act;
   if (act === 'open') {                     // sin historial: es solo vista
-    o.open = !o.open; save();
-    card.classList.toggle('open', o.open);
+    const k = i + ':' + o.uid, on = !OPEN.has(k);
+    on ? OPEN.add(k) : OPEN.delete(k);
+    KT.store.set('partida.abiertos', [...OPEN]);
+    card.classList.toggle('open', on);
     return;
   }
   const g0 = killInfo(1 - i).grade;
@@ -724,8 +817,6 @@ function onBarClick(e) {
     setTP(+t.dataset.tp);
   } else if (t.dataset.tpstep) {
     setTP(S.tp + (S.ended && +t.dataset.tpstep < 0 ? 0 : +t.dataset.tpstep));
-  } else if (t.hasAttribute('data-ini')) {
-    commit(() => { S.ini = S.ini == null ? 0 : S.ini === 0 ? 1 : null; }, { only: 'bar' });
   }
 }
 
@@ -734,7 +825,7 @@ function onBoardClick(e) {
   if (e.target.id === 'board-img') { if (pop) { pop = null; renderBoard(); return; } openViewer(); return; }
   const t = e.target.closest('button'); if (!t) return;
   if (t.dataset.sheet) openSheet(t.dataset.sheet);
-  else if (t.hasAttribute('data-flip')) commit(() => { S.rot = !S.rot; }, { only: 'board' });
+  else if (t.hasAttribute('data-flip')) { ROT = !ROT; KT.store.set('partida.rot', ROT); renderBoard(); }
   else if (t.hasAttribute('data-addobj')) {
     pop = pop?.add ? null : { add: true };
     renderBoard();
@@ -750,6 +841,7 @@ function setTP(n) {
   }
   if (n > MAX_TP) {
     commit(() => { S.ended = true; });
+    saveHistory();
     openSheet('end');
     return;
   }
@@ -812,7 +904,10 @@ function openViewer(src) {
 function closeViewer() { $('#viewer').classList.remove('on'); }
 
 // ════════════════════════════════════════════════════════════
-//  PREPARACIÓN — secuencia guiada (por defecto) o panel rápido
+//  PREPARACIÓN — secuencia guiada (por defecto) o panel rápido.
+//  En modo «dos dispositivos» la preparación (draft) se comparte:
+//  cada dispositivo edita su asiento (SEAT 0 anfitrión, 1 invitado)
+//  y el anfitrión decide la misión.
 // ════════════════════════════════════════════════════════════
 const STEPS = [
   { id: 'jug', t: 'Jugadores', ico: 'users' },
@@ -823,18 +918,24 @@ const STEPS = [
   { id: 'des', t: 'Despliegue', ico: 'flag' },
   { id: 'pi1', t: 'PI 1', ico: 'swords' },
 ];
+// Campos de la preparación que se sincronizan entre dispositivos
+const SHARED = ['names', 'players', 'zone', 'map', 'crit', 'roll', 'win0', 'ini0', 'dzPick', 'tac', 'prim', 'roll1', 'win1', 'ini1', 'ready', 'room'];
+const sharedOf = d => { const o = {}; SHARED.forEach(k => { o[k] = clone(d[k]); }); return o; };
+const isDual = () => SEAT != null;
+const mine = i => SEAT == null || SEAT === i;
 
 function newDraft() {
   const z = zoneOf(S?.zone) || ZONAS[0];
   return {
     mode: 'wiz', step: 0,
     names: S ? S.players.map(p => p.name) : ['', ''],
-    src: S ? S.players.map(p => p.src) : [null, null],
+    src: S && !S.dual ? S.players.map(p => p.src) : [null, null],
     zone: z.id, map: mapOf(z, S?.map) ? S.map : z.maps[0].id, crit: S?.crit ?? null,
     roll: null, win0: null, ini0: null, dzPick: null,        // tirada de preparación y zona de despliegue
-    players: null, built: null,
+    players: [null, null], built: null,
     tac: [null, null], tacAll: [false, false], cover: null,   // cover: jugador que está eligiendo en secreto
     roll1: null, win1: null, ini1: null, prim: [null, null], primCover: null,
+    ready: [false, false], room: Net.cfg?.room || null,
   };
 }
 
@@ -844,37 +945,72 @@ function openSetup() {
   draft = draft || newDraft();
   // ?p1=<id> desde el constructor
   const q = new URLSearchParams(location.search).get('p1');
-  if (q && rosters.some(r => r.id === q) && !draft.src[0]) draft.src[0] = { kind: 'roster', id: q };
+  if (q && rosters.some(r => r.id === q) && !draft.src[0] && !isDual()) draft.src[0] = { kind: 'roster', id: q };
   renderSetup();
   $('#setup').classList.add('on');
+  syncBody();
 }
 
 function renderSetup() {
+  if (!draft) return;
+  $('#btn-mode').hidden = isDual();
   $('#btn-mode').innerHTML = draft.mode === 'wiz' ? '<i class="ti ti-layout-columns"></i><span class="hide-sm">Saltar al panel</span>' : '<i class="ti ti-list-numbers"></i><span class="hide-sm">Preparación guiada</span>';
-  $('#btn-close-setup').style.display = S && S.started ? '' : 'none';
-  if (draft.mode === 'panel') renderPanel(); else renderWizard();
+  $('#btn-close-setup').style.display = S && S.started && (!isDual() || S.dual === Net.cfg?.room) ? '' : 'none';
+  // conserva el foco si se está escribiendo un nombre mientras llegan cambios del otro dispositivo
+  const act = document.activeElement, nameIdx = act?.dataset?.name, sel = nameIdx != null ? [act.selectionStart, act.selectionEnd] : null;
+  if (draft.mode === 'panel' && !isDual()) renderPanel(); else renderWizard();
+  if (isDual() && SEAT === 0) KT.store.set('partida.lobby', draft);
+  if (nameIdx != null) { const el = document.querySelector(`[data-name="${nameIdx}"]`); if (el) { el.focus(); try { el.setSelectionRange(...sel); } catch {} } }
+  renderNet();
 }
 
 // ── Bloques compartidos ──
 function playerPicker(i) {
   const rosters = KT.store.get('rosters', []) || [];
-  const isOn = s => draft.src[i] && draft.src[i].kind === s.kind && draft.src[i].id === s.id;
+  const cur = isDual() ? draft.src[i] : draft.src[i];
+  const isOn = s => cur && cur.kind === s.kind && cur.id === s.id;
   const rost = rosters.length ? rosters.map(r => {
     const f = FACTIONS[r.factionId]; if (!f) return '';
     const n = r.ops.reduce((a, o) => a + o.qty, 0);
     return `<button class="g-opt ${isOn({ kind: 'roster', id: r.id }) ? 'on' : ''}" data-src="${i}" data-kind="roster" data-id="${r.id}">
       <img src="${f.img}" alt=""><span class="o"><b>${esc(r.name)}</b><small>${esc(f.name)} · ${n} agentes</small></span></button>`;
-  }).join('') : `<div class="g-note">Aún no tienes comandos guardados. <a href="builder.html" style="color:var(--orange)">Crea uno en el constructor</a> o elige un comando completo abajo.</div>`;
+  }).join('') : `<div class="g-note">Aún no tienes comandos guardados en este dispositivo. <a href="builder.html" style="color:var(--orange)">Crea uno en el constructor</a> o elige un comando completo abajo.</div>`;
   const full = Object.values(FACTIONS).map(f => `<button class="g-opt ${isOn({ kind: 'faction', id: f.id }) ? 'on' : ''}" data-src="${i}" data-kind="faction" data-id="${f.id}">
       <img src="${f.img}" alt=""><span class="o"><b>${esc(f.name)}</b><small>Todos los agentes (${f.ops.length})</small></span></button>`).join('');
   return `
     <div class="g-sp p${i + 1}">
-      <div class="g-sp-hd"><span class="t">J${i + 1}</span><input value="${esc(draft.names[i])}" placeholder="Jugador ${i + 1}" data-name="${i}" aria-label="Nombre del jugador ${i + 1}"></div>
+      <div class="g-sp-hd"><span class="t">J${i + 1}${isDual() ? ' · tú' : ''}</span><input value="${esc(draft.names[i])}" placeholder="Jugador ${i + 1}" data-name="${i}" aria-label="Nombre del jugador ${i + 1}"></div>
       <div class="g-sp-list">
         <div class="g-sp-sec">Mis comandos</div>${rost}
         <div class="g-sp-sec">Comando completo</div>${full}
       </div>
     </div>`;
+}
+// Tarjeta del rival (modo dos dispositivos)
+function rivalCard(i) {
+  const P = draft.players[i], f = P && FACTIONS[P.factionId];
+  const online = KTD.peer;
+  return `<div class="g-sp p${i + 1} g-rival">
+    <div class="g-sp-hd"><span class="t">J${i + 1}</span><b class="g-rival-n">${esc(draft.names[i] || (i ? 'Invitado' : 'Anfitrión'))}</b>
+      <span class="g-dot ${online ? 'on' : ''}" title="${online ? 'Conectado' : 'Desconectado'}"></span></div>
+    <div class="g-sp-list">${P
+      ? `<div class="g-rival-team"><img src="${f.img}" alt=""><div><b>${esc(f.name)}</b><small>${esc(P.title)} · ${P.ops.filter(o => o.inc !== false).length} agentes</small></div></div>`
+      : `<div class="g-secret"><i class="ti ti-${online ? 'hourglass' : 'user-plus'}"></i><p>${online ? 'Eligiendo comando…' : i ? 'Todavía no se ha unido nadie.' : 'Esperando al anfitrión…'}</p></div>`}
+      ${SEAT === 0 && i === 1 ? invitePanel() : ''}
+    </div></div>`;
+}
+function invitePanel() {
+  if (!Net.cfg) return '';
+  const url = KTD.inviteUrl(Net.cfg);
+  const msg = `¡Te reto a una partida de Kill Team! Únete desde tu móvil: ${url}`;
+  return `<div class="g-invite ${KTD.peer ? 'joined' : ''}">
+    <div class="g-qr" title="Escanea para unirte">${KTD.qrSvg(url)}</div>
+    <div class="g-invite-b">
+      <p>${KTD.peer ? '<i class="ti ti-circle-check"></i> Rival conectado' : 'Invita al otro jugador: escanea el QR o envíale el enlace.'}</p>
+      <a class="icon-btn g-wa" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener"><i class="ti ti-brand-whatsapp"></i> WhatsApp</a>
+      ${navigator.share ? '<button class="icon-btn" data-share><i class="ti ti-share"></i> Compartir</button>' : ''}
+      <button class="icon-btn" data-copy="${esc(url)}"><i class="ti ti-copy"></i> Copiar enlace</button>
+    </div></div>`;
 }
 function missionPicker(withCritDesc) {
   const z = zoneOf(draft.zone) || ZONAS[0];
@@ -892,7 +1028,7 @@ function missionPicker(withCritDesc) {
     ${withCritDesc && c ? `<div class="g-wz-crit"><b>${c.n}. ${esc(c.name)}</b>${c.acciones ? `<span>Acción: ${c.acciones.map(a => esc(a.n) + ' (' + a.pa + 'PA)').join(', ')}</span>` : ''}${lines(c.pv)}</div>` : ''}`;
 }
 
-// ── Panel rápido (todo en una pantalla) ──
+// ── Panel rápido (todo en una pantalla, un dispositivo) ──
 function renderPanel() {
   const mission = `
     <div class="g-sp mis">
@@ -912,33 +1048,36 @@ function renderPanel() {
 }
 
 // ── Secuencia guiada ──
+function withInc(P) { if (P) P.ops.forEach(o => { if (o.inc === undefined) o.inc = true; }); return P; }
 function ensurePlayers() {
+  if (isDual()) return !!(draft.players[0] && draft.players[1]);
   const key = JSON.stringify(draft.src);
-  if (draft.players && draft.built === key) return true;
+  if (draft.players[0] && draft.players[1] && draft.built === key) return true;
   const pl = [0, 1].map(i => draft.src[i] && buildPlayer(draft.src[i], draft.names[i].trim()));
   if (pl.some(p => !p)) return false;
-  pl.forEach(P => P.ops.forEach(o => { o.inc = true; }));
+  pl.forEach(withInc);
   draft.players = pl; draft.built = key; draft.tac = [null, null]; draft.prim = [null, null];
   return true;
 }
 function stepOk(n) {
   const id = STEPS[n].id;
-  if (id === 'jug') return !!(draft.src[0] && draft.src[1]);
+  const seats = isDual() ? [SEAT] : [0, 1];
+  if (id === 'jug') return isDual() ? !!(draft.players[0] && draft.players[1]) : !!(draft.src[0] && draft.src[1]);
   if (id === 'mis') return !!(mapOf(zoneOf(draft.zone), draft.map) && draft.crit);
   if (id === 'ini') return draft.ini0 != null && draft.dzPick != null;
-  if (id === 'age') return !!(draft.players && draft.built === JSON.stringify(draft.src) && draft.players.every(P => P.ops.some(o => o.inc)));
-  if (id === 'tac') return draft.tac.every(Boolean);
+  if (id === 'age') return isDual() ? !!draft.players[SEAT]?.ops.some(o => o.inc) : !!(draft.players[0] && draft.built === JSON.stringify(draft.src) && draft.players.every(P => P.ops.some(o => o.inc)));
+  if (id === 'tac') return seats.every(i => draft.tac[i]);
   if (id === 'des') return true;
-  if (id === 'pi1') return draft.ini1 != null && draft.prim.every(Boolean);
+  if (id === 'pi1') return draft.ini1 != null && seats.every(i => draft.prim[i]);
   return true;
 }
 const stepHint = {
-  jug: 'Elige un comando para cada jugador',
-  mis: 'Elige mapa y operación crítica (o pulsa Aleatorio)',
-  ini: 'Indica quién tiene la iniciativa y qué zona de despliegue elige',
-  age: 'Cada jugador necesita al menos un agente',
-  tac: 'Cada jugador debe elegir su operación táctica en secreto',
-  pi1: 'Falta la iniciativa del PI 1 o alguna operación principal',
+  jug: () => isDual() ? (KTD.peer ? 'Esperando a que ambos elijáis comando' : SEAT === 0 ? 'Invita al otro jugador y elige tu comando' : 'Elige tu comando') : 'Elige un comando para cada jugador',
+  mis: () => isDual() && SEAT === 1 ? 'El anfitrión está eligiendo la misión' : 'Elige mapa y operación crítica (o pulsa Aleatorio)',
+  ini: () => 'Indica quién tiene la iniciativa y qué zona de despliegue elige',
+  age: () => isDual() ? 'Necesitas al menos un agente' : 'Cada jugador necesita al menos un agente',
+  tac: () => isDual() ? 'Elige tu operación táctica' : 'Cada jugador debe elegir su operación táctica en secreto',
+  pi1: () => isDual() ? 'Falta la iniciativa del PI 1 o tu operación principal' : 'Falta la iniciativa del PI 1 o alguna operación principal',
 };
 
 function diceRow(roll, label) {
@@ -948,8 +1087,8 @@ function diceRow(roll, label) {
 }
 const pbtn = (attr, cur) => [0, 1].map(p => `<button class="g-pbtn p${p + 1} ${cur === p ? 'on' : ''}" data-${attr}="${p}">${esc(pname(p))}</button>`).join('');
 
-function mapPreview(dzPlayer) {
-  const z = zoneOf(draft.zone), m = mapOf(z, draft.map);
+function mapPreview(dzPlayer, z0, m0) {
+  const z = z0 || zoneOf(draft.zone), m = m0 || mapOf(z, draft.map);
   if (!m) return '';
   const info = mapInfo(m.img);
   const lab = (p, side) => `<span class="g-dz s-${side} p${p + 1}">${esc(pname(p))}</span>`;
@@ -959,6 +1098,9 @@ function mapPreview(dzPlayer) {
   return `<div class="g-prev"><img src="${m.img}" alt="Mapa ${esc(m.label)}">${sides}${info.o.map(([x, y]) => `<i class="g-prev-o" style="left:${x}%;top:${y}%"></i>`).join('')}</div>`;
 }
 
+// ¿Está todo lo de este dispositivo listo para empezar?
+const allOk = () => STEPS.every((_, k) => stepOk(k));
+
 function renderWizard() {
   const n = draft.step, id = STEPS[n].id;
   const bar = `<div class="g-steps">${STEPS.map((s, k) => {
@@ -966,13 +1108,24 @@ function renderWizard() {
     return `<button class="g-step ${k === n ? 'on' : k < n ? 'done' : ''}" data-step="${k}" ${reach ? '' : 'disabled'}><b>${k < n ? '<i class="ti ti-check"></i>' : k + 1}</b><span>${s.t}</span></button>`;
   }).join('')}</div>`;
   let body = '';
-  if (id === 'jug') {
-    body = `<p class="g-wz-lead">Elegid los equipos. Podéis usar un comando guardado del constructor o el comando completo de una facción.</p>
-      <div class="g-wz-2">${playerPicker(0)}${playerPicker(1)}</div>`;
+  if (isDual() && !Net.synced) {
+    body = `<div class="g-secret"><i class="ti ti-loader-2 spin"></i><p>Conectando con la partida…</p></div>`;
+  } else if (id === 'jug') {
+    body = isDual()
+      ? `<p class="g-wz-lead">Partida en <b>dos dispositivos</b>: cada jugador elige su comando, equipo y operaciones en su móvil. La batalla empieza cuando ambos estéis listos.
+          ${SEAT === 0 ? '<button class="link-btn" data-dual="off">Volver a un solo dispositivo</button>' : '<button class="link-btn" data-dual="off">Salir de la partida</button>'}</p>
+         <div class="g-wz-2">${SEAT === 0 ? playerPicker(0) + rivalCard(1) : rivalCard(0) + playerPicker(1)}</div>`
+      : `<div class="g-mode">
+           <button class="g-mode-b on"><i class="ti ti-device-mobile"></i><b>Un dispositivo</b><small>Los dos jugadores comparten esta pantalla</small></button>
+           <button class="g-mode-b" data-dual="on"><i class="ti ti-devices"></i><b>Dos dispositivos</b><small>Invita por WhatsApp o QR: cada uno usa su móvil</small></button>
+         </div>
+         <p class="g-wz-lead">Elegid los equipos. Podéis usar un comando guardado del constructor o el comando completo de una facción.</p>
+         <div class="g-wz-2">${playerPicker(0)}${playerPicker(1)}</div>`;
   } else if (id === 'mis') {
-    body = `<div class="g-wz-head"><p class="g-wz-lead">Montad la zona de aniquilación y determinad la operación crítica; después colocad los marcadores de objetivo.</p>
-      <button class="icon-btn ripple" data-rnd><i class="ti ti-dice-5"></i> Aleatorio</button></div>
-      <div class="g-wz-card">${missionPicker(true)}</div>`;
+    const ro = isDual() && SEAT !== 0;
+    body = `<div class="g-wz-head"><p class="g-wz-lead">${ro ? `<b>${esc(pname(0))}</b> elige la zona, el mapa y la operación crítica.` : 'Montad la zona de aniquilación y determinad la operación crítica; después colocad los marcadores de objetivo.'}</p>
+      ${ro ? '' : '<button class="icon-btn ripple" data-rnd><i class="ti ti-dice-5"></i> Aleatorio</button>'}</div>
+      <div class="g-wz-card ${ro ? 'ro' : ''}">${missionPicker(true)}</div>`;
   } else if (id === 'ini') {
     const w = draft.win0, ini = draft.ini0;
     body = `
@@ -1004,7 +1157,7 @@ function renderWizard() {
       <div class="g-wz-2">${[0, 1].map(i => agePanel(i)).join('')}</div>`;
   } else if (id === 'tac') {
     ensurePlayers();
-    body = `<p class="g-wz-lead">Cada jugador elige <b>en secreto</b> una operación táctica de sus arquetipos. Pasaos el dispositivo: el otro jugador no debe mirar.</p>
+    body = `<p class="g-wz-lead">${isDual() ? 'Elige <b>en secreto</b> tu operación táctica: tu rival no la verá hasta que la reveles.' : 'Cada jugador elige <b>en secreto</b> una operación táctica de sus arquetipos. Pasaos el dispositivo: el otro jugador no debe mirar.'}</p>
       <div class="g-wz-2">${[0, 1].map(i => tacPanel(i)).join('')}</div>`;
   } else if (id === 'des') {
     const ini = draft.ini0;
@@ -1012,7 +1165,7 @@ function renderWizard() {
       <div class="g-wz-card">
         <h3><b>1</b> Equipo</h3><p>Alternad colocando los elementos de equipo, empezando por <b>${esc(pname(ini))}</b>.</p>
         <h3><b>2</b> Agentes</h3><p>Alternad desplegando <b>⅓ del equipo</b> cada vez, totalmente dentro de vuestra zona de despliegue y con <b>orden de ocultarse</b>, empezando por <b>${esc(pname(ini))}</b>.</p>
-        <ul class="g-wz-list">${[0, 1].map(i => { const P = draft.players[i]; const k = P.ops.filter(o => o.inc).length; return `<li><span class="p${i + 1}">${esc(pname(i))}</span> ${k} agentes · tandas de ${Math.ceil(k / 3)}</li>`; }).join('')}</ul>
+        <ul class="g-wz-list">${[0, 1].map(i => { const P = draft.players[i]; if (!P) return ''; const k = P.ops.filter(o => o.inc).length; return `<li><span class="p${i + 1}">${esc(pname(i))}</span> ${k} agentes · tandas de ${Math.ceil(k / 3)}</li>`; }).join('')}</ul>
         <p class="g-hint">Todos los agentes empiezan con orden de ocultarse; podrás cambiarla en su ficha.</p>
       </div>
       <div class="g-wz-card"><h3><b>3</b> Zonas de despliegue</h3>${mapPreview(draft.dzPick)}</div>
@@ -1022,7 +1175,7 @@ function renderWizard() {
     body = `<div class="g-wz-cols">
       <div class="g-wz-card">
         <h3><b>1</b> Iniciativa del punto de inflexión 1</h3>
-        <p>Tirada enfrentada (aplicad antes las reglas de tirada de vuestros equipos). Si hay empate gana quien no tenía la iniciativa: <b>${esc(pname(1 - draft.ini0))}</b>.</p>
+        <p>Tirada enfrentada (aplicad antes las reglas de tirada de vuestros equipos). Si hay empate gana quien no tenía la iniciativa: <b>${esc(pname(1 - (draft.ini0 ?? 0)))}</b>.</p>
         ${diceRow(draft.roll1, 'r1')}
         <div class="g-wz-or">o marca quién ganó</div>
         <div class="g-pbtns">${pbtn('win1', w)}</div>
@@ -1040,23 +1193,36 @@ function renderWizard() {
   $('#setup-body').className = 'g-setup-body wiz';
   $('#setup-body').innerHTML = `${bar}<div class="g-wz"><h2 class="g-wz-t"><i class="ti ti-${STEPS[n].ico}"></i> ${STEPS[n].t}</h2>${body}</div>`;
   const ok = stepOk(n), last = n === STEPS.length - 1;
+  let right;
+  if (!last) right = `<button class="icon-btn accent ripple" data-next ${ok ? '' : 'disabled'} style="height:38px;padding:0 18px;font-size:13px">Siguiente <i class="ti ti-chevron-right"></i></button>`;
+  else if (!isDual()) right = `<button class="icon-btn accent ripple" data-finish ${ok ? '' : 'disabled'} style="height:38px;padding:0 18px;font-size:13px"><i class="ti ti-swords"></i> ¡A la batalla!</button>`;
+  else {
+    const me = draft.ready[SEAT], other = draft.ready[1 - SEAT];
+    right = `<span class="g-readys"><span class="${draft.ready[0] ? 'on' : ''}">${esc(pname(0))}</span><span class="${draft.ready[1] ? 'on' : ''}">${esc(pname(1))}</span></span>
+      <button class="icon-btn ${me ? '' : 'accent'} ripple" data-ready ${allOk() || me ? '' : 'disabled'} style="height:38px;padding:0 18px;font-size:13px"><i class="ti ti-${me ? 'x' : 'circle-check'}"></i> ${me ? 'No estoy listo' : '¡Estoy listo!'}</button>`;
+    if (me && !other) right = `<span class="sp-wait"><i class="ti ti-hourglass"></i> Esperando a ${esc(pname(1 - SEAT))}…</span>` + right;
+  }
+  const hint = isDual() && last
+    ? (!allOk() ? (ok ? 'Completa los pasos anteriores' : stepHint[id]()) : draft.ready[SEAT] ? '' : 'Todo listo: pulsa «¡Estoy listo!»')
+    : ok ? `Paso ${n + 1} de ${STEPS.length}` : stepHint[id]?.();
   $('#setup-ft').innerHTML = `
     <button class="icon-btn" data-back ${n ? '' : 'disabled'}><i class="ti ti-chevron-left"></i> Atrás</button>
-    <span class="sp">${ok ? `Paso ${n + 1} de ${STEPS.length}` : esc(stepHint[id] || '')}</span>
-    ${last
-      ? `<button class="icon-btn accent ripple" data-finish ${ok ? '' : 'disabled'} style="height:38px;padding:0 18px;font-size:13px"><i class="ti ti-swords"></i> ¡A la batalla!</button>`
-      : `<button class="icon-btn accent ripple" data-next ${ok ? '' : 'disabled'} style="height:38px;padding:0 18px;font-size:13px">Siguiente <i class="ti ti-chevron-right"></i></button>`}`;
+    <span class="sp">${esc(hint || '')}</span>
+    ${right}`;
 }
 
 function agePanel(i) {
-  const P = draft.players[i], f = FACTIONS[P.factionId], E = eqOptions(f);
+  const P = draft.players[i];
+  if (!P) return `<div class="g-sp p${i + 1}"><div class="g-sp-list"><div class="g-secret"><i class="ti ti-hourglass"></i><p>Esperando a ${esc(pname(i))}…</p></div></div></div>`;
+  const f = FACTIONS[P.factionId], E = eqOptions(f);
   const max = f.roster?.equipment?.slots || 4;
   const inc = P.ops.filter(o => o.inc).length;
+  const ro = !mine(i);
   const eqBtn = e => `<button class="g-eq ${P.equipment.includes(e.id) ? 'on' : ''}" data-eq="${i}" data-id="${esc(e.id)}" title="${esc(e.t || '')}">${esc(e.n)}</button>`;
-  return `<div class="g-sp p${i + 1}">
+  return `<div class="g-sp p${i + 1} ${ro ? 'ro' : ''}">
     <div class="g-sp-hd"><span class="t">${esc(pname(i))}</span><span class="g-sp-sub">${esc(f.name)} · ${inc}/${P.ops.length} agentes</span></div>
     <div class="g-sp-list">
-      <div class="g-sp-sec">Agentes${P.src.kind === 'faction' ? ' · desmarca los que no juegan' : ''}</div>
+      <div class="g-sp-sec">Agentes${P.src?.kind === 'faction' && !ro ? ' · desmarca los que no juegan' : ''}</div>
       <div class="g-ages">${P.ops.map(o => { const od = f.ops.find(x => x.id === o.opId); return `<button class="g-age ${o.inc ? 'on' : ''}" data-age="${i}" data-u="${o.uid}"><i class="ti ti-${o.inc ? 'checkbox' : 'square'}"></i>${esc((o.label || od.name) + (o.n ? ' #' + o.n : ''))}</button>`; }).join('')}</div>
       <div class="g-sp-sec">Equipo · ${P.equipment.length}/${max}</div>
       <div class="g-eqs">${E.fac.map(eqBtn).join('')}</div>
@@ -1065,7 +1231,13 @@ function agePanel(i) {
 }
 function tacPanel(i) {
   const P = draft.players[i];
-  const body = draft.cover === i
+  if (!P) return `<div class="g-sp p${i + 1}"><div class="g-sp-list"><div class="g-secret"><i class="ti ti-hourglass"></i><p>Esperando a ${esc(pname(i))}…</p></div></div></div>`;
+  let body;
+  if (isDual()) {
+    body = mine(i)
+      ? tacPicker(P, draft.tacAll[i], draft.tac[i])
+      : `<div class="g-secret"><i class="ti ti-${draft.tac[i] ? 'circle-check' : 'hourglass'}"></i><p>${draft.tac[i] ? `<b>${esc(pname(i))}</b> ya ha elegido su operación táctica.` : `${esc(pname(i))} está eligiendo…`}</p></div>`;
+  } else body = draft.cover === i
     ? tacPicker(P, draft.tacAll[i], draft.tac[i]) + `<div class="g-row"><span style="flex:1"></span><button class="icon-btn accent" data-hide="${i}" ${draft.tac[i] ? '' : 'disabled'}><i class="ti ti-lock"></i> Ocultar y pasar el dispositivo</button></div>`
     : draft.cover != null
       ? `<div class="g-secret"><i class="ti ti-eye-off"></i><p>${esc(pname(draft.cover))} está eligiendo. No mires.</p></div>`
@@ -1075,12 +1247,14 @@ function tacPanel(i) {
   return `<div class="g-sp p${i + 1}"><div class="g-sp-hd"><span class="t">${esc(pname(i))}</span><span class="g-sp-sub">${esc(archetypes(P).join(' · '))}</span></div><div class="g-sp-list">${body}</div></div>`;
 }
 function primPanel(i) {
-  const open = draft.primCover === i, v = draft.prim[i];
-  return `<div class="g-prim p${i + 1}">
-    <span class="who">${esc(pname(i))}</span>
-    ${open ? `<div class="g-pick prim">${['crit', 'kill', 'tac'].map((o, n) => `<button class="${v === o ? 'on' : ''}" data-primw="${i}" data-o="${o}"><b>${n + 1}</b>${OPN[o].replace('Op. ', '')}</button>`).join('')}</div>`
-      : `<button class="icon-btn ${v ? '' : 'accent'}" data-primcover="${i}"><i class="ti ti-${v ? 'circle-check' : 'lock'}"></i> ${v ? 'Elegida · ver' : 'Elegir en secreto'}</button>`}
-  </div>`;
+  const v = draft.prim[i];
+  const open = isDual() ? mine(i) : draft.primCover === i;
+  const btns = `<div class="g-pick prim">${['crit', 'kill', 'tac'].map((o, n) => `<button class="${v === o ? 'on' : ''}" data-primw="${i}" data-o="${o}"><b>${n + 1}</b>${OPN[o].replace('Op. ', '')}</button>`).join('')}</div>`;
+  let ctl;
+  if (open) ctl = btns;
+  else if (isDual()) ctl = `<span class="g-hint">${v ? '<i class="ti ti-circle-check"></i> Ya ha elegido' : 'Eligiendo…'}</span>`;
+  else ctl = `<button class="icon-btn ${v ? '' : 'accent'}" data-primcover="${i}"><i class="ti ti-${v ? 'circle-check' : 'lock'}"></i> ${v ? 'Elegida · ver' : 'Elegir en secreto'}</button>`;
+  return `<div class="g-prim p${i + 1}"><span class="who">${esc(pname(i))}</span>${ctl}</div>`;
 }
 
 function rollOff(tieTo) {
@@ -1090,14 +1264,29 @@ function rollOff(tieTo) {
 }
 
 function onSetupClick(e) {
-  const t = e.target.closest('button, input[type=checkbox]');
+  const t = e.target.closest('button, input[type=checkbox], a[data-copy]');
   if (!t || t.disabled) return;
   const d = t.dataset;
-  if (d.src != null) { draft.src[+d.src] = { kind: d.kind, id: d.id }; }
-  else if (d.zone) { const z = zoneOf(d.zone); draft.zone = z.id; if (!mapOf(z, draft.map)) draft.map = z.maps[0].id; draft.dzPick = null; }
-  else if (d.map) { draft.map = d.map; draft.dzPick = null; }
-  else if (d.crit) { draft.crit = draft.crit === +d.crit ? null : +d.crit; }
+  // acciones que no cambian la preparación compartida
+  if (d.dual === 'on') { Net.host(); return; }
+  if (d.dual === 'off') { Net.leave(true); return; }
+  if (d.copy) { navigator.clipboard?.writeText(d.copy).then(() => KT.toast('Enlace copiado', { type: 'ok' }), () => KT.toast(d.copy, { ms: 8000 })); return; }
+  if (t.hasAttribute('data-share')) { const url = KTD.inviteUrl(Net.cfg); navigator.share({ title: 'Kill Team', text: '¡Te reto a una partida de Kill Team!', url }).catch(() => {}); return; }
+  if (t.closest('.ro')) return;                                         // paneles del rival / misión del invitado
+  const before = isDual() ? sharedOf(draft) : null;
+  const ownChange = () => { if (isDual()) draft.ready[SEAT] = false; };
+  const hostOnly = () => isDual() && SEAT !== 0;
+  if (d.src != null) {
+    const i = +d.src;
+    if (!mine(i)) return;
+    draft.src[i] = { kind: d.kind, id: d.id };
+    if (isDual()) { draft.players[i] = withInc(buildPlayer(draft.src[i], draft.names[i].trim())); draft.tac[i] = null; draft.prim[i] = null; ownChange(); }
+  }
+  else if (d.zone) { if (hostOnly()) return; const z = zoneOf(d.zone); draft.zone = z.id; if (!mapOf(z, draft.map)) draft.map = z.maps[0].id; draft.dzPick = null; }
+  else if (d.map) { if (hostOnly()) return; draft.map = d.map; draft.dzPick = null; }
+  else if (d.crit) { if (hostOnly()) return; draft.crit = draft.crit === +d.crit ? null : +d.crit; }
   else if (t.hasAttribute('data-rnd')) {
+    if (hostOnly()) return;
     const z = pick(ZONAS), m = pick(z.maps.filter(m => !m.old)), c = pick(OPS.crit);
     Object.assign(draft, { zone: z.id, map: m.id, crit: c.n, dzPick: null });
     KT.toast(`${z.name} · mapa ${m.label} · ${c.name}`, { type: 'ok' });
@@ -1106,28 +1295,32 @@ function onSetupClick(e) {
   else if (d.win0 != null) { Object.assign(draft, { win0: +d.win0, ini0: +d.win0, roll: null, dzPick: null }); }
   else if (d.ini0 != null) { draft.ini0 = +d.ini0; draft.dzPick = null; }
   else if (d.dz) { draft.dzPick = d.dz === 'or' ? draft.ini0 : 1 - draft.ini0; }
-  else if (d.age != null) { const o = draft.players[+d.age].ops.find(x => x.uid === d.u); o.inc = !o.inc; }
+  else if (d.age != null) { if (!mine(+d.age)) return; const o = draft.players[+d.age].ops.find(x => x.uid === d.u); o.inc = !o.inc; ownChange(); }
   else if (d.eq != null) {
+    if (!mine(+d.eq)) return;
     const P = draft.players[+d.eq], max = FACTIONS[P.factionId].roster?.equipment?.slots || 4;
     if (P.equipment.includes(d.id)) P.equipment = P.equipment.filter(x => x !== d.id);
     else if (P.equipment.length >= max) { KT.toast(`Máximo ${max} opciones de equipo`, { type: 'err' }); return; }
     else P.equipment = [...P.equipment, d.id];
+    ownChange();
   }
   else if (d.cover != null) { draft.cover = +d.cover; }
   else if (d.hide != null) { draft.cover = null; }
-  else if (d.tac) { draft.tac[draft.cover] = d.tac; }
-  else if (t.hasAttribute('data-all')) { draft.tacAll[draft.cover] = t.checked; }
-  else if (d.roll === 'r1') { const r = rollOff(1 - draft.ini0); Object.assign(draft, { roll1: r.roll, win1: r.win, ini1: r.win }); KT.toast(`${esc(pname(r.win))} gana la tirada${r.roll[0] === r.roll[1] ? ' (empate)' : ''} (${r.roll[0]}–${r.roll[1]})`, { type: 'ok' }); }
+  else if (d.tac) { const i = isDual() ? SEAT : draft.cover; if (i == null) return; draft.tac[i] = d.tac; ownChange(); }
+  else if (t.hasAttribute('data-all')) { const i = isDual() ? SEAT : draft.cover; draft.tacAll[i] = t.checked; }
+  else if (d.roll === 'r1') { const r = rollOff(1 - (draft.ini0 ?? 0)); Object.assign(draft, { roll1: r.roll, win1: r.win, ini1: r.win }); KT.toast(`${esc(pname(r.win))} gana la tirada${r.roll[0] === r.roll[1] ? ' (empate)' : ''} (${r.roll[0]}–${r.roll[1]})`, { type: 'ok' }); }
   else if (d.win1 != null) { Object.assign(draft, { win1: +d.win1, ini1: +d.win1, roll1: null }); }
   else if (d.ini1 != null) { draft.ini1 = +d.ini1; }
   else if (d.primcover != null) { draft.primCover = +d.primcover; }
-  else if (d.primw != null) { draft.prim[+d.primw] = d.o; draft.primCover = null; KT.toast(`${esc(pname(+d.primw))} ya ha elegido`, { ms: 1400 }); }
+  else if (d.primw != null) { const i = +d.primw; if (!mine(i)) return; draft.prim[i] = d.o; draft.primCover = null; ownChange(); if (!isDual()) KT.toast(`${esc(pname(i))} ya ha elegido`, { ms: 1400 }); }
   else if (d.step != null) { leaveStep(); draft.step = +d.step; }
   else if (t.hasAttribute('data-back')) { leaveStep(); draft.step = Math.max(0, draft.step - 1); }
   else if (t.hasAttribute('data-next')) { if (!stepOk(draft.step)) return; leaveStep(); draft.step++; $('#setup-body').scrollTop = 0; }
   else if (t.hasAttribute('data-finish')) { finishWizard(); return; }
   else if (t.hasAttribute('data-start')) { startQuick(); return; }
+  else if (t.hasAttribute('data-ready')) { if (!draft.ready[SEAT] && !allOk()) return; draft.ready[SEAT] = !draft.ready[SEAT]; }
   else return;
+  if (isDual()) { Net.ops('L', diff(before, sharedOf(draft))); Net.checkStart(); }
   renderSetup();
 }
 function leaveStep() { draft.cover = null; draft.primCover = null; }
@@ -1142,24 +1335,169 @@ function finishWizard() {
   const players = draft.players.map((P, i) => {
     const ops = P.ops.filter(o => o.inc).map(({ inc, ...o }) => o);
     const cards = { rr: i === draft.ini0 ? 0 : 1, i1: i === draft.win1 ? 0 : 1, i2: 0, i3: 0 };
-    return { ...P, name: draft.names[i].trim(), ops, tac: draft.tac[i], tacShown: false, prim: draft.prim[i], cards };
+    return { ...clone(P), name: (draft.names[i] || '').trim(), ops, tac: draft.tac[i], tacShown: false, prim: draft.prim[i], cards };
   });
   begin({ players, ini: draft.ini1, ini0: draft.ini0, dz: draft.dzPick ?? 0 });
+  KT.store.del('partida.lobby');
 }
 function begin({ players, ini, ini0, dz }) {
-  const keep = S && S.started;
-  if (keep) hist.push(JSON.stringify(S));
+  hist.length = 0;
   const d = draft;
   draft = null; pop = null;
-  S = { v: V, started: true, ended: false, tp: 1, ini, ini0, zone: d.zone, map: d.map, crit: d.crit, dz, rot: false, players, obj: initObjs(d.zone, d.map, d.crit) };
+  S = { v: V, gid: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), started: true, ended: false, tp: 1, ini, ini0,
+    zone: d.zone, map: d.map, crit: d.crit, dz, players, obj: initObjs(d.zone, d.map, d.crit), dual: isDual() ? Net.cfg.room : null };
   save();
-  $('#setup').classList.remove('on');
+  if (isDual()) Net.startGame();
+  enterGame();
+}
+function enterGame() {
+  $('#setup').classList.remove('on'); syncBody();
   history.replaceState(null, '', location.pathname);
   render(); syncUndo();
   KT.toast('¡Que empiece la batalla!', { type: 'ok' });
   prefetch(); keepAwake();
 }
-function closeSetup() { if (S && S.started) { $('#setup').classList.remove('on'); draft = null; } }
+function closeSetup() { if (S && S.started) { $('#setup').classList.remove('on'); syncBody(); draft = null; if (isDual() && SEAT === 0 && S.dual === Net.cfg?.room) Net.snapSoon(0); } }
+function newGame() {
+  if (isDual() && SEAT === 1) { KT.toast('El anfitrión es quien prepara la siguiente partida'); return; }
+  draft = null; openSetup();
+  if (isDual()) { draft.room = Net.cfg.room; Net.lobby(); }
+}
+
+// ════════════════════════════════════════════════════════════
+//  RED — partida en dos dispositivos (ver js/dual.js)
+//  El anfitrión es la referencia: aplica los cambios del invitado,
+//  los reenvía con una huella del estado y publica una instantánea
+//  para quien se conecte (o reconecte) después.
+// ════════════════════════════════════════════════════════════
+let SEAT = null;
+const Net = {
+  cfg: null, synced: false, pending: new Set(), snapT: null,
+  rid: () => Math.random().toString(36).slice(2, 10),
+  bind() {
+    KTD.onMessage = (m, retained) => this.receive(m, retained);
+    KTD.onPeer = on => { renderNet(); if ($('#setup').classList.contains('on')) renderSetup(); if (on && SEAT === 0) this.snapSoon(0); KT.toast(on ? `${esc(pname(1 - SEAT))} está conectado` : `${esc(pname(1 - SEAT))} se ha desconectado`, { type: on ? 'ok' : 'err' }); };
+    KTD.onState = () => renderNet();
+  },
+  async host() {
+    if (!KTD.supported) { KT.toast('Este navegador no permite el modo dos dispositivos', { type: 'err' }); return; }
+    KT.toast('Creando la sala…', { ms: 1500 });
+    try {
+      SEAT = 0; this.bind();
+      this.cfg = await KTD.connect({ ...KTD.newRoom(), seat: 0 });
+      KT.store.set('sala', this.cfg);
+      this.synced = true;
+      // lo ya elegido en este dispositivo pasa a mi asiento
+      draft.room = this.cfg.room; draft.ready = [false, false]; draft.mode = 'wiz';
+      if (draft.src[0]) draft.players[0] = withInc(buildPlayer(draft.src[0], draft.names[0].trim()));
+      draft.players[1] = null; draft.src[1] = null; draft.names[1] = ''; draft.tac = [draft.tac[0], null]; draft.prim = [draft.prim[0], null];
+      renderSetup(); this.snapSoon(0);
+    } catch (e) { SEAT = null; this.cfg = null; KT.toast('No se pudo conectar con el servidor de partidas. Revisa la conexión a internet.', { type: 'err', ms: 5000 }); renderSetup(); }
+  },
+  async join(cfg) {
+    SEAT = 1; this.bind(); this.synced = false;
+    draft = draft || newDraft();
+    openSetup();
+    try {
+      this.cfg = await KTD.connect({ ...cfg, seat: 1 });
+      KT.store.set('sala', this.cfg);
+      KTD.send({ t: 'hello' });
+      setTimeout(() => { if (!this.synced) KTD.send({ t: 'snap?' }); }, 2500);
+    } catch (e) { KT.toast('No se pudo conectar con la partida. Revisa la conexión a internet.', { type: 'err', ms: 5000 }); }
+  },
+  async resume(cfg) {
+    SEAT = cfg.seat; this.bind(); this.synced = SEAT === 0;
+    try { this.cfg = await KTD.connect(cfg); if (SEAT === 1) KTD.send({ t: 'snap?' }); else this.snapSoon(0); }
+    catch { this.cfg = cfg; KT.toast('Sin conexión con el otro dispositivo. Se reintentará al recargar.', { type: 'err', ms: 4000 }); }
+    renderNet();
+  },
+  leave(ask) {
+    if (ask && !confirm('¿Salir del modo dos dispositivos?')) return;
+    KTD.close(); this.cfg = null; SEAT = null; this.synced = false; KT.store.del('sala');
+    if (S?.dual) { S.dual = null; save(); }
+    if (draft) { draft.room = null; draft.ready = [false, false]; }
+    history.replaceState(null, '', location.pathname);
+    renderNet(); if ($('#setup').classList.contains('on')) renderSetup();
+  },
+  // Enviar mis cambios (ch: 'L' preparación · 'S' partida)
+  ops(ch, ops) {
+    if (!this.cfg || !ops || !ops.length) return;
+    if (ch === 'S' && S?.dual !== this.cfg.room) return;
+    const id = this.rid();
+    if (SEAT === 0) { KTD.send({ t: 'ops', ch, id, ops, h: this.hash(ch) }); this.snapSoon(); }
+    else { this.pending.add(id); KTD.send({ t: 'ops', ch, id, ops }); setTimeout(() => this.pending.delete(id), 8000); }
+  },
+  hash(ch) { return ch === 'S' ? hashOf(S) : hashOf(sharedOf(draft)); },
+  phase() { return draft ? 'lobby' : 'game'; },
+  data() { return { phase: this.phase(), L: draft ? sharedOf(draft) : null, S: S?.dual === this.cfg?.room ? S : null }; },
+  snapSoon(ms = 1200) {
+    if (SEAT !== 0 || !this.cfg) return;
+    clearTimeout(this.snapT);
+    this.snapT = setTimeout(() => { const d = this.data(); KTD.snapshot(d); }, ms);
+  },
+  startGame() { KTD.send({ t: 'start', S }); this.snapSoon(0); },
+  lobby() { KTD.send({ t: 'lobby', L: sharedOf(draft) }); this.snapSoon(0); },
+  checkStart() {
+    if (SEAT === 0 && draft && draft.ready[0] && draft.ready[1] && draft.players[0] && draft.players[1]) {
+      KT.toast('¡Los dos estáis listos!', { type: 'ok' });
+      setTimeout(() => { if (draft && draft.ready[0] && draft.ready[1]) finishWizard(); }, 900);
+    }
+  },
+  applyL(L) {
+    if (!draft) draft = newDraft();
+    SHARED.forEach(k => { if (k in L) draft[k] = clone(L[k]); });
+  },
+  receive(m, retained) {
+    if (SEAT === 0) {                                   // ── anfitrión
+      if (m.t === 'hello' || m.t === 'snap?') { KTD.send({ t: 'snap', ...this.data() }); return; }
+      if (m.t === 'ops') {
+        if (m.ch === 'L' && draft) {
+          Object.assign(draft, applyOps(sharedOf(draft), m.ops));
+          if ($('#setup').classList.contains('on')) renderSetup();
+          KTD.send({ t: 'ops', ch: 'L', id: m.id, ops: m.ops, origin: 1, h: this.hash('L') });
+          this.checkStart();
+        } else if (m.ch === 'S' && S?.dual === this.cfg.room) {
+          S = applyOps(S, m.ops); save(); render();
+          KTD.send({ t: 'ops', ch: 'S', id: m.id, ops: m.ops, origin: 1, h: this.hash('S') });
+        } else KTD.send({ t: 'snap', ...this.data() });
+        this.snapSoon();
+      }
+      return;
+    }
+    // ── invitado
+    if (m.t === 'snap') {
+      this.synced = true;
+      if (m.phase === 'game' && m.S) {
+        S = m.S; save(); draft = null; this.pending.clear();
+        if ($('#setup').classList.contains('on')) { $('#setup').classList.remove('on'); syncBody(); }
+        $('#app').hidden = false; render(); syncUndo();
+      } else if (m.L) {
+        this.applyL(m.L);
+        if (!$('#setup').classList.contains('on')) openSetup(); else renderSetup();
+      }
+      return;
+    }
+    if (m.t === 'start') { S = m.S; save(); draft = null; hist.length = 0; this.pending.clear(); enterGame(); return; }
+    if (m.t === 'lobby') { this.synced = true; draft = newDraft(); this.applyL(m.L); openSetup(); return; }
+    if (m.t === 'ops') {
+      const echo = m.origin === 1 && this.pending.has(m.id);
+      if (echo) this.pending.delete(m.id);
+      if (m.ch === 'L') {
+        if (!draft) { KTD.send({ t: 'snap?' }); return; }
+        if (!echo) { Object.assign(draft, applyOps(sharedOf(draft), m.ops)); if ($('#setup').classList.contains('on')) renderSetup(); }
+      } else if (m.ch === 'S') {
+        if (!S || S.dual !== this.cfg.room) { KTD.send({ t: 'snap?' }); return; }
+        if (!echo) { S = applyOps(S, m.ops); save(); render(); }
+      }
+      if (!this.pending.size && m.h && m.h !== this.hash(m.ch)) KTD.send({ t: 'snap?' });   // nos hemos desincronizado
+    }
+  },
+};
+function renderNet() {
+  const html = !isDual() ? '' : `<span class="g-net ${KTD.online ? (KTD.peer ? 'ok' : 'wait') : 'off'}" ${SEAT === 0 ? 'data-invite role="button"' : ''} title="Partida en dos dispositivos${SEAT === 0 ? ' · toca para volver a invitar' : ''}">
+    <span class="g-dot ${KTD.peer ? 'on' : ''}"></span>${!KTD.online ? 'Sin conexión' : KTD.peer ? `${esc(pname(1 - SEAT))} conectado` : `${esc(pname(1 - SEAT))} desconectado`}</span>`;
+  document.querySelectorAll('.g-net-slot').forEach(el => { el.innerHTML = html; });
+}
 
 // Precarga las imágenes de la partida (para jugar sin conexión)
 function prefetch() {
@@ -1226,16 +1564,26 @@ window.addEventListener('load', () => {
   $('#sheet').addEventListener('mousedown', e => { if (e.target.id === 'sheet') closeSheet(); });
   $('#setup-body').addEventListener('click', onSetupClick);
   $('#setup-ft').addEventListener('click', onSetupClick);
-  $('#setup-body').addEventListener('input', e => { if (e.target.dataset.name != null) draft.names[+e.target.dataset.name] = e.target.value; });
+  let nameT = null;
+  $('#setup-body').addEventListener('input', e => {
+    if (e.target.dataset.name == null || !draft) return;
+    const i = +e.target.dataset.name;
+    if (!mine(i)) return;
+    const before = isDual() ? sharedOf(draft) : null;
+    draft.names[i] = e.target.value;
+    if (isDual()) { clearTimeout(nameT); const b = before; nameT = setTimeout(() => Net.ops('L', diff(b, sharedOf(draft))), 450); }
+  });
   $('#btn-mode').addEventListener('click', () => { draft.mode = draft.mode === 'wiz' ? 'panel' : 'wiz'; renderSetup(); });
   $('#btn-close-setup').addEventListener('click', closeSetup);
-  $('#btn-setup').addEventListener('click', () => { draft = null; openSetup(); });
+  $('#btn-setup').addEventListener('click', newGame);
   $('#btn-undo').addEventListener('click', undo);
   $('#btn-fs').addEventListener('click', toggleFS);
   $('#btn-help').addEventListener('click', showHelp);
   $('#viewer-close').addEventListener('click', closeViewer);
   $('#rot-continue').addEventListener('click', () => document.body.classList.add('allow-portrait'));
   $('#rot-fs').addEventListener('click', toggleFS);
+  document.addEventListener('click', e => { if (e.target.closest('[data-invite]') && Net.cfg) KT.modal('Invitar al otro jugador', invitePanel(), 'user-plus'); });
+  document.addEventListener('click', e => { const c = e.target.closest('.cmdk [data-copy]'); if (c) navigator.clipboard?.writeText(c.dataset.copy).then(() => KT.toast('Enlace copiado', { type: 'ok' })); const sh = e.target.closest('.cmdk [data-share]'); if (sh) navigator.share({ title: 'Kill Team', url: KTD.inviteUrl(Net.cfg) }).catch(() => {}); });
   document.addEventListener('click', e => { if (tipEl && !e.target.closest('.g-tip, [data-rule], [data-tipeq], [data-tipploy]')) hideTip(); });
   new ResizeObserver(() => placeObjs()).observe($('#board'));
   document.addEventListener('visibilitychange', () => { if (S?.started) keepAwake(); });
@@ -1247,7 +1595,7 @@ window.addEventListener('load', () => {
     'ArrowLeft': () => { if (playing() && !sheet) setTP(S.ended ? S.tp : S.tp - 1); else return false; },
     'f': () => toggleFS(),
     'm': () => openViewer(),
-    'n': () => { draft = null; openSetup(); },
+    'n': () => newGame(),
     'c': () => { if (playing()) openSheet('crit'); else return false; },
     's': () => { if (playing()) openSheet('seq'); else return false; },
     '?': showHelp,
@@ -1264,7 +1612,20 @@ window.addEventListener('load', () => {
   if (S && S.v === 2) { try { migrate2(); save(); } catch { S = null; } }
   if (S && S.v !== V) { S = null; legacy = true; }
   if (legacy) KT.toast('La partida guardada era de una versión anterior: empieza una nueva', { ms: 5000 });
-  if (new URLSearchParams(location.search).get('p1')) { $('#app').hidden = !(S && S.started); openSetup(); if (S?.started) render(); }
+  // Partida en dos dispositivos: invitación en la URL o sala guardada
+  const inv = KTD.fromUrl(), sala = KT.store.get('sala');
+  if (inv) {
+    history.replaceState(null, '', location.pathname);
+    if (sala && sala.room === inv.room) { draft = null; Net.resume(sala); render(); }
+    else Net.join(inv);
+  } else if (sala && S?.dual === sala.room) { Net.resume(sala); render(); }
+  else if (sala && sala.seat === 0) {
+    const saved = KT.store.get('partida.lobby');
+    draft = saved && saved.room === sala.room ? saved : null;
+    Net.resume(sala).then(() => { if (!draft) { draft = newDraft(); draft.room = sala.room; } openSetup(); Net.lobby(); });
+  }
+  else if (sala) { Net.resume(sala); openSetup(); }
+  else if (new URLSearchParams(location.search).get('p1')) { $('#app').hidden = !(S && S.started); openSetup(); if (S?.started) render(); }
   else render();
   syncUndo();
   if (S?.started) keepAwake();

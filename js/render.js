@@ -159,6 +159,7 @@ function renderHome() {
           <a class="nav-link" href="builder.html"><i class="ti ti-hammer"></i> Constructor</a>
           <a class="nav-link" href="misiones/misiones.html"><i class="ti ti-map"></i> Misiones</a>
           <a class="nav-link" href="partida.html"><i class="ti ti-swords"></i> Partida</a>
+          <a class="nav-link" href="historial.html"><i class="ti ti-history"></i> Historial</a>
           <button class="nav-link" id="btn-offline" onclick="offlineDownload()" title="Guardar todo en este dispositivo para usar la app sin conexión" hidden><i class="ti ti-download"></i> <span>Sin conexión</span></button>
         </nav>
       </header>

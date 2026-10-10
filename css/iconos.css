@@ -1,4 +1,4 @@
-/* Tabler Icons 3.48.0 (MIT) — subconjunto generado por herramientas/iconos/subset.py (91 iconos) */
+/* Tabler Icons 3.48.0 (MIT) — subconjunto generado por herramientas/iconos/subset.py (101 iconos) */
 @font-face { font-family: "tabler-icons"; font-style: normal; font-weight: 400; font-display: block;
   src: url("../recursos/iconos/tabler-icons.woff2") format("woff2"); }
 .ti { font-family: "tabler-icons" !important; speak: none; font-style: normal; font-weight: normal; font-variant: normal;
@@ -14,6 +14,7 @@
 .ti-bolt:before { content: "\ea38"; }
 .ti-book-2:before { content: "\efc5"; }
 .ti-books:before { content: "\eff2"; }
+.ti-brand-whatsapp:before { content: "\ec74"; }
 .ti-broadcast:before { content: "\f1e9"; }
 .ti-building-castle:before { content: "\ed88"; }
 .ti-car:before { content: "\ebbb"; }
@@ -33,7 +34,9 @@
 .ti-copy:before { content: "\ea7a"; }
 .ti-details:before { content: "\ee71"; }
 .ti-device-floppy:before { content: "\eb62"; }
+.ti-device-mobile:before { content: "\ea8a"; }
 .ti-device-mobile-rotated:before { content: "\ecdb"; }
+.ti-devices:before { content: "\eb87"; }
 .ti-dice-5:before { content: "\f08f"; }
 .ti-disabled:before { content: "\ea8f"; }
 .ti-download:before { content: "\ea96"; }
@@ -45,15 +48,19 @@
 .ti-fold:before { content: "\ed56"; }
 .ti-fold-down:before { content: "\ed54"; }
 .ti-folder-open:before { content: "\faf7"; }
+.ti-function:before { content: "\f225"; }
 .ti-hammer:before { content: "\ef91"; }
 .ti-hand-grab:before { content: "\f091"; }
 .ti-hdr:before { content: "\fa7b"; }
 .ti-help:before { content: "\eabf"; }
+.ti-history:before { content: "\ebea"; }
+.ti-hourglass:before { content: "\ef93"; }
 .ti-info-circle:before { content: "\eac5"; }
 .ti-keyboard:before { content: "\ebd6"; }
 .ti-layout-columns:before { content: "\ead4"; }
 .ti-link:before { content: "\eade"; }
 .ti-list-numbers:before { content: "\ef11"; }
+.ti-loader-2:before { content: "\f226"; }
 .ti-lock:before { content: "\eae2"; }
 .ti-map:before { content: "\eae9"; }
 .ti-map-2:before { content: "\eae7"; }
@@ -61,6 +68,7 @@
 .ti-maximize:before { content: "\eaea"; }
 .ti-message:before { content: "\eaef"; }
 .ti-mood-empty:before { content: "\eeb5"; }
+.ti-number:before { content: "\f1fe"; }
 .ti-old:before { content: "\eeb9"; }
 .ti-option:before { content: "\1019f"; }
 .ti-package:before { content: "\eaff"; }
@@ -77,6 +85,7 @@
 .ti-rotate-2:before { content: "\ebb4"; }
 .ti-search:before { content: "\eb1c"; }
 .ti-settings:before { content: "\eb20"; }
+.ti-share:before { content: "\eb21"; }
 .ti-shield:before { content: "\eb24"; }
 .ti-skull:before { content: "\f292"; }
 .ti-sparkles:before { content: "\f6d7"; }
@@ -91,6 +100,7 @@
 .ti-tools:before { content: "\ebca"; }
 .ti-trash:before { content: "\eb41"; }
 .ti-upload:before { content: "\eb47"; }
+.ti-user-plus:before { content: "\eb4b"; }
 .ti-user-shield:before { content: "\f7d0"; }
 .ti-users:before { content: "\ebf2"; }
 .ti-x:before { content: "\eb55"; }

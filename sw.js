@@ -2,11 +2,12 @@
 //  sw.js — Service worker: la app funciona sin conexión.
 //  GENERADO por herramientas/pwa/generar_sw.py — no editar a mano.
 // ============================================================
-const VERSION = '3f7e7b4b98';
+const VERSION = '155b1f28d3';
 const CORE = [
 "index.html",
 "builder.html",
 "partida.html",
+"historial.html",
 "misiones/misiones.html",
 "manifest.webmanifest",
 "css/fonts.css",
@@ -36,9 +37,11 @@ const CORE = [
 "js/data/universal_equipment.js",
 "js/data/vespid.js",
 "js/data/zonas.js",
+"js/dual.js",
 "js/partida.js",
 "js/render.js",
 "js/ui.js",
+"js/vendor/qrcode.js",
 "recursos/d-din/d-din-bold.otf",
 "recursos/d-din/d-din-italic.otf",
 "recursos/d-din/d-din.otf",

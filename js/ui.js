@@ -84,11 +84,11 @@
   };
 
   // ── Modal sencillo ───────────────────────────────────────
-  KT.modal = (title, html) => {
+  KT.modal = (title, html, icon = 'keyboard') => {
     const back = document.createElement('div');
     back.className = 'cmdk-back on';
     back.innerHTML = `<div class="cmdk" role="dialog" aria-modal="true" aria-label="${KT.esc(title)}">
-      <div class="cmdk-in"><i class="ti ti-keyboard"></i><strong style="flex:1;font-family:var(--font-display);letter-spacing:.1em;text-transform:uppercase">${title}</strong><kbd>Esc</kbd></div>
+      <div class="cmdk-in"><i class="ti ti-${icon}"></i><strong style="flex:1;font-family:var(--font-display);letter-spacing:.1em;text-transform:uppercase">${title}</strong><kbd>Esc</kbd></div>
       <div class="cmdk-list">${html}</div></div>`;
     const close = () => { back.remove(); document.removeEventListener('keydown', onKey, true); };
     const onKey = e => { if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); close(); } };

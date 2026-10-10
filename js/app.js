@@ -314,6 +314,7 @@ function paletteSource() {
   const out = [];
   out.push({ group: 'Ir a', icon: 'hammer', title: 'Constructor de comando', sub: 'Montar y guardar un comando', tag: 'página', suggest: true, boost: 2, run: () => location.href = 'builder.html' });
   out.push({ group: 'Ir a', icon: 'swords', title: 'Partida', sub: 'Modo de juego: operativos, mapa, PM y PV', tag: 'página', suggest: true, boost: 2, run: () => location.href = 'partida.html' });
+  out.push({ group: 'Ir a', icon: 'history', title: 'Historial de partidas', sub: 'Resultados y estadísticas', tag: 'página', run: () => location.href = 'historial.html' });
   out.push({ group: 'Ir a', icon: 'map', title: 'Misiones y zonas', sub: 'Terreno, acciones y misiones', tag: 'página', suggest: true, boost: 2, run: () => location.href = 'misiones/misiones.html' });
   Object.values(FACTIONS).forEach(f => {
     const tag = f.name;
