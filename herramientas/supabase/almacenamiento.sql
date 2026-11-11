@@ -18,3 +18,7 @@ create policy imagenes_borrar on storage.objects for delete to authenticated
 drop policy if exists imagenes_ver_propias on storage.objects;
 create policy imagenes_ver_propias on storage.objects for select to authenticated
   using (bucket_id = 'imagenes' and (storage.foldername(name))[1] = auth.uid()::text);
+-- el administrador puede borrar cualquier imagen (fotos de perfil o publicaciones inadecuadas)
+drop policy if exists imagenes_borrar_admin on storage.objects;
+create policy imagenes_borrar_admin on storage.objects for delete to authenticated
+  using (bucket_id = 'imagenes' and public.es_admin());

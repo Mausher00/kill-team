@@ -66,7 +66,7 @@
     const F = cache.found;
     return `<div class="m-form"><div class="m-row"><input class="m-in" id="p-q" maxlength="24" value="${esc(cache.q)}" placeholder="Nombre de jugador" style="flex:1 1 220px"><button class="icon-btn accent" data-a="search"><i class="ti ti-search"></i> Buscar</button></div></div>
       ${F == null ? '<p style="font-size:13px;color:var(--text-3);margin-top:10px">Busca por nombre de jugador (dos letras o más) e invítale a una partida: le llegará a su pestaña de invitaciones con la fecha y el enlace.</p>'
-        : F.length ? `<div style="margin-top:10px">${F.map(u => `<div class="c-log"><div class="m-row"><b style="flex:1">${esc(u.nombre)}</b><button class="icon-btn accent" data-invite="${u.id}" data-n="${esc(u.nombre)}"><i class="ti ti-swords"></i> Invitar a jugar</button></div></div>`).join('')}</div>`
+        : F.length ? `<div style="margin-top:10px">${F.map(u => `<div class="c-log"><div class="m-row">${N.avatar(u.nombre, u.avatar)}<b style="flex:1">${esc(u.nombre)}</b><button class="icon-btn accent" data-invite="${u.id}" data-n="${esc(u.nombre)}"><i class="ti ti-swords"></i> Invitar a jugar</button></div></div>`).join('')}</div>`
         : '<div class="m-empty" style="margin-top:10px">Nadie con ese nombre.</div>'}`;
   }
   function invBody() {
@@ -75,7 +75,7 @@
     if (!I.length) return '<div class="m-empty"><i class="ti ti-mail" style="font-size:28px;display:block;margin-bottom:6px"></i>No tienes invitaciones. Busca un jugador en la pestaña «Jugadores» para retarle.</div>';
     const st = { pendiente: ['pend', 'pendiente'], aceptada: ['ok', 'aceptada'], rechazada: ['no', 'rechazada'] };
     return I.map(i => `<div class="c-log" data-inv="${i.id}"><div class="q-inv">
-        <div><b>${i.mia ? 'Para ' + esc(i.paraNombre) : 'De ' + esc(i.deNombre)}</b> <span class="q-badge ${st[i.estado][0]}">${st[i.estado][1]}</span><br>
+        <div>${N.avatar(i.mia ? i.paraNombre : i.deNombre, i.mia ? i.para : i.de)} <b>${i.mia ? 'Para ' + esc(i.paraNombre) : 'De ' + esc(i.deNombre)}</b> <span class="q-badge ${st[i.estado][0]}">${st[i.estado][1]}</span><br>
           <small>${fecha(i.creado)}${i.cuando ? ' · partida el ' + new Date(i.cuando).toLocaleString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : ''}</small>
           ${i.mensaje ? `<div style="margin-top:3px;color:var(--text)">${esc(i.mensaje)}</div>` : ''}</div>
         <div class="m-row" style="justify-content:flex-end">
@@ -113,7 +113,7 @@
       inner = `<div class="q-card"><div><b>${esc(c.name || 'Comando')}</b><small>${esc(c.subfaction || '')} · ${(c.ops || []).length} operativos</small></div>
         <button class="icon-btn accent" data-pa="savecmd"><i class="ti ti-package-import"></i> Añadir a mis comandos</button></div>`;
     }
-    return `<article class="q-post" data-post="${p.id}"><header><b>${esc(p.nombre)}</b><small>${fecha(p.creado)}</small>${p.mia || group.creador === N.user.id ? '<button data-pa="del" title="Borrar" aria-label="Borrar"><i class="ti ti-trash"></i></button>' : ''}</header>
+    return `<article class="q-post" data-post="${p.id}"><header>${N.avatar(p.nombre, p.usuario)}<b>${esc(p.nombre)}</b><small>${fecha(p.creado)}</small>${p.mia || group.creador === N.user.id ? '<button data-pa="del" title="Borrar" aria-label="Borrar"><i class="ti ti-trash"></i></button>' : ''}</header>
       ${p.texto ? `<p>${esc(p.texto)}</p>` : ''}${inner}${p.url ? `<img class="ph" src="${esc(p.url)}" alt="Imagen compartida por ${esc(p.nombre)}" loading="lazy" data-pa="zoom">` : ''}</article>`;
   }
   function renderGroup() {
@@ -121,7 +121,7 @@
     const st = P ? standings(P) : [];
     const rosters = me ? KT.user.mine(me.id) : [], cmds = window.KTC ? KTC.list() : [], H = (KT.store.get('historial', []) || []).slice(0, 12);
     const url = location.href.replace(/[#?].*$/, '');
-    app.innerHTML = head(esc(group.nombre), `${M ? M.length + ' miembros: ' + M.map(m => esc(m.nombre)).join(', ') : 'Cargando…'}`,
+    app.innerHTML = head(esc(group.nombre), `${M ? M.length + ' miembros: <span class="q-mems">' + M.map(m => `<span>${N.avatar(m.nombre, m.usuario)} ${esc(m.nombre)}</span>`).join('') + '</span>' : 'Cargando…'}`,
       `<div class="row"><span class="q-code" title="Código para unirse">${esc(group.codigo)}</span>
         <a class="icon-btn" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(`Únete a «${group.nombre}» en Kill Team Companion: entra en ${url} → Unirme con código → ${group.codigo}`)}"><i class="ti ti-brand-whatsapp"></i> Invitar al grupo</a>
         <button class="icon-btn" data-a="refresh"><i class="ti ti-refresh"></i> Actualizar</button>

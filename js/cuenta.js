@@ -62,14 +62,18 @@
   function meHtml() {
     const p = N.perfil || {}, last = KT.store.get('nube.sync');
     return `<div class="acc">
-      <div class="acc-me"><span class="acc-av">${esc((p.nombre || '?').slice(0, 1).toUpperCase())}</span>
-        <div><b>${esc(p.nombre || '')}</b><small>${esc(N.email)}</small><small class="acc-sync"><i class="ti ti-cloud-check"></i> Cuenta online${last ? ' · sincronizado ' + fecha(last) : ''}</small></div></div>
+      <div class="acc-me"><label class="acc-avbox" title="${p.avatar ? 'Cambiar la foto de perfil' : 'Poner foto de perfil (opcional)'}">${N.avatar(p.nombre, p.avatar, 'acc-av')}<span class="acc-cam"><i class="ti ti-camera"></i></span><input type="file" accept="image/*" data-c-file hidden></label>
+        <div><b>${esc(p.nombre || '')}${N.esAdmin ? ' <span class="acc-badge">Admin</span>' : ''}</b><small>${esc(N.email)}</small><small class="acc-sync"><i class="ti ti-cloud-check"></i> Cuenta online${last ? ' · sincronizado ' + fecha(last) : ''}</small></div></div>
       <div class="acc-row">
         <button class="icon-btn accent" data-c="sync"><i class="ti ti-refresh"></i> Sincronizar</button>
         <a class="icon-btn" href="${KT.cuenta.root}comunidad.html"><i class="ti ti-users-group"></i> Comunidad</a>
+        ${N.esAdmin ? `<a class="icon-btn" href="${KT.cuenta.root}admin.html"><i class="ti ti-shield-lock"></i> Administrar</a>` : ''}
         <button class="icon-btn" data-c="out"><i class="ti ti-logout"></i> Salir</button>
       </div>
       <details class="acc-set"><summary><i class="ti ti-settings"></i> Ajustes de la cuenta</summary>
+        <div class="acc-form"><label>Foto de perfil <small class="acc-hint">Opcional. Se recorta en cuadrado y la ven los demás jugadores.</small></label>
+          <div class="acc-row"><label class="icon-btn"><i class="ti ti-camera"></i> ${p.avatar ? 'Cambiar foto' : 'Subir foto'}<input type="file" accept="image/*" data-c-file hidden></label>
+          ${p.avatar ? '<button class="icon-btn" type="button" data-c="nofoto"><i class="ti ti-trash"></i> Quitar foto</button>' : ''}</div></div>
         <form class="acc-form" data-cf="nombre">${field('Nombre de usuario', `<span class="acc-inl"><input name="nombre" maxlength="24" required value="${esc(p.nombre || '')}"><button class="icon-btn" type="submit">Cambiar</button></span>`)}</form>
         <form class="acc-form" data-cf="email">${field('Correo', `<span class="acc-inl"><input name="email" type="email" required value="${esc(N.email)}"><button class="icon-btn" type="submit">Cambiar</button></span>`, '<small class="acc-hint">Te llegará un enlace de confirmación al correo nuevo.</small>')}</form>
         <form class="acc-form" data-cf="pass">
@@ -113,7 +117,15 @@
       else if (kind === 'email') { await N.cambiarCorreo(d.get('email')); KT.toast('Revisa tu correo nuevo para confirmar el cambio', { type: 'ok', ms: 5000 }); }
       else if (kind === 'pass') { await N.nuevaClave(twice()); KT.toast('Contraseña cambiada', { type: 'ok' }); }
       redraw();
-    } catch (e) { KT.toast(esc(e.message || String(e)), { type: 'err', ms: 5000 }); btn?.classList.remove('busy'); }
+    } catch (e) {
+      const msg = e.message || String(e);
+      console.error('[cuenta]', e);
+      let box = form.querySelector('.acc-err');
+      if (!box) { box = document.createElement('p'); box.className = 'acc-err'; box.setAttribute('role', 'alert'); form.prepend(box); }
+      box.innerHTML = `<i class="ti ti-alert-triangle"></i> ${esc(msg)}`;
+      box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      KT.toast(esc(msg), { type: 'err', ms: 6000 }); btn?.classList.remove('busy');
+    }
     finally { busy = false; }
   }
 
@@ -135,6 +147,7 @@
         e.stopImmediatePropagation();
         if (a === 'mode') { const em = box.querySelector('[name=email]')?.value; if (em) sentTo = em; mode = b.dataset.m; libre = null; redraw(); }
         else if (a === 'sync') { b.classList.add('busy'); N.sync().then(r => { KT.toast(`Sincronizado: ${r.subidas} bandas subidas, ${r.bajadas} bajadas, ${r.partidas} partidas`, { type: 'ok' }); redraw(); }).catch(err => { KT.toast(esc(err.message), { type: 'err' }); b.classList.remove('busy'); }); }
+        else if (a === 'nofoto') N.quitarFoto().then(() => { KT.toast('Foto quitada'); redraw(); }).catch(err => KT.toast(esc(err.message), { type: 'err' }));
         else if (a === 'out') { N.salir().then(() => { KT.user.logout(); mode = 'in'; redraw(); KT.toast('Has salido de tu cuenta'); }); }
         else if (a === 'del') {
           const n = N.perfil?.nombre || '';
@@ -144,6 +157,12 @@
           N.borrarCuenta().then(() => { mode = 'in'; redraw(); KT.toast('Cuenta borrada'); }).catch(err => KT.toast(esc(err.message), { type: 'err', ms: 6000 }));
         }
       }, true);
+      box.addEventListener('change', e => {
+        if (!e.target.matches('[data-c-file]') || !e.target.files[0]) return;
+        const f = e.target.files[0]; e.target.value = '';
+        KT.toast('Subiendo foto…');
+        N.subirFoto(f).then(() => { KT.toast('Foto de perfil guardada', { type: 'ok' }); redraw(); }).catch(err => KT.toast(esc(err.message), { type: 'err', ms: 5000 }));
+      });
       box.addEventListener('input', e => {
         if (e.target.name !== 'nombre' || !e.target.closest('[data-cf=up]')) return;
         clearTimeout(tCheck);
@@ -154,6 +173,12 @@
       });
     },
   };
+
+  // La foto de la cuenta se recuerda para el botón de la cabecera
+  document.addEventListener('kt:nube', () => {
+    const f = N.user && N.perfil?.avatar ? N.foto(N.perfil.avatar) : null;
+    if ((KT.store.get('nube.foto') || null) !== f) { f ? KT.store.set('nube.foto', f) : KT.store.del('nube.foto'); document.dispatchEvent(new CustomEvent('kt:user')); }
+  });
 
   // Al abrir la app: si se viene de un enlace del correo o hay sesión, conectar y sincronizar
   window.addEventListener('load', () => {

@@ -16,6 +16,7 @@
   const count = r => (r.ops || []).reduce((a, o) => a + (o.qty || 0), 0);
   const fire = () => document.dispatchEvent(new CustomEvent('kt:user'));
   const chipIcon = u => u?.nube ? 'cloud-check' : 'user-circle';
+  const chipFoto = u => { const f = u?.nube && KT.store.get('nube.foto'); return f ? `<img class="av chip-av" src="${esc(f)}" alt="">` : ''; };
 
   const U = KT.user = {
     list: () => KT.store.get('usuarios', []) || [],
@@ -48,7 +49,7 @@
     // Botón de sesión para las cabeceras
     chip(cls = 'nav-link') {
       const u = U.current();
-      return `<button class="${cls} user-chip ${u ? 'on' : ''}" data-user-chip title="${u ? 'Tu cuenta y tus bandas' : 'Entrar o crear tu cuenta'}"><i class="ti ti-${chipIcon(u)}"></i> <span>${u ? esc(u.name) : 'Entrar'}</span></button>`;
+      return `<button class="${cls} user-chip ${u ? 'on' : ''}" data-user-chip title="${u ? 'Tu cuenta y tus bandas' : 'Entrar o crear tu cuenta'}">${chipFoto(u) || `<i class="ti ti-${chipIcon(u)}"></i>`} <span>${u ? esc(u.name) : 'Entrar'}</span></button>`;
     },
     // Tarjetas de bandas (inicio y panel de sesión)
     cards(list, opt = {}) {
@@ -145,7 +146,7 @@
     });
   }
   document.addEventListener('click', e => { if (e.target.closest('[data-user-chip]')) { e.preventDefault(); openPanel(); } });
-  document.addEventListener('kt:user', () => document.querySelectorAll('[data-user-chip]').forEach(el => { const u = U.current(); el.classList.toggle('on', !!u); const s = el.querySelector('span'); if (s) s.textContent = u ? u.name : 'Entrar'; const i = el.querySelector('i'); if (i) i.className = 'ti ti-' + chipIcon(u); }));
+  document.addEventListener('kt:user', () => document.querySelectorAll('[data-user-chip]').forEach(el => { const u = U.current(); el.classList.toggle('on', !!u); const s = el.querySelector('span'); if (s) s.textContent = u ? u.name : 'Entrar'; const old = el.querySelector('i, .chip-av'); if (old) old.outerHTML = chipFoto(u) || `<i class="ti ti-${chipIcon(u)}"></i>`; }));
 
   // ── Volver a la partida en curso (desde biblioteca, constructor…) ──
   window.addEventListener('load', () => {

@@ -22,6 +22,7 @@
     return t ? t[1] : (fallback ? fallback + ': ' : '') + m;
   };
   let sb = null, loading = null, session = null, perfil = null;
+  const fotos = {};   // id de usuario → ruta de su foto (de las consultas de nombres)
   // Enlace del correo de «recuperar contraseña»: llega con #...type=recovery
   let recovery = /type=recovery/.test(location.hash) || sessionStorage.getItem('kt.recuperar') === '1';
   if (recovery) sessionStorage.setItem('kt.recuperar', '1');
@@ -39,6 +40,14 @@
     get user() { return session?.user || null; },
     get perfil() { return perfil; },
     get email() { return session?.user?.email || ''; },
+    // Avatar redondo: foto si la hay, si no la inicial del nombre
+    avatar(nombre, x, cls = '') {
+      const u = N.foto(x), e = KT.esc;
+      return u ? `<img class="av ${cls}" src="${e(u)}" alt="" loading="lazy">` : `<span class="av ${cls}">${e(String(nombre || '?').trim().slice(0, 1).toUpperCase())}</span>`;
+    },
+    get esAdmin() { return perfil?.rol === 'admin'; },
+    // URL pública de una foto de perfil (ruta en «imagenes») o de la foto de un usuario ya visto
+    foto(x) { const path = x && x.includes('/') ? x : fotos[x] ?? (x === perfil?.id ? perfil?.avatar : null); return path && sb ? sb.storage.from('imagenes').getPublicUrl(path).data.publicUrl : null; },
     get recovery() { return recovery && !!session; },
     // Conecta y recupera la sesión guardada (una sola vez por página)
     ready() {
@@ -55,7 +64,7 @@
           if (was !== uid() || e === 'PASSWORD_RECOVERY') fire();
         });
         if (session && /access_token=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
-        if (session) linkLocal();
+        if (session) { linkLocal(); fire(); }
         return true;
       })());
     },
@@ -108,6 +117,42 @@
       if (u) { u.name = nombre; KT.store.set('usuarios', l); document.dispatchEvent(new CustomEvent('kt:user')); }
       fire();
     },
+    // ── Foto de perfil (opcional) ────────────────────────────
+    async subirFoto(file) {
+      const me = need();
+      const blob = await square(file, 320);
+      const path = `${me}/avatar-${Date.now().toString(36)}.jpg`;
+      const up = await sb.storage.from('imagenes').upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+      fail(up.error, 'No se pudo subir la foto');
+      const old = perfil?.avatar;
+      const { error } = await sb.from('perfiles').update({ avatar: path }).eq('id', me);
+      if (error) { await sb.storage.from('imagenes').remove([path]).catch(() => {}); fail(error, 'No se pudo guardar la foto'); }
+      if (old) await sb.storage.from('imagenes').remove([old]).catch(() => {});
+      perfil = { ...perfil, avatar: path }; fotos[me] = path; fire();
+    },
+    async quitarFoto() {
+      const me = need(), old = perfil?.avatar; if (!old) return;
+      const { error } = await sb.from('perfiles').update({ avatar: null }).eq('id', me); fail(error);
+      await sb.storage.from('imagenes').remove([old]).catch(() => {});
+      perfil = { ...perfil, avatar: null }; fotos[me] = null; fire();
+    },
+
+    // ── Administración (solo rol admin; el servidor lo vuelve a comprobar) ──
+    async adminCuentas() { need(); const { data, error } = await sb.rpc('admin_cuentas'); fail(error, 'No se pudieron leer las cuentas'); return data || []; },
+    async adminGrupos() { need(); const { data, error } = await sb.rpc('admin_grupos'); fail(error, 'No se pudieron leer los grupos'); return data || []; },
+    async adminEditar(id, nombre, rol) {
+      need(); nombre = String(nombre || '').trim();
+      if (nombre.length < 2 || nombre.length > 24) throw new Error('El nombre debe tener entre 2 y 24 caracteres');
+      const { error } = await sb.rpc('admin_editar', { u: id, n: nombre, r: rol }); fail(error, 'No se pudo guardar');
+      if (id === uid()) perfil = { ...perfil, nombre, rol };
+    },
+    async adminQuitarFoto(c) {
+      need(); const { error } = await sb.rpc('admin_quitar_foto', { u: c.id }); fail(error);
+      if (c.avatar) await sb.storage.from('imagenes').remove([c.avatar]).catch(() => {});
+    },
+    async adminBorrar(id) { need(); const { error } = await sb.rpc('admin_borrar', { u: id }); fail(error, 'No se pudo borrar la cuenta'); },
+    async adminClave(email) { const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: back('index.html') }); fail(error); },
+
     // Borra la cuenta y todo lo que hay en el servidor. Lo de este dispositivo se queda.
     async borrarCuenta() {
       const me = need();
@@ -168,14 +213,16 @@
     async buscar(q) {
       const me = need(); q = String(q || '').trim().replace(/[%_,()]/g, '');
       if (q.length < 2) return [];
-      const { data, error } = await sb.from('perfiles').select('id,nombre').ilike('nombre', '%' + q + '%').neq('id', me).order('nombre').limit(12);
+      const { data, error } = await sb.from('perfiles').select('id,nombre,avatar').ilike('nombre', '%' + q + '%').neq('id', me).order('nombre').limit(12);
       fail(error, 'No se pudo buscar');
+      (data || []).forEach(p => { fotos[p.id] = p.avatar || null; });
       return data || [];
     },
     async nombres(ids) {
       ids = [...new Set(ids.filter(Boolean))]; if (!ids.length) return {};
-      const { data, error } = await sb.from('perfiles').select('id,nombre').in('id', ids);
+      const { data, error } = await sb.from('perfiles').select('id,nombre,avatar').in('id', ids);
       fail(error);
+      (data || []).forEach(p => { fotos[p.id] = p.avatar || null; });
       return Object.fromEntries((data || []).map(p => [p.id, p.nombre]));
     },
     async invitar(para, { mensaje, cuando, enlace } = {}) {
@@ -242,13 +289,13 @@
   // Perfil público: se crea al registrarse (o en el primer inicio si hubo que confirmar el correo)
   async function ensurePerfil(nombre) {
     const me = uid(); if (!me) return null;
-    const { data } = await sb.from('perfiles').select('id,nombre').eq('id', me).maybeSingle();
+    const { data } = await sb.from('perfiles').select('id,nombre,rol,avatar').eq('id', me).maybeSingle();
     if (data) return (perfil = data);
     const n = nombre || session.user.user_metadata?.nombre || (session.user.email || 'jugador').split('@')[0].slice(0, 24);
     let nn = n, k = 1, r;
     while ((r = await sb.from('perfiles').insert({ id: me, nombre: nn })).error && /duplicate|perfiles_nombre_uq/i.test(r.error.message) && k < 6) nn = n.slice(0, 20) + ' ' + (++k);
     fail(r.error);
-    return (perfil = { id: me, nombre: nn });
+    return (perfil = { id: me, nombre: nn, rol: 'jugador', avatar: null });
   }
   // La cuenta se enlaza con un usuario local de este dispositivo (mismo nombre): sus bandas son las que se sincronizan
   function linkLocal() {
@@ -262,6 +309,20 @@
   }
   const uniqueName = (n, list) => { let k = 1, v = n; while (list.some(x => KT.norm(x.name) === KT.norm(v))) v = n.slice(0, 20) + ' ' + (++k); return v; };
 
+  // Recorta la foto al centro en un cuadrado de `size` px (JPEG)
+  async function square(file, size) {
+    if (!/^image\//.test(file.type)) throw new Error('El archivo no es una imagen');
+    if (file.size > 15e6) throw new Error('La imagen es demasiado grande');
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('No se pudo leer la imagen')); i.src = URL.createObjectURL(file); });
+    const w = img.naturalWidth, h = img.naturalHeight, side = Math.min(w, h);
+    const c = document.createElement('canvas'); c.width = c.height = Math.min(size, side);
+    const g = c.getContext('2d'); g.fillStyle = '#111'; g.fillRect(0, 0, c.width, c.height);
+    g.drawImage(img, (w - side) / 2, (h - side) / 2, side, side, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(img.src);
+    const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.86));
+    if (!blob) throw new Error('No se pudo preparar la foto');
+    return blob;
+  }
   // Reduce la imagen a 1600 px de lado como máximo y la convierte a JPEG
   async function shrink(file, max = 1600) {
     if (!/^image\//.test(file.type)) throw new Error('El archivo no es una imagen');

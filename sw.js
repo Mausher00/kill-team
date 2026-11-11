@@ -2,7 +2,7 @@
 //  sw.js — Service worker: la app funciona sin conexión.
 //  GENERADO por herramientas/pwa/generar_sw.py — no editar a mano.
 // ============================================================
-const VERSION = 'af083502ea';
+const VERSION = 'fd789355f8';
 const CORE = [
 "index.html",
 "builder.html",
@@ -12,6 +12,7 @@ const CORE = [
 "liga.html",
 "campana.html",
 "comunidad.html",
+"admin.html",
 "misiones/misiones.html",
 "manifest.webmanifest",
 "css/fonts.css",
@@ -20,6 +21,7 @@ const CORE = [
 "css/modos.css",
 "css/partida.css",
 "css/styles.css",
+"js/admin.js",
 "js/app.js",
 "js/calendario.js",
 "js/campana.js",

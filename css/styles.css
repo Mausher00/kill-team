@@ -480,3 +480,15 @@ a.back:hover .back-logo, .back:hover .back-logo { filter: brightness(1.15); tran
 .usr-local { margin-top: 12px; border: 1px solid var(--border-2); border-radius: var(--radius-md); background: var(--bg-2); }
 .usr-local > .usr { padding: 0 12px 10px; }
 .acc-page { max-width: 460px; background: var(--bg-2); border: 1px solid var(--border-2); border-top: 3px solid var(--orange); border-radius: 8px; padding: 14px 16px 16px; }
+.acc-err { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 10px 12px; border-radius: var(--radius-md); background: rgba(220,60,60,.12); border: 1px solid #6a2a2a; color: #f2a0a0; font-size: 13px; line-height: 1.45; }
+.acc-err i { margin-top: 2px; }
+/* Avatares */
+.av { display: inline-grid; place-items: center; width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%; object-fit: cover; background: var(--orange); color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 14px; line-height: 1; vertical-align: middle; }
+img.av { background: var(--bg-3); }
+.acc-avbox { position: relative; cursor: pointer; flex-shrink: 0; }
+.acc-av.av { width: 56px; height: 56px; font-size: 26px; }
+.acc-cam { position: absolute; right: -2px; bottom: -2px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--bg-2); border: 1px solid var(--border-2); color: var(--text-2); font-size: 12px; transition: color .15s, border-color .15s; }
+.acc-avbox:hover .acc-cam { color: var(--orange); border-color: var(--orange); }
+.acc-badge { display: inline-block; vertical-align: middle; font-family: var(--font-mono); font-size: 9.5px; font-weight: 400; letter-spacing: .08em; padding: 2px 6px; border-radius: 3px; background: var(--orange-bg); border: 1px solid var(--orange-dim); color: var(--orange); }
+label.icon-btn { cursor: pointer; }
+.chip-av.av { width: 22px; height: 22px; }

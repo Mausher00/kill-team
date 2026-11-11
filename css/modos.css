@@ -116,3 +116,23 @@ table.m-tab { width: 100%; border-collapse: collapse; font-size: 13px; }
 .q-steps li { counter-increment: s; position: relative; padding-left: 38px; font-size: 14px; line-height: 1.5; color: var(--text-2); }
 .q-steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 26px; height: 26px; border-radius: 50%; background: var(--orange); color: #fff; font-family: var(--font-display); font-weight: 800; display: grid; place-items: center; }
 .q-steps code { background: var(--bg-3); padding: 1px 5px; border-radius: 3px; font-size: 12.5px; color: #fff; }
+
+.q-post header .av { width: 30px; height: 30px; font-size: 14px; }
+.q-mems { display: inline-flex; flex-wrap: wrap; gap: 6px 12px; vertical-align: middle; margin-left: 4px; }
+.q-mems span { display: inline-flex; align-items: center; gap: 5px; }
+.q-mems .av { width: 22px; height: 22px; font-size: 11px; }
+.c-log .m-row .av { width: 34px; height: 34px; font-size: 16px; }
+/* Administración */
+.ad-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 16px; }
+.ad-stats div { background: var(--bg-2); border: 1px solid var(--border-2); border-top: 3px solid var(--orange); border-radius: 6px; padding: 10px 12px; }
+.ad-stats b { display: block; font-family: var(--font-display); font-size: 30px; color: #fff; line-height: 1; }
+.ad-stats small { font-family: var(--font-display); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }
+.ad-list { display: flex; flex-direction: column; gap: 6px; }
+.ad-row { display: flex; gap: 12px; align-items: center; background: var(--bg-2); border: 1px solid var(--border-2); border-radius: 6px; padding: 10px 12px; flex-wrap: wrap; }
+.ad-av.av { width: 44px; height: 44px; font-size: 20px; }
+.ad-who { flex: 1 1 260px; min-width: 0; }
+.ad-who b { display: block; font-family: var(--font-display); font-size: 17px; text-transform: uppercase; letter-spacing: .03em; color: #fff; }
+.ad-who small { display: block; font-size: 12px; color: var(--text-3); overflow-wrap: anywhere; }
+.ad-warn { font-family: var(--font-mono); font-size: 9.5px; font-weight: 400; padding: 2px 6px; border-radius: 3px; background: rgba(212,160,16,.12); color: var(--action); vertical-align: middle; letter-spacing: .04em; }
+.ad-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+@media (max-width: 640px) { .ad-acts .icon-btn span { display: none; } }

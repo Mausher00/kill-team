@@ -220,3 +220,102 @@ revoke execute on function public.nuevo_usuario() from public, anon, authenticat
 revoke execute on function public.borrar_cuenta() from public, anon;
 grant execute on function public.nombre_libre(text) to anon, authenticated;
 grant execute on function public.borrar_cuenta() to authenticated;
+
+-- ============================================================
+--  Roles y foto de perfil (v3)
+--  · perfiles.rol: 'jugador' (todos) o 'admin' (ve y administra las cuentas)
+--  · perfiles.avatar: ruta de la foto en el almacenamiento «imagenes» (opcional)
+--  Para nombrar el primer administrador, ver LEEME.md (no se guarda aquí ningún correo).
+-- ============================================================
+alter table public.perfiles add column if not exists rol text not null default 'jugador';
+alter table public.perfiles add column if not exists avatar text;
+alter table public.perfiles drop constraint if exists perfiles_rol_ck;
+alter table public.perfiles add constraint perfiles_rol_ck check (rol in ('jugador', 'admin'));
+alter table public.perfiles drop constraint if exists perfiles_avatar_ck;
+alter table public.perfiles add constraint perfiles_avatar_ck check (avatar is null or char_length(avatar) <= 200);
+
+create or replace function public.es_admin() returns boolean
+  language sql stable security definer set search_path = public as
+$$ select exists (select 1 from public.perfiles where id = auth.uid() and rol = 'admin') $$;
+
+-- Nadie puede darse a sí mismo el rol de administrador desde la app
+create or replace function public.proteger_rol() returns trigger
+  language plpgsql security definer set search_path = public as
+$$
+begin
+  if auth.uid() is not null and new.rol is distinct from coalesce(old.rol, 'jugador') and not public.es_admin() then
+    raise exception 'Solo un administrador puede cambiar roles';
+  end if;
+  return new;
+end $$;
+drop trigger if exists perfiles_rol on public.perfiles;
+create trigger perfiles_rol before insert or update on public.perfiles for each row execute function public.proteger_rol();
+
+-- Lista de cuentas para el administrador (incluye el correo, que nadie más ve)
+create or replace function public.admin_cuentas()
+  returns table (id uuid, nombre text, email text, rol text, avatar text, creado timestamptz, ultimo_acceso timestamptz,
+                 confirmado boolean, bandas bigint, partidas bigint, grupos bigint)
+  language plpgsql stable security definer set search_path = public, auth as
+$$
+begin
+  if not public.es_admin() then raise exception 'Solo para administradores'; end if;
+  return query
+    select u.id, p.nombre, u.email::text, coalesce(p.rol, 'jugador'), p.avatar, u.created_at, u.last_sign_in_at,
+           u.email_confirmed_at is not null,
+           (select count(*) from public.bandas b where b.usuario = u.id and not b.borrada),
+           (select count(*) from public.partidas x where x.usuario = u.id),
+           (select count(*) from public.miembros m where m.usuario = u.id)
+    from auth.users u left join public.perfiles p on p.id = u.id
+    order by u.created_at desc;
+end $$;
+
+create or replace function public.admin_editar(u uuid, n text, r text) returns void
+  language plpgsql security definer set search_path = public as
+$$
+begin
+  if not public.es_admin() then raise exception 'Solo para administradores'; end if;
+  if r not in ('jugador', 'admin') then raise exception 'Rol no válido'; end if;
+  if r = 'jugador' and u = auth.uid() and (select count(*) from public.perfiles where rol = 'admin') <= 1 then
+    raise exception 'Tiene que quedar al menos un administrador';
+  end if;
+  insert into public.perfiles (id, nombre, rol) values (u, trim(n), r)
+    on conflict (id) do update set nombre = trim(n), rol = r;
+end $$;
+
+create or replace function public.admin_quitar_foto(u uuid) returns void
+  language plpgsql security definer set search_path = public as
+$$
+begin
+  if not public.es_admin() then raise exception 'Solo para administradores'; end if;
+  update public.perfiles set avatar = null where id = u;
+end $$;
+
+create or replace function public.admin_borrar(u uuid) returns void
+  language plpgsql security definer set search_path = public, auth as
+$$
+begin
+  if not public.es_admin() then raise exception 'Solo para administradores'; end if;
+  if u = auth.uid() then raise exception 'Para borrar tu propia cuenta usa Ajustes de la cuenta'; end if;
+  delete from auth.users where id = u;
+end $$;
+
+create or replace function public.admin_grupos()
+  returns table (id uuid, nombre text, codigo text, creador text, miembros bigint, publicaciones bigint, creado timestamptz)
+  language plpgsql stable security definer set search_path = public as
+$$
+begin
+  if not public.es_admin() then raise exception 'Solo para administradores'; end if;
+  return query
+    select g.id, g.nombre, g.codigo, p.nombre, (select count(*) from public.miembros m where m.grupo = g.id),
+           (select count(*) from public.publicaciones x where x.grupo = g.id), g.creado
+    from public.grupos g left join public.perfiles p on p.id = g.creador order by g.creado desc;
+end $$;
+
+-- el administrador puede borrar cualquier grupo
+drop policy if exists grupos_borrar on public.grupos;
+create policy grupos_borrar on public.grupos for delete to authenticated using (creador = auth.uid() or public.es_admin());
+
+revoke execute on function public.admin_cuentas(), public.admin_editar(uuid, text, text), public.admin_quitar_foto(uuid),
+  public.admin_borrar(uuid), public.admin_grupos(), public.proteger_rol() from public, anon;
+grant execute on function public.es_admin(), public.admin_cuentas(), public.admin_editar(uuid, text, text),
+  public.admin_quitar_foto(uuid), public.admin_borrar(uuid), public.admin_grupos() to authenticated;

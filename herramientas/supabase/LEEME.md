@@ -58,3 +58,14 @@ En *Ajustes de la cuenta* se puede cambiar el nombre, el correo y la contraseña
 
 Si ya tenías el proyecto creado, vuelve a ejecutar **`esquema.sql`** y **`almacenamiento.sql`** enteros (se pueden repetir sin perder datos):
 añaden la comprobación de nombre libre, el perfil automático al registrarse y el borrado de cuenta.
+
+## Administrador y fotos de perfil (versión 3)
+
+- Cada cuenta puede poner una **foto de perfil** opcional (botón de la cámara en *Tu cuenta*). Se recorta en cuadrado de 320 px.
+- Las cuentas con rol **admin** ven el botón *Administrar* (página `admin.html`): lista de todas las cuentas con su correo,
+  fecha de alta, último acceso y datos guardados; pueden cambiar nombre y rol, quitar fotos, enviar un correo para cambiar
+  la contraseña, borrar cuentas y borrar grupos. Nadie puede darse el rol de administrador desde la app.
+- **Nombrar el primer administrador:** crea la cuenta (desde la app o en *Authentication → Users → Add user* con
+  *Auto Confirm User*), abre `administrador.sql`, pon tu correo y tu nombre de usuario **solo en el editor de Supabase**
+  y pulsa *Run*. No guardes el correo ni la contraseña en el repositorio: es público.
+- Tras actualizar, vuelve a ejecutar `esquema.sql` y `almacenamiento.sql`.
