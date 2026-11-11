@@ -2,7 +2,7 @@
 //  sw.js — Service worker: la app funciona sin conexión.
 //  GENERADO por herramientas/pwa/generar_sw.py — no editar a mano.
 // ============================================================
-const VERSION = 'fd789355f8';
+const VERSION = '1574e8f895';
 const CORE = [
 "index.html",
 "builder.html",
@@ -26,6 +26,7 @@ const CORE = [
 "js/calendario.js",
 "js/campana.js",
 "js/comandos.js",
+"js/compartir.js",
 "js/comunidad.js",
 "js/config.js",
 "js/cuenta.js",
@@ -54,6 +55,7 @@ const CORE = [
 "js/data/vespid.js",
 "js/data/zonas.js",
 "js/dual.js",
+"js/grupo.js",
 "js/nube.js",
 "js/partida.js",
 "js/render.js",

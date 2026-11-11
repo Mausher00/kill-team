@@ -69,3 +69,20 @@ añaden la comprobación de nombre libre, el perfil automático al registrarse y
   *Auto Confirm User*), abre `administrador.sql`, pon tu correo y tu nombre de usuario **solo en el editor de Supabase**
   y pulsa *Run*. No guardes el correo ni la contraseña en el repositorio: es público.
 - Tras actualizar, vuelve a ejecutar `esquema.sql` y `almacenamiento.sql`.
+
+## Comunidad · fase 1 (versión 4)
+
+Cada comunidad tiene cuatro pestañas: **Tablón**, **Partidas**, **Galería** y **Miembros**.
+
+- **Roles:** fundador (quien la creó), administrador y miembro. El fundador nombra administradores; los administradores
+  moderan (borran mensajes y fotos), fijan anuncios, conceden distinciones, expulsan miembros y cambian el nombre,
+  la descripción y el código. El administrador de la app puede moderar cualquier comunidad.
+- **Tablón:** 250 caracteres por mensaje (1000 para quien administra), respuestas a un nivel y anuncios fijados.
+  El límite lo comprueba también el servidor.
+- **Rangos:** 1 punto por partida jugada en la comunidad y 5 por cada distinción (torneo, liga o evento ganado).
+  Recluta 0 · Agente 3 · Veterano 10 · Élite 25 · Comandante 50 · Leyenda 100.
+- **Galería:** fotos subidas directamente o adjuntas a mensajes del tablón.
+- **Compartir:** imagen y texto por el menú del móvil, o WhatsApp, Telegram y X en el ordenador. No lleva enlace a la app.
+
+Tras actualizar, vuelve a ejecutar `esquema.sql` y `almacenamiento.sql`.
+Pendiente: eventos, calendario y ligas de comunidad (fase 2); partidas en directo con vídeo y campañas compartidas (fase 3).

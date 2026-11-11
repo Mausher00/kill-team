@@ -99,7 +99,7 @@ declare g uuid;
 begin
   if auth.uid() is null then raise exception 'Hay que iniciar sesión'; end if;
   select id into g from public.grupos where codigo = upper(trim(c));
-  if g is null then raise exception 'No existe ningún grupo con ese código'; end if;
+  if g is null then raise exception 'No existe ninguna comunidad con ese código'; end if;
   insert into public.miembros (grupo, usuario) values (g, auth.uid()) on conflict do nothing;
   return g;
 end $$;
@@ -319,3 +319,169 @@ revoke execute on function public.admin_cuentas(), public.admin_editar(uuid, tex
   public.admin_borrar(uuid), public.admin_grupos(), public.proteger_rol() from public, anon;
 grant execute on function public.es_admin(), public.admin_cuentas(), public.admin_editar(uuid, text, text),
   public.admin_quitar_foto(uuid), public.admin_borrar(uuid), public.admin_grupos() to authenticated;
+
+-- ============================================================
+--  Comunidad · fase 1 (v4)
+--  · Roles dentro de cada comunidad: fundador (quien la creó), administrador y miembro
+--  · Tablón: respuestas, anuncios fijados y límite de 250 caracteres para quien no administra
+--  · Galería: fotos subidas directamente, sin pasar por el tablón (publicaciones.galeria = no sale en el tablón;
+--    también lo llevan los resultados publicados desde la pestaña Partidas)
+--  · Distinciones: títulos que dan los administradores (torneos y eventos ganados); suben el rango
+-- ============================================================
+alter table public.grupos add column if not exists descripcion text;
+alter table public.grupos drop constraint if exists grupos_descripcion_ck;
+alter table public.grupos add constraint grupos_descripcion_ck check (descripcion is null or char_length(descripcion) <= 300);
+
+alter table public.publicaciones add column if not exists fijada boolean not null default false;
+alter table public.publicaciones add column if not exists galeria boolean not null default false;
+alter table public.publicaciones add column if not exists respuesta_a uuid references public.publicaciones (id) on delete cascade;
+alter table public.publicaciones drop constraint if exists publicaciones_texto_check;
+alter table public.publicaciones drop constraint if exists publicaciones_texto_ck;
+alter table public.publicaciones add constraint publicaciones_texto_ck check (texto is null or char_length(texto) <= 1000);
+create index if not exists publicaciones_resp_idx on public.publicaciones (respuesta_a);
+
+create table if not exists public.distinciones (
+  id uuid primary key default gen_random_uuid(),
+  grupo uuid not null references public.grupos (id) on delete cascade,
+  usuario uuid not null references auth.users (id) on delete cascade,
+  titulo text not null check (char_length(titulo) between 2 and 60),
+  tipo text not null default 'torneo' check (tipo in ('torneo', 'liga', 'campana', 'evento', 'oficial', 'otro')),
+  fecha date not null default current_date,
+  otorgada_por uuid references auth.users (id) on delete set null,
+  creado timestamptz not null default now()
+);
+create index if not exists distinciones_grupo_idx on public.distinciones (grupo, usuario);
+
+-- ¿El usuario actual administra la comunidad? (fundador, administrador de la comunidad o administrador de la app)
+create or replace function public.es_admin_grupo(g uuid) returns boolean
+  language sql stable security definer set search_path = public as
+$$ select exists (select 1 from public.grupos x where x.id = g and x.creador = auth.uid())
+       or exists (select 1 from public.miembros m where m.grupo = g and m.usuario = auth.uid() and m.rol = 'admin')
+       or public.es_admin() $$;
+
+-- Reglas del tablón que no caben en una política
+create or replace function public.reglas_publicacion() returns trigger
+  language plpgsql security definer set search_path = public as
+$$
+declare madre public.publicaciones;
+begin
+  if auth.uid() is null then return new; end if;                       -- editor SQL / mantenimiento
+  if not public.es_admin_grupo(new.grupo) then
+    if char_length(coalesce(new.texto, '')) > 250 then raise exception 'El mensaje no puede pasar de 250 caracteres'; end if;
+    if new.fijada then raise exception 'Solo los administradores pueden fijar anuncios'; end if;
+  end if;
+  if new.respuesta_a is not null then
+    select * into madre from public.publicaciones where id = new.respuesta_a;
+    if madre.id is null or madre.grupo <> new.grupo then raise exception 'La publicación a la que respondes ya no existe'; end if;
+    if madre.respuesta_a is not null then raise exception 'No se puede responder a una respuesta'; end if;
+    new.fijada := false; new.galeria := false;
+  end if;
+  return new;
+end $$;
+drop trigger if exists publicaciones_reglas on public.publicaciones;
+create trigger publicaciones_reglas before insert on public.publicaciones for each row execute function public.reglas_publicacion();
+
+-- Fijar o soltar un anuncio
+create or replace function public.fijar_publicacion(p uuid, f boolean) returns void
+  language plpgsql security definer set search_path = public as
+$$
+declare g uuid;
+begin
+  select grupo into g from public.publicaciones where id = p and respuesta_a is null;
+  if g is null then raise exception 'La publicación no existe'; end if;
+  if not public.es_admin_grupo(g) then raise exception 'Solo los administradores pueden fijar anuncios'; end if;
+  update public.publicaciones set fijada = f where id = p;
+end $$;
+
+-- Nombre y descripción de la comunidad
+create or replace function public.editar_grupo(g uuid, n text, d text) returns void
+  language plpgsql security definer set search_path = public as
+$$
+begin
+  if not public.es_admin_grupo(g) then raise exception 'Solo los administradores pueden cambiar la comunidad'; end if;
+  update public.grupos set nombre = trim(n), descripcion = nullif(trim(coalesce(d, '')), '') where id = g;
+end $$;
+
+-- Código nuevo (el anterior deja de valer)
+create or replace function public.nuevo_codigo(g uuid) returns text
+  language plpgsql security definer set search_path = public as
+$$
+declare c text; k int := 0;
+begin
+  if not public.es_admin_grupo(g) then raise exception 'Solo los administradores pueden cambiar el código'; end if;
+  loop
+    c := upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6));
+    begin update public.grupos set codigo = c where id = g; exit;
+    exception when unique_violation then k := k + 1; if k > 8 then raise; end if; end;
+  end loop;
+  return c;
+end $$;
+
+-- Nombrar o quitar administradores: solo el fundador (o un administrador de la app)
+create or replace function public.cambiar_rol(g uuid, u uuid, r text) returns void
+  language plpgsql security definer set search_path = public as
+$$
+declare f uuid;
+begin
+  select creador into f from public.grupos where id = g;
+  if f is null then raise exception 'La comunidad no existe'; end if;
+  if auth.uid() <> f and not public.es_admin() then raise exception 'Solo el fundador puede nombrar administradores'; end if;
+  if u = f then raise exception 'El fundador siempre administra la comunidad'; end if;
+  if r not in ('admin', 'miembro') then raise exception 'Rol no válido'; end if;
+  update public.miembros set rol = r where grupo = g and usuario = u;
+  if not found then raise exception 'Ese jugador no está en la comunidad'; end if;
+end $$;
+
+-- Expulsar: los administradores a los miembros; solo el fundador a otros administradores
+create or replace function public.expulsar(g uuid, u uuid) returns void
+  language plpgsql security definer set search_path = public as
+$$
+declare f uuid; rol_u text;
+begin
+  select creador into f from public.grupos where id = g;
+  if not public.es_admin_grupo(g) then raise exception 'Solo los administradores pueden expulsar'; end if;
+  if u = f then raise exception 'No se puede expulsar al fundador'; end if;
+  select rol into rol_u from public.miembros where grupo = g and usuario = u;
+  if rol_u is null then raise exception 'Ese jugador no está en la comunidad'; end if;
+  if rol_u = 'admin' and auth.uid() <> f and not public.es_admin() then raise exception 'Solo el fundador puede expulsar a un administrador'; end if;
+  delete from public.miembros where grupo = g and usuario = u;
+end $$;
+
+alter table public.distinciones enable row level security;
+
+-- el administrador de la app puede ver y moderar cualquier comunidad
+drop policy if exists grupos_ver on public.grupos;
+create policy grupos_ver on public.grupos for select to authenticated using (public.es_miembro(id) or public.es_admin());
+drop policy if exists miembros_ver on public.miembros;
+create policy miembros_ver on public.miembros for select to authenticated using (public.es_miembro(grupo) or public.es_admin());
+drop policy if exists publicaciones_ver on public.publicaciones;
+create policy publicaciones_ver on public.publicaciones for select to authenticated using (public.es_miembro(grupo) or public.es_admin());
+
+-- salir: cada uno por su cuenta, salvo el fundador (que tendría que borrar la comunidad). Expulsar va por expulsar()
+drop policy if exists miembros_salir on public.miembros;
+create policy miembros_salir on public.miembros for delete to authenticated
+  using (usuario = auth.uid() and not exists (select 1 from public.grupos g where g.id = grupo and g.creador = auth.uid()));
+
+-- borrar publicaciones: las propias, o cualquiera si administras la comunidad
+drop policy if exists publicaciones_borrar on public.publicaciones;
+create policy publicaciones_borrar on public.publicaciones for delete to authenticated
+  using (usuario = auth.uid() or public.es_admin_grupo(grupo));
+
+-- nombre y descripción se cambian con editar_grupo(); nadie edita la tabla directamente
+drop policy if exists grupos_editar on public.grupos;
+
+drop policy if exists distinciones_ver on public.distinciones;
+create policy distinciones_ver on public.distinciones for select to authenticated using (public.es_miembro(grupo) or public.es_admin());
+drop policy if exists distinciones_dar on public.distinciones;
+create policy distinciones_dar on public.distinciones for insert to authenticated
+  with check (public.es_admin_grupo(grupo) and otorgada_por = auth.uid()
+              and exists (select 1 from public.miembros m where m.grupo = distinciones.grupo and m.usuario = distinciones.usuario));
+drop policy if exists distinciones_quitar on public.distinciones;
+create policy distinciones_quitar on public.distinciones for delete to authenticated using (public.es_admin_grupo(grupo));
+
+grant select, insert, delete on public.distinciones to authenticated;
+revoke execute on function public.reglas_publicacion() from public, anon, authenticated;
+revoke execute on function public.es_admin_grupo(uuid), public.fijar_publicacion(uuid, boolean), public.editar_grupo(uuid, text, text),
+  public.nuevo_codigo(uuid), public.cambiar_rol(uuid, uuid, text), public.expulsar(uuid, uuid) from public, anon;
+grant execute on function public.es_admin_grupo(uuid), public.fijar_publicacion(uuid, boolean), public.editar_grupo(uuid, text, text),
+  public.nuevo_codigo(uuid), public.cambiar_rol(uuid, uuid, text), public.expulsar(uuid, uuid) to authenticated;

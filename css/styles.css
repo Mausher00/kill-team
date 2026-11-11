@@ -492,3 +492,12 @@ img.av { background: var(--bg-3); }
 .acc-badge { display: inline-block; vertical-align: middle; font-family: var(--font-mono); font-size: 9.5px; font-weight: 400; letter-spacing: .08em; padding: 2px 6px; border-radius: 3px; background: var(--orange-bg); border: 1px solid var(--orange-dim); color: var(--orange); }
 label.icon-btn { cursor: pointer; }
 .chip-av.av { width: 22px; height: 22px; }
+/* Compartir en redes */
+.sh { padding: 6px 4px; display: flex; flex-direction: column; gap: 10px; }
+.sh-prev { display: block; width: 100%; max-height: 300px; object-fit: contain; border: 1px solid var(--border-2); border-radius: 6px; background: #000; }
+.sh-text { width: 100%; background: var(--bg); color: var(--text-2); border: 1px solid var(--border-2); border-radius: var(--radius-md); padding: 8px 10px; font: 13px/1.5 var(--font-body); resize: none; }
+.sh-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.sh-btn { flex: 1 1 110px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 42px; border-radius: var(--radius-md); color: #fff; text-decoration: none; font-family: var(--font-display); font-size: 14px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; transition: filter .15s; }
+.sh-btn i { font-size: 19px; }
+.sh-btn:hover { filter: brightness(1.15); }
+.sh-btn.wa { background: #1f9d55; } .sh-btn.tg { background: #2481cc; } .sh-btn.x { background: #1a1a1a; border: 1px solid var(--border-2); }

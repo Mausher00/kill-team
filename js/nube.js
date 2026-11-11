@@ -18,7 +18,8 @@
       [/perfiles_nombre_uq|duplicate key/i, 'Ese nombre ya está cogido: prueba con otro'], [/failed to fetch|networkerror|load failed/i, 'Sin conexión con el servidor'],
       [/rate limit/i, 'Demasiados intentos: espera un momento'], [/database error saving new user/i, 'Ese nombre de usuario ya está cogido'],
       [/should be different|same password/i, 'La nueva contraseña tiene que ser distinta de la anterior'], [/unable to validate email|invalid format|email address .*invalid/i, 'Ese correo no es válido'],
-      [/signups? not allowed|signup.*disabled/i, 'El registro está desactivado en el servidor'], [/weak password|password is known/i, 'Esa contraseña es demasiado fácil: usa una más larga'], [/row-level security/i, 'No tienes permiso para hacer eso']].find(([re]) => re.test(m));
+      [/signups? not allowed|signup.*disabled/i, 'El registro está desactivado en el servidor'], [/weak password|password is known/i, 'Esa contraseña es demasiado fácil: usa una más larga'], [/row-level security/i, 'No tienes permiso para hacer eso'],
+      [/column .* does not exist|could not find the|schema cache|function .* does not exist/i, 'Falta actualizar el servidor: vuelve a ejecutar esquema.sql en Supabase']].find(([re]) => re.test(m));
     return t ? t[1] : (fallback ? fallback + ': ' : '') + m;
   };
   let sb = null, loading = null, session = null, perfil = null;
@@ -240,17 +241,30 @@
     async responder(id, estado) { need(); const { error } = await sb.from('invitaciones').update({ estado }).eq('id', id); fail(error); },
     async borrarInvitacion(id) { need(); const { error } = await sb.from('invitaciones').delete().eq('id', id); fail(error); },
 
-    // ── Grupos (comunidad) ───────────────────────────────────
+    // ── Comunidades ──────────────────────────────────────────
+    // Cada comunidad lleva `rol`: 'fundador' | 'admin' | 'miembro' | 'externo' (administrador de la app que no es miembro)
     async grupos() {
-      need();
-      const { data, error } = await sb.from('grupos').select('id,nombre,codigo,creador,creado').order('creado');
-      fail(error, 'No se pudieron leer los grupos');
-      return data || [];
+      const me = need();
+      const [g, m] = await Promise.all([
+        sb.from('grupos').select('*').order('creado'),
+        sb.from('miembros').select('grupo,rol').eq('usuario', me),
+      ]);
+      fail(g.error, 'No se pudieron leer las comunidades');
+      const mine = {}; (m.data || []).forEach(x => { mine[x.grupo] = x.rol; });
+      return (g.data || []).map(x => ({ ...x, rol: x.creador === me ? 'fundador' : mine[x.id] || 'externo' }));
     },
-    async crearGrupo(nombre) { need(); const { data, error } = await sb.rpc('crear_grupo', { n: String(nombre).trim() }); fail(error, 'No se pudo crear el grupo'); return Array.isArray(data) ? data[0] : data; },
+    async crearGrupo(nombre) { need(); const { data, error } = await sb.rpc('crear_grupo', { n: String(nombre).trim() }); fail(error, 'No se pudo crear la comunidad'); return Array.isArray(data) ? data[0] : data; },
     async unirse(codigo) { need(); const { data, error } = await sb.rpc('unirse_grupo', { c: String(codigo).trim() }); fail(error); return data; },
     async salirGrupo(grupo) { const me = need(); const { error } = await sb.from('miembros').delete().eq('grupo', grupo).eq('usuario', me); fail(error); },
     async borrarGrupo(grupo) { need(); const { error } = await sb.from('grupos').delete().eq('id', grupo); fail(error); },
+    async editarGrupo(grupo, nombre, descripcion) {
+      need(); nombre = String(nombre || '').trim();
+      if (nombre.length < 2 || nombre.length > 40) throw new Error('El nombre debe tener entre 2 y 40 caracteres');
+      const { error } = await sb.rpc('editar_grupo', { g: grupo, n: nombre, d: String(descripcion || '').trim().slice(0, 300) }); fail(error, 'No se pudo guardar');
+    },
+    async nuevoCodigo(grupo) { need(); const { data, error } = await sb.rpc('nuevo_codigo', { g: grupo }); fail(error); return data; },
+    async cambiarRol(grupo, usuario, rol) { need(); const { error } = await sb.rpc('cambiar_rol', { g: grupo, u: usuario, r: rol }); fail(error); },
+    async expulsar(grupo, usuario) { need(); const { error } = await sb.rpc('expulsar', { g: grupo, u: usuario }); fail(error); },
     async miembros(grupo) {
       need();
       const { data, error } = await sb.from('miembros').select('usuario,rol,desde').eq('grupo', grupo).order('desde');
@@ -258,14 +272,34 @@
       const nm = await N.nombres((data || []).map(m => m.usuario));
       return (data || []).map(m => ({ ...m, nombre: nm[m.usuario] || '¿?' }));
     },
-    async publicaciones(grupo, limit = 60) {
+    // Tablón: publicaciones principales (sin las fotos que solo van a la galería) con sus respuestas
+    async tablon(grupo, limit = 80) {
       need();
-      const { data, error } = await sb.from('publicaciones').select('id,usuario,tipo,texto,datos,imagen,creado').eq('grupo', grupo).order('creado', { ascending: false }).limit(limit);
-      fail(error, 'No se pudo leer el grupo');
-      const nm = await N.nombres((data || []).map(p => p.usuario));
-      return (data || []).map(p => ({ ...p, nombre: nm[p.usuario] || '¿?', mia: p.usuario === uid(), url: p.imagen ? sb.storage.from('imagenes').getPublicUrl(p.imagen).data.publicUrl : null }));
+      const cols = 'id,usuario,tipo,texto,datos,imagen,creado,fijada,galeria,respuesta_a';
+      const { data, error } = await sb.from('publicaciones').select(cols).eq('grupo', grupo).is('respuesta_a', null).eq('galeria', false).order('creado', { ascending: false }).limit(limit);
+      fail(error, 'No se pudo leer el tablón');
+      const top = data || [];
+      let resp = [];
+      if (top.length) { const r = await sb.from('publicaciones').select(cols).eq('grupo', grupo).in('respuesta_a', top.map(p => p.id)).order('creado'); fail(r.error); resp = r.data || []; }
+      const nm = await N.nombres([...top, ...resp].map(p => p.usuario));
+      const dress = p => ({ ...p, nombre: nm[p.usuario] || '¿?', mia: p.usuario === uid(), url: N.foto(p.imagen) });
+      return top.map(p => ({ ...dress(p), respuestas: resp.filter(r => r.respuesta_a === p.id).map(dress) }));
     },
-    // pub: { tipo, texto, datos, file } — la imagen se reduce antes de subirla
+    async galeria(grupo, limit = 150) {
+      need();
+      const { data, error } = await sb.from('publicaciones').select('id,usuario,texto,imagen,creado,galeria').eq('grupo', grupo).not('imagen', 'is', null).order('creado', { ascending: false }).limit(limit);
+      fail(error, 'No se pudo leer la galería');
+      const nm = await N.nombres((data || []).map(p => p.usuario));
+      return (data || []).map(p => ({ ...p, nombre: nm[p.usuario] || '¿?', mia: p.usuario === uid(), url: N.foto(p.imagen) }));
+    },
+    async resultados(grupo) {
+      need();
+      const { data, error } = await sb.from('publicaciones').select('id,usuario,datos,creado').eq('grupo', grupo).eq('tipo', 'resultado').order('creado', { ascending: false }).limit(1000);
+      fail(error, 'No se pudieron leer los resultados');
+      const nm = await N.nombres((data || []).map(p => p.usuario));
+      return (data || []).map(p => ({ ...p, tipo: 'resultado', nombre: nm[p.usuario] || '¿?', mia: p.usuario === uid() }));
+    },
+    // pub: { tipo, texto, datos, file, fijada, galeria, respuesta_a } — la imagen se reduce antes de subirla
     async publicar(grupo, pub) {
       const me = need();
       let imagen = null;
@@ -275,15 +309,34 @@
         const up = await sb.storage.from('imagenes').upload(imagen, blob, { contentType: 'image/jpeg', upsert: false });
         fail(up.error, 'No se pudo subir la imagen');
       }
-      const { error } = await sb.from('publicaciones').insert({ grupo, usuario: me, tipo: pub.tipo, texto: (pub.texto || '').slice(0, 600) || null, datos: pub.datos || null, imagen });
+      const row = { grupo, usuario: me, tipo: pub.tipo, texto: (pub.texto || '').slice(0, 1000) || null, datos: pub.datos || null, imagen };
+      if (pub.fijada) row.fijada = true;
+      if (pub.galeria) row.galeria = true;
+      if (pub.respuesta_a) row.respuesta_a = pub.respuesta_a;
+      const { error } = await sb.from('publicaciones').insert(row);
       if (error && imagen) await sb.storage.from('imagenes').remove([imagen]).catch(() => {});
       fail(error, 'No se pudo publicar');
     },
+    async fijar(id, f) { need(); const { error } = await sb.rpc('fijar_publicacion', { p: id, f: !!f }); fail(error); },
     async borrarPublicacion(p) {
       need();
+      if (p.imagen) await sb.storage.from('imagenes').remove([p.imagen]).catch(() => {});   // antes que la fila: el permiso del moderador depende de ella
       const { error } = await sb.from('publicaciones').delete().eq('id', p.id); fail(error);
-      if (p.imagen && p.mia) await sb.storage.from('imagenes').remove([p.imagen]).catch(() => {});
     },
+    // Distinciones: títulos que dan los administradores de la comunidad
+    async distinciones(grupo) {
+      need();
+      const { data, error } = await sb.from('distinciones').select('id,usuario,titulo,tipo,fecha').eq('grupo', grupo).order('fecha', { ascending: false });
+      if (error && /does not exist|schema cache/i.test(error.message)) return [];        // servidor sin actualizar
+      fail(error); return data || [];
+    },
+    async darDistincion(grupo, usuario, { titulo, tipo, fecha }) {
+      const me = need(); titulo = String(titulo || '').trim();
+      if (titulo.length < 2 || titulo.length > 60) throw new Error('El título debe tener entre 2 y 60 caracteres');
+      const row = { grupo, usuario, titulo, tipo: tipo || 'torneo', otorgada_por: me }; if (fecha) row.fecha = fecha;
+      const { error } = await sb.from('distinciones').insert(row); fail(error, 'No se pudo dar la distinción');
+    },
+    async quitarDistincion(id) { need(); const { error } = await sb.from('distinciones').delete().eq('id', id); fail(error); },
   };
 
   // Perfil público: se crea al registrarse (o en el primer inicio si hubo que confirmar el correo)

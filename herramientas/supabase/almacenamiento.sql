@@ -22,3 +22,7 @@ create policy imagenes_ver_propias on storage.objects for select to authenticate
 drop policy if exists imagenes_borrar_admin on storage.objects;
 create policy imagenes_borrar_admin on storage.objects for delete to authenticated
   using (bucket_id = 'imagenes' and public.es_admin());
+-- quien administra una comunidad puede borrar las fotos publicadas en ella
+drop policy if exists imagenes_borrar_moderador on storage.objects;
+create policy imagenes_borrar_moderador on storage.objects for delete to authenticated
+  using (bucket_id = 'imagenes' and exists (select 1 from public.publicaciones p where p.imagen = name and public.es_admin_grupo(p.grupo)));
