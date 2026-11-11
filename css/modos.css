@@ -1,7 +1,7 @@
 /* ============================================================
    modos.css — Liga/torneo y campaña
    ============================================================ */
-.m-wrap { max-width: 1040px; margin: 0 auto; padding: 1.4rem 1.2rem 5rem; }
+.m-wrap { max-width: 1240px; margin: 0 auto; padding: 1.4rem 1.2rem 5rem; }
 .m-hd { border-bottom: 3px solid var(--orange); padding-bottom: 12px; margin-bottom: 18px; }
 .m-hd .back { font-family: var(--font-display); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-3); text-decoration: none; display: inline-flex; gap: 6px; align-items: center; background: none; border: none; cursor: pointer; padding: 0; }
 .m-hd .back:hover { color: var(--orange); }

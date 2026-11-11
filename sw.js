@@ -2,7 +2,7 @@
 //  sw.js — Service worker: la app funciona sin conexión.
 //  GENERADO por herramientas/pwa/generar_sw.py — no editar a mano.
 // ============================================================
-const VERSION = 'c88b4cb110';
+const VERSION = 'c719b5ea1c';
 const CORE = [
 "index.html",
 "builder.html",

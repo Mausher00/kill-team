@@ -12,7 +12,43 @@
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/fx.css">
   <style>
-    .c-wrap { max-width: 980px; margin: 0 auto; padding: 1.4rem 1.2rem 4rem; }
+    .c-wrap { max-width: 1240px; margin: 0 auto; padding: 1.6rem clamp(14px, 3vw, 32px) 4rem; }
+    .c-flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 8px; counter-reset: st; }
+    .c-card { position: relative; display: flex; flex-direction: column; gap: 10px; background: linear-gradient(180deg, var(--bg-3), var(--bg-2)); border: 1px solid var(--border-2); border-radius: 8px; padding: 18px 16px 16px; }
+    .c-card::before { counter-increment: st; content: counter(st); position: absolute; top: 12px; right: 14px; font-family: var(--font-display); font-size: 40px; font-weight: 800; line-height: 1; color: var(--orange); opacity: .22; }
+    .c-card > i { width: 50px; height: 50px; display: grid; place-items: center; font-size: 28px; color: #fff; background: var(--orange); border-radius: 6px; }
+    .c-card h3 { font-family: var(--font-display); font-size: 19px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #fff; line-height: 1.05; }
+    .c-card p { font-size: 13px; color: var(--text-2); line-height: 1.45; flex: 1; }
+    .c-card .c-row { margin-top: auto; }
+    .c-card .icon-btn { height: 34px; }
+    .c-file { display: flex; gap: 10px; align-items: center; background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px; padding: 8px 10px; }
+    .c-file > i { font-size: 26px; color: var(--orange); }
+    .c-file b { display: block; font-family: var(--font-mono); font-size: 11.5px; color: #fff; word-break: break-all; }
+    .c-file small { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-3); }
+    .c-ai { display: flex; gap: 6px; flex-wrap: wrap; }
+    .c-ai a { flex: 1 1 auto; text-align: center; padding: 7px 10px; border: 1px solid var(--border-2); border-radius: 4px; color: var(--text); text-decoration: none; font-family: var(--font-display); font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; transition: border-color .15s, color .15s; }
+    .c-ai a:hover { border-color: var(--orange); color: var(--orange); }
+    .c-up { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: stretch; }
+    .c-up .c-drop { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 190px; }
+    .c-up .c-drop i { font-size: 42px; }
+    .c-pastebox { display: flex; flex-direction: column; gap: 8px; }
+    .c-pastebox textarea.c-paste { flex: 1; min-height: 140px; }
+    details.c-more { margin-top: 10px; background: var(--bg-2); border: 1px solid var(--border-2); border-radius: 6px; }
+    details.c-more > summary { cursor: pointer; list-style: none; padding: 10px 14px; font-family: var(--font-display); font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); display: flex; align-items: center; gap: 8px; }
+    details.c-more > summary::-webkit-details-marker { display: none; }
+    details.c-more > summary i { color: var(--orange); }
+    details.c-more > summary::after { content: '+'; margin-left: auto; font-size: 18px; color: var(--text-3); }
+    details.c-more[open] > summary::after { content: '–'; }
+    details.c-more > div { padding: 0 14px 14px; }
+    details.c-more ul { margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-2); line-height: 1.55; }
+    dialog.c-dlg { width: min(980px, calc(100vw - 24px)); height: min(86vh, 900px); margin: auto; padding: 0; background: var(--bg-2); color: var(--text); border: 1px solid var(--border-2); border-top: 3px solid var(--orange); border-radius: 8px; }
+    dialog.c-dlg[open] { display: flex; flex-direction: column; }
+    dialog.c-dlg::backdrop { background: rgba(0,0,0,.72); backdrop-filter: blur(3px); }
+    .c-dlg-hd { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .c-dlg-hd b { font-family: var(--font-display); font-size: 16px; letter-spacing: .06em; text-transform: uppercase; color: #fff; margin-right: auto; }
+    .c-dlg pre { flex: 1; overflow: auto; margin: 0; padding: 16px; font-family: var(--font-mono); font-size: 12px; line-height: 1.55; color: var(--text-2); white-space: pre-wrap; word-break: break-word; user-select: text; }
+    @media (max-width: 1000px) { .c-flow { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 640px) { .c-flow, .c-up { grid-template-columns: 1fr; } .c-up .c-drop { min-height: 130px; } }
     .c-hd { border-bottom: 3px solid var(--orange); padding-bottom: 12px; margin-bottom: 18px; }
     .c-hd .back { font-family: var(--font-display); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-3); text-decoration: none; display: inline-flex; gap: 6px; align-items: center; }
     .c-hd .back:hover { color: var(--orange); }
@@ -105,48 +141,92 @@
     <header class="c-hd">
       <a class="back" href="index.html"><i class="ti ti-arrow-left"></i> Kill Team</a>
       <h1>Añadir comando</h1>
-      <p>Convierte el PDF de reglas de cualquier comando en un paquete que la app entiende, usando una IA (ChatGPT, Claude, Gemini…). No hacen falta imágenes: el comando aparecerá en la biblioteca, el constructor y la partida.</p>
+      <p>Cuatro pasos para tener cualquier comando en la biblioteca, el constructor y la partida. Solo necesitas su PDF de reglas y una IA (ChatGPT, Claude, Gemini…).</p>
     </header>
 
-    <div class="c-steps">
-      <div class="c-step"><b>1</b><h3>Coge la instrucción</h3><p>Pulsa «Copiar instrucción» o descárgala como archivo <code>.md</code>. Ya incluye el formato exacto que necesita la app.</p></div>
-      <div class="c-step"><b>2</b><h3>Pásasela a la IA</h3><p>Abre una conversación nueva, adjunta el PDF del comando y pega la instrucción (o adjunta también el <code>.md</code> y escribe «sigue estas instrucciones»).</p></div>
-      <div class="c-step"><b>3</b><h3>Sube el paquete</h3><p>Descarga el archivo que te dé la IA (o copia su respuesta) y súbelo aquí abajo.</p></div>
+    <div class="c-flow">
+      <article class="c-card">
+        <i class="ti ti-file-download"></i>
+        <h3>Descarga el PDF</h3>
+        <p>Las reglas de equipo oficiales están gratis en Warhammer Community, en la sección de descargas de Kill Team. Elige el idioma en la propia web.</p>
+        <div class="c-row"><a class="icon-btn accent" href="https://www.warhammer-community.com/downloads/kill-team" target="_blank" rel="noopener"><i class="ti ti-external-link"></i> Abrir descargas</a></div>
+      </article>
+      <article class="c-card">
+        <i class="ti ti-file-text"></i>
+        <h3>Coge la instrucción</h3>
+        <div class="c-file"><i class="ti ti-markdown"></i><div><b>convertir-comando-kill-team.md</b><small id="md-size"></small></div></div>
+        <div class="c-row">
+          <button class="icon-btn accent" id="copy"><i class="ti ti-copy"></i> Copiar</button>
+          <button class="icon-btn" id="dl-prompt" title="Descargar el archivo .md"><i class="ti ti-download"></i> .md</button>
+          <button class="icon-btn" id="expand" title="Ver el texto completo"><i class="ti ti-maximize"></i> Ampliar</button>
+        </div>
+      </article>
+      <article class="c-card">
+        <i class="ti ti-sparkles"></i>
+        <h3>Pásaselo a la IA</h3>
+        <p>En una conversación nueva, adjunta el PDF y pega la instrucción (o adjunta también el .md).</p>
+        <div class="c-ai">
+          <a href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT</a>
+          <a href="https://claude.ai/new" target="_blank" rel="noopener">Claude</a>
+          <a href="https://gemini.google.com/app" target="_blank" rel="noopener">Gemini</a>
+        </div>
+      </article>
+      <article class="c-card">
+        <i class="ti ti-package-import"></i>
+        <h3>Sube el resultado</h3>
+        <p>Descarga el archivo que te devuelva la IA o copia su respuesta, y súbelo aquí debajo. Verás un resumen antes de guardar.</p>
+        <div class="c-row"><a class="icon-btn" href="#subir"><i class="ti ti-arrow-down"></i> Ir a subir</a></div>
+      </article>
     </div>
+    <details class="c-more">
+      <summary><i class="ti ti-help"></i> Consejos si algo falla</summary>
+      <div><ul>
+        <li>Usa un modelo que lea PDF; los planes gratuitos suelen bastar.</li>
+        <li>Si la respuesta se corta, escribe «continúa» y pega aquí las dos partes seguidas.</li>
+        <li>Si el PDF es una imagen escaneada sin texto, la IA tendrá que leerlo como imagen: revisa bien el resultado.</li>
+        <li>Puedes subir varios paquetes a la vez.</li>
+      </ul></div>
+    </details>
 
-    <div class="c-sec"><i class="ti ti-sparkles"></i> Instrucción para la IA</div>
-    <div class="c-prompt" id="prompt-box">
-      <pre id="prompt"></pre>
-      <div class="c-prompt-ft">
-        <button class="icon-btn accent" id="copy"><i class="ti ti-copy"></i> Copiar instrucción</button>
-        <button class="icon-btn" id="dl-prompt"><i class="ti ti-file-download"></i> Descargar .md</button>
-        <button class="icon-btn" id="expand"><i class="ti ti-arrows-vertical"></i> <span>Ver entera</span></button>
+    <div class="c-sec" id="subir"><i class="ti ti-package-import"></i> Subir paquete</div>
+    <div class="c-up">
+      <label class="c-drop" id="drop">
+        <i class="ti ti-upload"></i><b>Elegir archivos</b><span>o arrástralos aquí (.json o .txt) · varios a la vez</span>
+        <input type="file" id="file" accept=".json,.txt,.md,application/json,text/plain" multiple hidden>
+      </label>
+      <div class="c-pastebox">
+        <textarea class="c-paste" id="paste" placeholder='…o pega aquí la respuesta de la IA&#10;{ "schema": "kt-comando/1", "comando": { … } }' spellcheck="false"></textarea>
+        <div class="c-row"><button class="icon-btn accent" id="check"><i class="ti ti-checks"></i> Comprobar</button><button class="icon-btn" id="clear"><i class="ti ti-eraser"></i> Limpiar</button></div>
       </div>
     </div>
-    <p class="c-hint"><b>Consejos:</b> usa un modelo que lea PDF (los planes gratuitos suelen bastar). Si la respuesta se corta, escribe «continúa» y pega aquí las dos partes seguidas. Si el PDF es una imagen escaneada sin texto, la IA tendrá que leerlo como imagen y conviene revisar el resultado.</p>
-
-    <div class="c-sec"><i class="ti ti-package-import"></i> Subir paquete</div>
-    <label class="c-drop" id="drop">
-      <i class="ti ti-upload"></i><b>Elegir archivos</b><br>o arrástralos aquí (.json o .txt) · puedes subir varios a la vez
-      <input type="file" id="file" accept=".json,.txt,.md,application/json,text/plain" multiple hidden>
-    </label>
-    <div class="c-or">o pega la respuesta de la IA</div>
-    <textarea class="c-paste" id="paste" placeholder='{ "schema": "kt-comando/1", "comando": { … } }' spellcheck="false"></textarea>
-    <div class="c-row" style="margin-top:8px"><button class="icon-btn accent" id="check"><i class="ti ti-checks"></i> Comprobar</button><button class="icon-btn" id="clear"><i class="ti ti-eraser"></i> Limpiar</button></div>
     <div id="preview"></div>
 
-    <div class="c-sec"><i class="ti ti-refresh-alert"></i> Actualizar reglas de un comando</div>
-    <p class="c-hint" style="margin-top:0">Cuando salga una fe de erratas o un cambio de equilibrio: elige el comando, coge la instrucción (lleva dentro sus datos actuales), pásasela a la IA junto al PDF de los cambios y sube aquí arriba el paquete que te devuelva. Antes de guardar verás qué ha cambiado.</p>
+    <details class="c-more" style="margin-top:22px">
+      <summary><i class="ti ti-refresh-alert"></i> Actualizar reglas de un comando (erratas, balance)</summary>
+      <div>
+    <p class="c-hint">Cuando salga una fe de erratas o un cambio de equilibrio: elige el comando, coge la instrucción (lleva dentro sus datos actuales), pásasela a la IA junto al PDF de los cambios y sube aquí arriba el paquete que te devuelva. Antes de guardar verás qué ha cambiado.</p>
     <div class="c-row">
       <select id="upd-sel" class="c-select" aria-label="Comando que quieres actualizar"></select>
       <button class="icon-btn accent" id="upd-copy"><i class="ti ti-copy"></i> Copiar instrucción</button>
       <button class="icon-btn" id="upd-dl"><i class="ti ti-file-download"></i> Descargar .md</button>
     </div>
 
+      </div>
+    </details>
+
     <div class="c-sec"><i class="ti ti-users-group"></i> Comandos añadidos en este dispositivo <span id="n-mine"></span></div>
     <div class="c-list" id="mine"></div>
     <p class="c-hint">Se guardan solo en este navegador. Para pasarlos a otro dispositivo usa «Paquete» y súbelo allí, o «Archivo para la app» si quieres incluirlo en la versión publicada (va en <code>js/data/</code>). En una partida a dos dispositivos, el comando se envía solo al otro jugador.</p>
   </div>
+
+<dialog class="c-dlg" id="dlg">
+  <div class="c-dlg-hd"><b>Instrucción para la IA</b>
+    <button class="icon-btn accent" id="dlg-copy"><i class="ti ti-copy"></i> Copiar todo</button>
+    <button class="icon-btn" id="dlg-dl"><i class="ti ti-download"></i> .md</button>
+    <button class="icon-btn" id="dlg-x" aria-label="Cerrar"><i class="ti ti-x"></i></button>
+  </div>
+  <pre id="prompt"></pre>
+</dialog>
 
 <script>
 const $ = s => document.querySelector(s), esc = KT.esc;
@@ -171,7 +251,12 @@ function download(name, text, type = 'application/json') {
 }
 $('#copy').onclick = async () => KT.toast((await copy(PROMPT)) ? 'Instrucción copiada. Pégala en la IA junto al PDF.' : 'No se pudo copiar; selecciona el texto a mano', { type: 'ok' });
 $('#dl-prompt').onclick = () => download('convertir-comando-kill-team.md', PROMPT, 'text/markdown');
-$('#expand').onclick = () => { const o = $('#prompt-box').classList.toggle('open'); $('#expand span').textContent = o ? 'Recoger' : 'Ver entera'; };
+$('#expand').onclick = () => { $('#dlg').showModal(); $('#prompt').scrollTop = 0; };
+$('#dlg-x').onclick = () => $('#dlg').close();
+$('#dlg').addEventListener('click', e => { if (e.target.id === 'dlg') $('#dlg').close(); });
+$('#dlg-copy').onclick = () => $('#copy').onclick();
+$('#dlg-dl').onclick = () => $('#dl-prompt').onclick();
+$('#md-size').textContent = `${(new Blob([PROMPT]).size / 1024).toFixed(1)} KB · ${PROMPT.split('\n').length} líneas · Markdown`;
 
 // ── Importar ─────────────────────────────────────────────────
 let pending = null;

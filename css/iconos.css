@@ -1,4 +1,4 @@
-/* Tabler Icons 3.48.0 (MIT) — subconjunto generado por herramientas/iconos/subset.py (164 iconos) */
+/* Tabler Icons 3.48.0 (MIT) — subconjunto generado por herramientas/iconos/subset.py (169 iconos) */
 @font-face { font-family: "tabler-icons"; font-style: normal; font-weight: 400; font-display: block;
   src: url("../recursos/iconos/tabler-icons.woff2") format("woff2"); }
 .ti { font-family: "tabler-icons" !important; speak: none; font-style: normal; font-weight: normal; font-variant: normal;
@@ -7,12 +7,12 @@
 .ti-alert-triangle:before { content: "\ea06"; }
 .ti-analyze:before { content: "\f3a3"; }
 .ti-arrow-back-up:before { content: "\eb77"; }
+.ti-arrow-down:before { content: "\ea16"; }
 .ti-arrow-left:before { content: "\ea19"; }
 .ti-arrow-right:before { content: "\ea1f"; }
 .ti-arrow-up:before { content: "\ea25"; }
 .ti-arrows-minimize:before { content: "\ea29"; }
 .ti-arrows-move:before { content: "\f22f"; }
-.ti-arrows-vertical:before { content: "\eb5b"; }
 .ti-backpack:before { content: "\ef47"; }
 .ti-bandage:before { content: "\eb7a"; }
 .ti-bolt:before { content: "\ea38"; }
@@ -27,6 +27,7 @@
 .ti-cancel:before { content: "\ff11"; }
 .ti-car:before { content: "\ebbb"; }
 .ti-cards:before { content: "\f510"; }
+.ti-chart-bar:before { content: "\ea59"; }
 .ti-check:before { content: "\ea5e"; }
 .ti-checkbox:before { content: "\eba6"; }
 .ti-checks:before { content: "\ebaa"; }
@@ -56,12 +57,15 @@
 .ti-download:before { content: "\ea96"; }
 .ti-edit:before { content: "\ea98"; }
 .ti-eraser:before { content: "\eb8b"; }
+.ti-external-link:before { content: "\ea99"; }
 .ti-eye:before { content: "\ea9a"; }
 .ti-eye-off:before { content: "\ecf0"; }
 .ti-file:before { content: "\eaa4"; }
 .ti-file-code:before { content: "\ebd0"; }
 .ti-file-download:before { content: "\ea9d"; }
+.ti-file-import:before { content: "\edea"; }
 .ti-file-plus:before { content: "\eaa0"; }
+.ti-file-text:before { content: "\eaa2"; }
 .ti-flag:before { content: "\eaa6"; }
 .ti-flag-3:before { content: "\ee8d"; }
 .ti-flame:before { content: "\ec2c"; }
@@ -95,6 +99,7 @@
 .ti-map:before { content: "\eae9"; }
 .ti-map-2:before { content: "\eae7"; }
 .ti-map-pin-plus:before { content: "\f956"; }
+.ti-markdown:before { content: "\ec41"; }
 .ti-maximize:before { content: "\eaea"; }
 .ti-medal:before { content: "\ec78"; }
 .ti-menu:before { content: "\eaeb"; }

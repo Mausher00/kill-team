@@ -162,21 +162,19 @@ function renderHome() {
   return `
     <div class="wrap">
       <header class="home-hdr reveal">
-        <span class="home-pre">Warhammer 40,000</span>
-        <h1 class="home-h1">Kill Team</h1>
-        <p class="home-sub">Selecciona un comando para ver sus operativos, reglas y ardides</p>
-        <nav class="home-nav">
-          <span class="nav-link active"><i class="ti ti-books"></i> Comandos</span>
-          <a class="nav-link" href="builder.html"><i class="ti ti-hammer"></i> Constructor</a>
-          <a class="nav-link" href="misiones/misiones.html"><i class="ti ti-map"></i> Misiones</a>
-          <a class="nav-link" href="partida.html"><i class="ti ti-swords"></i> Partida</a>
-          <a class="nav-link" href="historial.html"><i class="ti ti-history"></i> Historial</a>
-          <a class="nav-link" href="liga.html" title="Ligas y torneos entre los jugadores"><i class="ti ti-trophy"></i> Liga</a>
-          <a class="nav-link" href="comunidad.html" title="Cuenta, grupos, buscar jugadores e invitaciones"><i class="ti ti-world"></i> Comunidad</a>
-          <a class="nav-link" href="campana.html" title="Campaña: experiencia, honores y cicatrices de tu comando"><i class="ti ti-flag-3"></i> Campaña</a>
-          <a class="nav-link" href="comandos.html" title="Añadir un comando a partir de su PDF"><i class="ti ti-file-plus"></i> Añadir comando</a>
-          ${window.KT?.user ? KT.user.chip() : ''}
-          <button class="nav-link" id="btn-offline" onclick="offlineDownload()" title="Guardar todo en este dispositivo para usar la app sin conexión" hidden><i class="ti ti-download"></i> <span>Sin conexión</span></button>
+        <div class="hh-top">
+          <div class="hh-title">
+            <span class="home-pre">Warhammer 40,000</span>
+            <h1 class="home-h1">Kill Team</h1>
+            <p class="home-sub">Selecciona un comando para ver sus operativos, reglas y ardides</p>
+          </div>
+          <div class="hh-util">
+            ${window.KT?.user ? KT.user.chip('hh-btn') : ''}
+            <button class="hh-btn" id="btn-offline" onclick="offlineDownload()" title="Guardar todo en este dispositivo para usar la app sin conexión" hidden><i class="ti ti-download"></i> <span>Sin conexión</span></button>
+          </div>
+        </div>
+        <nav class="home-nav" aria-label="Secciones">
+          ${HOME_NAV.map(([href, icon, t, d, main]) => `<a class="nav-tile${main ? ' main' : ''}" href="${href}"><i class="ti ti-${icon}"></i><span><b>${t}</b><small>${d}</small></span></a>`).join('')}
         </nav>
       </header>
       <button class="search-trigger spot reveal" style="--i:1" onclick="openPalette()" aria-label="Buscar en todos los comandos">
@@ -191,6 +189,17 @@ function renderHome() {
       <footer class="page-footer">Kill Team Companion — uso personal · pulsa <kbd>?</kbd> para ver los atajos</footer>
     </div>`;
 }
+
+const HOME_NAV = [
+  ['partida.html', 'swords', 'Partida', 'Marcador, turnos y puntos de mando', 1],
+  ['builder.html', 'hammer', 'Constructor', 'Crea y guarda tus bandas'],
+  ['misiones/misiones.html', 'map-2', 'Misiones', 'Mazo, mapas y escenografía'],
+  ['historial.html', 'chart-bar', 'Historial', 'Partidas jugadas y resultados'],
+  ['liga.html', 'trophy', 'Liga', 'Ligas y torneos con tu grupo'],
+  ['campana.html', 'flag-3', 'Campaña', 'Experiencia, honores y cicatrices'],
+  ['comunidad.html', 'users-group', 'Comunidad', 'Cuenta, grupos e invitaciones'],
+  ['comandos.html', 'file-import', 'Añadir comando', 'Desde el PDF oficial con IA'],
+];
 
 // ── VISTA DE FACCIÓN ─────────────────────────────────────────
 
@@ -350,8 +359,8 @@ function renderOps(f, searchQ, openOps) {
       <button class="link-btn" onclick="toggleAllOps()" title="Expandir/contraer todo (E)">
         <i class="ti ti-${allOpen ? 'fold' : 'fold-down'}"></i> ${allOpen ? 'Contraer todo' : 'Expandir todo'}
       </button>
-    </div>` +
-    list.map(op => renderOp(op, openOps)).join('');
+    </div><div class="op-grid">` +
+    list.map(op => renderOp(op, openOps)).join('') + '</div>';
 }
 
 // ── OTRAS SECCIONES ───────────────────────────────────────────
@@ -362,7 +371,8 @@ function renderGR(gr) {
   const phases   = gr.phases.map(p => `<div class="gr-card filt spot"><div class="gr-top"><span class="gr-name">${p.n}</span></div><div class="gr-txt">${annotate(p.t)}</div></div>`).join('');
   const actions  = gr.actions.map(a => `<div class="gr-card filt spot"><div class="gr-top"><span class="gr-name">${a.n}</span><span class="gr-cost">${a.cost}</span></div><div class="gr-txt">${annotate(a.t)}</div></div>`).join('');
   const wrCards  = gr.wr.map(w => `<div class="gr-card filt spot"><div class="gr-top"><span class="gr-name">${w.n}</span></div><div class="gr-txt">${w.t}</div></div>`).join('');
-  return `<span class="sec-lbl">Conceptos clave</span>${concepts}<span class="sec-lbl">Órdenes</span>${orders}<span class="sec-lbl">Fases del turno</span>${phases}<span class="sec-lbl">Acciones</span>${actions}<span class="sec-lbl">Reglas de arma</span><div class="wr-grid">${wrCards}</div>`;
+  const g = h => `<div class="gr-grid">${h}</div>`;
+  return `<span class="sec-lbl">Conceptos clave</span>${g(concepts)}<span class="sec-lbl">Órdenes</span>${g(orders)}<span class="sec-lbl">Fases del turno</span>${g(phases)}<span class="sec-lbl">Acciones</span>${g(actions)}<span class="sec-lbl">Reglas de arma</span><div class="wr-grid">${wrCards}</div>`;
 }
 
 function renderFR(f) {
