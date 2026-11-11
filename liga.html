@@ -17,6 +17,9 @@
   <script>const FACTIONS = {}; const KEYWORDS = {};</script>
   <script src="js/ui.js"></script>
   <script src="js/usuarios.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/nube.js"></script>
+  <script src="js/cuenta.js"></script>
   <script src="js/calendario.js"></script>
   <div class="m-wrap" id="app"></div>
 
@@ -110,7 +113,7 @@ function render() {
 function renderHome(list) {
   $('#app').innerHTML = `
     <header class="m-hd">
-      <a class="back" href="index.html"><i class="ti ti-arrow-left"></i> Kill Team</a>
+      <a class="back" href="index.html"><i class="ti ti-arrow-left"></i> <img class="back-logo" src="imagenes/app/logo-kt-sm.webp" alt="Kill Team" width="440" height="139"></a>
       <h1>Ligas y torneos</h1>
       <p>Organiza una liga o un torneo eliminatorio entre los jugadores de este dispositivo. Cada enfrentamiento se puede jugar desde aquí: al terminar la partida el resultado se apunta solo.</p>
       <div class="row">${KT.user.chip('icon-btn')}<button class="icon-btn accent" data-a="new"><i class="ti ti-plus"></i> Nueva liga o torneo</button></div>

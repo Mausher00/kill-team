@@ -16,10 +16,16 @@
     const t = [[/invalid login credentials/i, 'Correo o contraseña incorrectos'], [/already registered|already been registered/i, 'Ya existe una cuenta con ese correo'],
       [/password should be at least/i, 'La contraseña es demasiado corta (mínimo 6 caracteres)'], [/email not confirmed/i, 'Confirma tu correo antes de entrar (mira tu bandeja de entrada)'],
       [/perfiles_nombre_uq|duplicate key/i, 'Ese nombre ya está cogido: prueba con otro'], [/failed to fetch|networkerror|load failed/i, 'Sin conexión con el servidor'],
-      [/rate limit/i, 'Demasiados intentos: espera un momento'], [/row-level security/i, 'No tienes permiso para hacer eso']].find(([re]) => re.test(m));
+      [/rate limit/i, 'Demasiados intentos: espera un momento'], [/database error saving new user/i, 'Ese nombre de usuario ya está cogido'],
+      [/should be different|same password/i, 'La nueva contraseña tiene que ser distinta de la anterior'], [/unable to validate email|invalid format|email address .*invalid/i, 'Ese correo no es válido'],
+      [/signups? not allowed|signup.*disabled/i, 'El registro está desactivado en el servidor'], [/weak password|password is known/i, 'Esa contraseña es demasiado fácil: usa una más larga'], [/row-level security/i, 'No tienes permiso para hacer eso']].find(([re]) => re.test(m));
     return t ? t[1] : (fallback ? fallback + ': ' : '') + m;
   };
   let sb = null, loading = null, session = null, perfil = null;
+  // Enlace del correo de «recuperar contraseña»: llega con #...type=recovery
+  let recovery = /type=recovery/.test(location.hash) || sessionStorage.getItem('kt.recuperar') === '1';
+  if (recovery) sessionStorage.setItem('kt.recuperar', '1');
+  const back = page => new URL(page, ROOT || location.href).href;   // dirección a la que vuelven los enlaces de los correos
 
   function loadLib() {
     if (window.supabase?.createClient) return Promise.resolve();
@@ -32,6 +38,8 @@
     on: !!(CFG.url && CFG.key),
     get user() { return session?.user || null; },
     get perfil() { return perfil; },
+    get email() { return session?.user?.email || ''; },
+    get recovery() { return recovery && !!session; },
     // Conecta y recupera la sesión guardada (una sola vez por página)
     ready() {
       if (!N.on) return Promise.resolve(false);
@@ -41,7 +49,13 @@
         const { data } = await sb.auth.getSession();
         session = data?.session || null;
         if (session) await ensurePerfil().catch(() => {});
-        sb.auth.onAuthStateChange?.((_e, s) => { const was = uid(); session = s || null; if (!session) perfil = null; if (was !== uid()) fire(); });
+        sb.auth.onAuthStateChange?.((e, s) => {
+          const was = uid(); session = s || null; if (!session) perfil = null;
+          if (e === 'PASSWORD_RECOVERY') { recovery = true; sessionStorage.setItem('kt.recuperar', '1'); }
+          if (was !== uid() || e === 'PASSWORD_RECOVERY') fire();
+        });
+        if (session && /access_token=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
+        if (session) linkLocal();
         return true;
       })());
     },
@@ -51,7 +65,8 @@
       await N.ready();
       nombre = String(nombre || '').trim();
       if (nombre.length < 2 || nombre.length > 24) throw new Error('El nombre debe tener entre 2 y 24 caracteres');
-      const { data, error } = await sb.auth.signUp({ email: String(email).trim(), password: pass, options: { data: { nombre } } });
+      if (!(await N.nombreLibre(nombre))) throw new Error('Ese nombre de usuario ya está cogido');
+      const { data, error } = await sb.auth.signUp({ email: String(email).trim(), password: pass, options: { data: { nombre }, emailRedirectTo: back('index.html') } });
       fail(error);
       session = data.session || null;
       if (!session) return { confirmar: true };             // el proyecto exige confirmar el correo
@@ -65,8 +80,45 @@
       session = data.session;
       await ensurePerfil(); linkLocal(); fire();
     },
-    async salir() { await N.ready(); await sb.auth.signOut(); session = null; perfil = null; fire(); },
-    async recuperar(email) { await N.ready(); const { error } = await sb.auth.resetPasswordForEmail(String(email).trim()); fail(error); },
+    async salir() { await N.ready(); await sb.auth.signOut(); session = null; perfil = null; recovery = false; sessionStorage.removeItem('kt.recuperar'); fire(); },
+    async recuperar(email) { await N.ready(); const { error } = await sb.auth.resetPasswordForEmail(String(email).trim(), { redirectTo: back('index.html') }); fail(error); },
+    async nombreLibre(nombre) {
+      await N.ready();
+      const { data, error } = await sb.rpc('nombre_libre', { n: String(nombre || '').trim() });
+      if (error) return true;            // servidor sin la función: lo comprobará el registro
+      return data !== false;
+    },
+    async nuevaClave(pass) {
+      need();
+      const { error } = await sb.auth.updateUser({ password: pass }); fail(error);
+      recovery = false; sessionStorage.removeItem('kt.recuperar'); fire();
+    },
+    async cambiarCorreo(email) {
+      need();
+      const { error } = await sb.auth.updateUser({ email: String(email).trim() }, { emailRedirectTo: back('index.html') }); fail(error);
+    },
+    async cambiarNombre(nombre) {
+      const me = need(); nombre = String(nombre || '').trim();
+      if (nombre.length < 2 || nombre.length > 24) throw new Error('El nombre debe tener entre 2 y 24 caracteres');
+      if (KT.norm(nombre) !== KT.norm(perfil?.nombre || '') && !(await N.nombreLibre(nombre))) throw new Error('Ese nombre de usuario ya está cogido');
+      const { error } = await sb.from('perfiles').update({ nombre }).eq('id', me); fail(error);
+      await sb.auth.updateUser({ data: { nombre } }).catch(() => {});
+      perfil = { ...perfil, nombre };
+      const l = KT.user?.list() || [], u = l.find(x => x.nube === me);
+      if (u) { u.name = nombre; KT.store.set('usuarios', l); document.dispatchEvent(new CustomEvent('kt:user')); }
+      fire();
+    },
+    // Borra la cuenta y todo lo que hay en el servidor. Lo de este dispositivo se queda.
+    async borrarCuenta() {
+      const me = need();
+      const { data: files } = await sb.storage.from('imagenes').list(me, { limit: 1000 });
+      if (files?.length) await sb.storage.from('imagenes').remove(files.map(f => me + '/' + f.name)).catch(() => {});
+      const { error } = await sb.rpc('borrar_cuenta'); fail(error, 'No se pudo borrar la cuenta');
+      const l = KT.user?.list() || [], u = l.find(x => x.nube === me);
+      if (u) { delete u.nube; KT.store.set('usuarios', l); }
+      KT.store.del('nube.sync'); KT.store.del('nube.vistas');
+      await sb.auth.signOut().catch(() => {}); session = null; perfil = null; fire();
+    },
 
     // ── Sincronización de bandas e historial ─────────────────
     // Gana la versión más reciente. Las bandas borradas aquí se marcan como borradas en la nube.
@@ -193,9 +245,10 @@
     const { data } = await sb.from('perfiles').select('id,nombre').eq('id', me).maybeSingle();
     if (data) return (perfil = data);
     const n = nombre || session.user.user_metadata?.nombre || (session.user.email || 'jugador').split('@')[0].slice(0, 24);
-    const { error } = await sb.from('perfiles').insert({ id: me, nombre: n });
-    fail(error);
-    return (perfil = { id: me, nombre: n });
+    let nn = n, k = 1, r;
+    while ((r = await sb.from('perfiles').insert({ id: me, nombre: nn })).error && /duplicate|perfiles_nombre_uq/i.test(r.error.message) && k < 6) nn = n.slice(0, 20) + ' ' + (++k);
+    fail(r.error);
+    return (perfil = { id: me, nombre: nn });
   }
   // La cuenta se enlaza con un usuario local de este dispositivo (mismo nombre): sus bandas son las que se sincronizan
   function linkLocal() {

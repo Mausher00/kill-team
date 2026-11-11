@@ -15,6 +15,7 @@
   const rosters = () => KT.store.get('rosters', []) || [];
   const count = r => (r.ops || []).reduce((a, o) => a + (o.qty || 0), 0);
   const fire = () => document.dispatchEvent(new CustomEvent('kt:user'));
+  const chipIcon = u => u?.nube ? 'cloud-check' : 'user-circle';
 
   const U = KT.user = {
     list: () => KT.store.get('usuarios', []) || [],
@@ -47,7 +48,7 @@
     // Botón de sesión para las cabeceras
     chip(cls = 'nav-link') {
       const u = U.current();
-      return `<button class="${cls} user-chip ${u ? 'on' : ''}" data-user-chip title="${u ? 'Tus bandas y cambio de usuario' : 'Entrar con tu usuario para ver tus bandas'}"><i class="ti ti-user-circle"></i> <span>${u ? esc(u.name) : 'Entrar'}</span></button>`;
+      return `<button class="${cls} user-chip ${u ? 'on' : ''}" data-user-chip title="${u ? 'Tu cuenta y tus bandas' : 'Entrar o crear tu cuenta'}"><i class="ti ti-${chipIcon(u)}"></i> <span>${u ? esc(u.name) : 'Entrar'}</span></button>`;
     },
     // Tarjetas de bandas (inicio y panel de sesión)
     cards(list, opt = {}) {
@@ -67,7 +68,24 @@
   // ── Panel de sesión ────────────────────────────────────────
   let close = null, pinFor = null;
   const ROOT = (document.currentScript?.src || '').replace(/js\/usuarios\.js.*$/, '');
+  const online = () => !!(KT.cuenta && KT.nube?.on);
   function panelHtml() {
+    const logo = `<img class="usr-logo" src="${ROOT}imagenes/app/logo-kt-sm.webp" alt="Kill Team" width="440" height="139">`;
+    if (!online()) return logo + localHtml();
+    const N = KT.nube;
+    if (KT.cuenta.ready && N.user && !N.recovery) return logo + KT.cuenta.html() + bandsHtml(U.current());
+    const u = U.current();
+    return logo + KT.cuenta.html() + `<details class="usr-local"${u && !u.nube ? ' open' : ''}><summary><i class="ti ti-device-mobile"></i> Sin cuenta: perfiles en este dispositivo</summary>${localHtml()}</details>`;
+  }
+  function bandsHtml(u) {
+    if (!u) return '';
+    const mine = U.mine(u.id), free = U.free();
+    return `<div class="usr"><h4>Mis bandas <span>${mine.length}</span></h4>
+      ${mine.length ? `<div class="bands">${U.cards(mine, { hideOwner: true, root: ROOT })}</div>` : `<p class="usr-note">Todavía no tienes bandas guardadas. Créalas en el <a href="${ROOT}builder.html">constructor</a>: se guardarán en tu cuenta.</p>`}
+      ${free.length ? `<h4>Sin dueño <span>${free.length}</span></h4><div class="bands">${U.cards(free, { root: ROOT })}</div>
+        <div class="usr-row"><button class="icon-btn" data-u="claim"><i class="ti ti-user-plus"></i> Pasarlas a mi cuenta</button></div>` : ''}</div>`;
+  }
+  function localHtml() {
     const u = U.current(), list = U.list();
     if (u) {
       const mine = U.mine(u.id), free = U.free();
@@ -78,7 +96,7 @@
         ${mine.length ? `<div class="bands">${U.cards(mine, { hideOwner: true, root: ROOT })}</div>` : `<p class="usr-note">Todavía no tienes bandas guardadas. Créalas en el <a href="${ROOT}builder.html">constructor</a>: se guardarán en tu perfil.</p>`}
         ${free.length ? `<h4>Sin dueño <span>${free.length}</span></h4><div class="bands">${U.cards(free, { root: ROOT })}</div>
           <div class="usr-row"><button class="icon-btn" data-u="claim"><i class="ti ti-user-plus"></i> Pasarlas a mi perfil</button></div>` : ''}
-        <p class="usr-note">Los perfiles y las bandas se guardan en este dispositivo. Para tenerlas en todos tus dispositivos y jugar con tu grupo, usa tu cuenta en <a href="${ROOT}comunidad.html">Comunidad</a>; también puedes compartir una banda suelta desde el constructor.</p>
+        <p class="usr-note">Los perfiles y las bandas se guardan en este dispositivo. ${online() ? 'Crea una cuenta online (arriba) para tenerlas en todos tus dispositivos y jugar con tu grupo.' : 'También puedes compartir una banda suelta desde el constructor.'}</p>
         <div class="usr-row"><span style="flex:1"></span><button class="icon-btn usr-del" data-u="del"><i class="ti ti-trash"></i> Borrar este usuario</button></div>
       </div>`;
     }
@@ -96,9 +114,10 @@
   }
   function openPanel() {
     close?.(); pinFor = null;
-    close = KT.modal('Usuario', panelHtml(), 'user-circle');
+    close = KT.modal(online() ? 'Tu cuenta' : 'Usuario', panelHtml(), 'user-circle');
     const box = document.querySelector('.cmdk-back.on:last-of-type .cmdk-list');
-    const redraw = () => { box.innerHTML = panelHtml(); box.querySelector('[autofocus]')?.focus(); };
+    const redraw = () => { if (!box.isConnected) return; box.innerHTML = panelHtml(); box.querySelector('[autofocus]')?.focus(); };
+    if (online()) { KT.cuenta.bind(box, redraw); KT.cuenta.load(redraw); }
     box.addEventListener('click', e => {
       const b = e.target.closest('[data-u]'); if (!b) return;
       const a = b.dataset.u, u = U.current();
@@ -126,7 +145,7 @@
     });
   }
   document.addEventListener('click', e => { if (e.target.closest('[data-user-chip]')) { e.preventDefault(); openPanel(); } });
-  document.addEventListener('kt:user', () => document.querySelectorAll('[data-user-chip]').forEach(el => { const u = U.current(); el.classList.toggle('on', !!u); const s = el.querySelector('span'); if (s) s.textContent = u ? u.name : 'Entrar'; }));
+  document.addEventListener('kt:user', () => document.querySelectorAll('[data-user-chip]').forEach(el => { const u = U.current(); el.classList.toggle('on', !!u); const s = el.querySelector('span'); if (s) s.textContent = u ? u.name : 'Entrar'; const i = el.querySelector('i'); if (i) i.className = 'ti ti-' + chipIcon(u); }));
 
   // ── Volver a la partida en curso (desde biblioteca, constructor…) ──
   window.addEventListener('load', () => {

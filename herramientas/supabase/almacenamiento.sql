@@ -14,3 +14,7 @@ create policy imagenes_subir on storage.objects for insert to authenticated
 drop policy if exists imagenes_borrar on storage.objects;
 create policy imagenes_borrar on storage.objects for delete to authenticated
   using (bucket_id = 'imagenes' and (storage.foldername(name))[1] = auth.uid()::text);
+-- ver la lista de las propias imágenes (para poder borrarlas al eliminar la cuenta)
+drop policy if exists imagenes_ver_propias on storage.objects;
+create policy imagenes_ver_propias on storage.objects for select to authenticated
+  using (bucket_id = 'imagenes' and (storage.foldername(name))[1] = auth.uid()::text);

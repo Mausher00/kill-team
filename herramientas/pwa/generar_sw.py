@@ -18,9 +18,9 @@ def files(base, exts):
 
 core = ['index.html', 'builder.html', 'partida.html', 'historial.html', 'comandos.html', 'liga.html', 'campana.html', 'comunidad.html', 'misiones/misiones.html', 'manifest.webmanifest']
 core += files('css', ('.css',)) + files('js', ('.js',)) + files('recursos', ('.otf', '.woff2', '.woff', '.ttf'))
-core += files('imagenes/app', ('.png',))
+core += files('imagenes/app', ('.png', '.webp'))
 core = [f for f in core if os.path.exists(os.path.join(root, f))]
-imgs = [f for f in files('imagenes', ('.webp',))]
+imgs = [f for f in files('imagenes', ('.webp',)) if f not in core]
 
 h = hashlib.sha1()
 for f in core + imgs:

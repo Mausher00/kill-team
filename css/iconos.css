@@ -1,4 +1,4 @@
-/* Tabler Icons 3.48.0 (MIT) — subconjunto generado por herramientas/iconos/subset.py (169 iconos) */
+/* Tabler Icons 3.48.0 (MIT) — subconjunto generado por herramientas/iconos/subset.py (171 iconos) */
 @font-face { font-family: "tabler-icons"; font-style: normal; font-weight: 400; font-display: block;
   src: url("../recursos/iconos/tabler-icons.woff2") format("woff2"); }
 .ti { font-family: "tabler-icons" !important; speak: none; font-style: normal; font-weight: normal; font-variant: normal;
@@ -40,6 +40,7 @@
 .ti-click:before { content: "\ebbc"; }
 .ti-clipboard-plus:before { content: "\efb2"; }
 .ti-clipboard-text:before { content: "\f089"; }
+.ti-cloud-check:before { content: "\f84d"; }
 .ti-cloud-upload:before { content: "\ea75"; }
 .ti-code:before { content: "\ea77"; }
 .ti-coins:before { content: "\f65d"; }
@@ -85,6 +86,7 @@
 .ti-id:before { content: "\eac3"; }
 .ti-info-circle:before { content: "\eac5"; }
 .ti-json:before { content: "\f7b2"; }
+.ti-key:before { content: "\eac7"; }
 .ti-keyboard:before { content: "\ebd6"; }
 .ti-layout-board-split:before { content: "\ef94"; }
 .ti-layout-columns:before { content: "\ead4"; }

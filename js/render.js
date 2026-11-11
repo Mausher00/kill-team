@@ -164,8 +164,7 @@ function renderHome() {
       <header class="home-hdr reveal">
         <div class="hh-top">
           <div class="hh-title">
-            <span class="home-pre">Warhammer 40,000</span>
-            <h1 class="home-h1">Kill Team</h1>
+            <h1 class="home-logo"><img src="imagenes/app/logo-kt.webp" srcset="imagenes/app/logo-kt-sm.webp 440w, imagenes/app/logo-kt.webp 937w" sizes="(max-width: 640px) 78vw, 440px" alt="Warhammer 40,000 Kill Team" width="937" height="295"></h1>
             <p class="home-sub">Selecciona un comando para ver sus operativos, reglas y ardides</p>
           </div>
           <div class="hh-util">

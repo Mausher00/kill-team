@@ -14,7 +14,7 @@
     finally { busy = false; document.body.style.cursor = ''; }
   };
   const head = (title, sub, extra = '') => `<header class="m-hd">
-      ${group ? `<button class="back" data-a="home"><i class="ti ti-arrow-left"></i> Comunidad</button>` : `<a class="back" href="index.html"><i class="ti ti-arrow-left"></i> Kill Team</a>`}
+      ${group ? `<button class="back" data-a="home"><i class="ti ti-arrow-left"></i> Comunidad</button>` : `<a class="back" href="index.html"><i class="ti ti-arrow-left"></i> <img class="back-logo" src="imagenes/app/logo-kt-sm.webp" alt="Kill Team" width="440" height="139"></a>`}
       <h1>${title}</h1>${sub ? `<p>${sub}</p>` : ''}${extra}</header>`;
 
   // ── Sin servidor ───────────────────────────────────────────
@@ -31,32 +31,14 @@
   }
 
   // ── Registro / entrada ─────────────────────────────────────
-  let authMode = 'in';
   function renderAuth() {
-    const local = KT.user.current();
-    app.innerHTML = head('Comunidad', 'Entra con tu cuenta para sincronizar tus bandas, buscar jugadores y participar en grupos.') + `
-      <div class="m-tabs"><button class="${authMode === 'in' ? 'on' : ''}" data-auth="in">Entrar</button><button class="${authMode === 'up' ? 'on' : ''}" data-auth="up">Crear cuenta</button></div>
-      <form class="m-form q-auth" id="af">
-        ${authMode === 'up' ? `<label>Nombre de jugador <span style="text-transform:none;letter-spacing:0;font-weight:400">(público: así te encuentran los demás)</span><input name="nombre" minlength="2" maxlength="24" value="${esc(local?.name || '')}" required autocomplete="nickname"></label>` : ''}
-        <label>Correo<input name="email" type="email" required autocomplete="email"></label>
-        <label>Contraseña<input name="pass" type="password" minlength="6" required autocomplete="${authMode === 'up' ? 'new-password' : 'current-password'}"></label>
-        <div class="m-row"><button class="icon-btn accent" type="submit"><i class="ti ti-login"></i> ${authMode === 'up' ? 'Crear cuenta' : 'Entrar'}</button>
-          ${authMode === 'in' ? '<button class="icon-btn" type="button" data-a="reset">He olvidado la contraseña</button>' : ''}</div>
-        <p style="font-size:12.5px;color:var(--text-3)">${authMode === 'up' ? 'Tu correo no se muestra a nadie; solo se usa para entrar y recuperar la contraseña.' : 'Al entrar, tus bandas guardadas en este dispositivo con ese nombre de usuario se sincronizan con tu cuenta.'}</p>
-      </form>`;
-    $('#af').addEventListener('submit', e => {
-      e.preventDefault();
-      const d = new FormData(e.target);
-      run(async () => {
-        if (authMode === 'up') {
-          const r = await N.registrar(d.get('email'), d.get('pass'), d.get('nombre'));
-          if (r.confirmar) { authMode = 'in'; KT.toast('Cuenta creada. Te hemos enviado un correo: confírmalo y entra.', { type: 'ok', ms: 7000 }); render(); return; }
-        } else await N.entrar(d.get('email'), d.get('pass'));
-        await N.sync().catch(() => {});
-        render();
-        await loadHome();
-      });
-    });
+    app.innerHTML = head('Comunidad', 'Entra con tu cuenta o créala para sincronizar tus bandas, buscar jugadores y participar en grupos.') + '<div class="acc-page" id="acc-box"></div>';
+    const box = $('#acc-box');
+    const redraw = () => {
+      if (N.user && !N.recovery) { render(); run(loadHome); return; }
+      if (box.isConnected) box.innerHTML = KT.cuenta.html();
+    };
+    KT.cuenta.bind(box, redraw); redraw(); KT.cuenta.load(redraw);
   }
 
   // ── Dentro ─────────────────────────────────────────────────
@@ -186,7 +168,7 @@
   }
   function render() {
     if (!N.on) return renderOff();
-    if (!N.user) return renderAuth();
+    if (!N.user || N.recovery) return renderAuth();
     if (group) return renderGroup();
     renderIn();
   }
@@ -214,10 +196,9 @@
 
   // ── Clics ──────────────────────────────────────────────────
   document.addEventListener('click', e => {
-    const t = e.target.closest('[data-a], [data-tab], [data-auth], [data-open], [data-invite], [data-ia], [data-pa]'); if (!t) return;
+    const t = e.target.closest('[data-a], [data-tab], [data-open], [data-invite], [data-ia], [data-pa]'); if (!t) return;
     const d = t.dataset;
-    if (d.auth) { authMode = d.auth; render(); }
-    else if (d.tab) { tab = d.tab; render(); }
+    if (d.tab) { tab = d.tab; render(); }
     else if (d.open) { group = cache.grupos.find(g => g.id === d.open); cache.posts = cache.miembros = null; render(); run(loadGroup); }
     else if (d.invite) inviteModal(d.invite, d.n);
     else if (d.ia) {
@@ -245,8 +226,7 @@
     else if (d.a === 'home') { group = null; render(); run(loadHome); }
     else if (d.a === 'refresh') run(loadGroup);
     else if (d.a === 'sync') run(() => N.sync(), r => `Sincronizado: ${r.subidas} bandas subidas, ${r.bajadas} bajadas${r.borradas ? ', ' + r.borradas + ' borradas' : ''}, ${r.partidas} partidas`).then(render);
-    else if (d.a === 'out') run(async () => { await N.salir(); cache = { grupos: null, posts: null, miembros: null, inv: null, found: null, q: '' }; group = null; render(); });
-    else if (d.a === 'reset') { const em = $('#af [name=email]').value.trim(); if (!em) { KT.toast('Escribe tu correo arriba', { type: 'err' }); return; } run(() => N.recuperar(em), 'Te hemos enviado un correo para cambiar la contraseña'); }
+    else if (d.a === 'out') run(async () => { await N.salir(); KT.user.logout(); cache = { grupos: null, posts: null, miembros: null, inv: null, found: null, q: '' }; group = null; render(); });
     else if (d.a === 'gnew') { const n = $('#g-name').value.trim(); if (n.length < 2) { KT.toast('Ponle un nombre al grupo', { type: 'err' }); return; } run(async () => { const g = await N.crearGrupo(n); await loadHome(); return g; }, g => `Grupo creado. Código para invitar: ${esc(g?.codigo || '')}`); }
     else if (d.a === 'gjoin') { const c = $('#g-code').value.trim(); if (c.length !== 6) { KT.toast('El código tiene 6 caracteres', { type: 'err' }); return; } run(async () => { await N.unirse(c); await loadHome(); }, 'Te has unido al grupo'); }
     else if (d.a === 'gleave') { if (confirm(`¿Salir de «${group.nombre}»?`)) run(async () => { await N.salirGrupo(group.id); group = null; await loadHome(); }); }

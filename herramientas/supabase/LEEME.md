@@ -15,13 +15,14 @@ Sin estos pasos la app sigue funcionando igual que antes, sin servidor.
    - *Sign In / Providers* → *Email*: activado. Si no quieres que haya que confirmar el correo, desactiva *Confirm email*
      (más cómodo para un grupo de amigos; con ella activada cada uno recibe un correo de confirmación).
    - *URL Configuration* → *Site URL*: la dirección pública de la app, por ejemplo
-     `https://grsambar-jpg.github.io/Kill-Team-companion/`.
+     `https://mausher00.github.io/kill-team/`. En *Redirect URLs* añade `https://mausher00.github.io/kill-team/**`.
+     Sin esto, los enlaces de los correos (confirmar cuenta, recuperar contraseña) llevan a `localhost`.
 4. **Copia los dos datos.** Menú *Project Settings* → *API* (o *API Keys*):
    - **Project URL** (termina en `.supabase.co`)
    - clave **anon public** (la pública; **no** la `service_role`)
    Pégalos en `js/config.js`, entre las comillas de `url` y `key`.
 5. **Publica.** Ejecuta `python herramientas/pwa/generar_sw.py` y sube los cambios a GitHub.
-6. **Prueba.** Abre la app → *Comunidad* → *Crear cuenta*. Crea un grupo, copia el código y pásaselo a otro jugador.
+6. **Prueba.** Abre la app → botón *Entrar* (arriba a la derecha) → *Crear cuenta*. Crea un grupo, copia el código y pásaselo a otro jugador.
 
 ## Qué se guarda y quién lo ve
 
@@ -47,3 +48,13 @@ La clave `anon` es pública por diseño: lo que protege los datos son las reglas
 - No se suben imágenes: falta `almacenamiento.sql`.
 - «Confirma tu correo antes de entrar»: está activada la confirmación (paso 3).
 - Para borrar todo y empezar de cero: *Database* → *Tables* y elimina las tablas, o crea un proyecto nuevo.
+
+## Cuentas (versión 2)
+
+El registro pide **nombre de usuario, correo y contraseña** (mínimo 8 caracteres) y avisa al momento si el nombre ya está cogido.
+Se entra con el correo y la contraseña desde el botón *Entrar* de cualquier página o desde *Comunidad*.
+En *Ajustes de la cuenta* se puede cambiar el nombre, el correo y la contraseña, y borrar la cuenta.
+*¿Has olvidado la contraseña?* envía un enlace; al abrirlo, la app pide la nueva.
+
+Si ya tenías el proyecto creado, vuelve a ejecutar **`esquema.sql`** y **`almacenamiento.sql`** enteros (se pueden repetir sin perder datos):
+añaden la comprobación de nombre libre, el perfil automático al registrarse y el borrado de cuenta.

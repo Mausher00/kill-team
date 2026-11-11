@@ -2,7 +2,7 @@
 //  sw.js — Service worker: la app funciona sin conexión.
 //  GENERADO por herramientas/pwa/generar_sw.py — no editar a mano.
 // ============================================================
-const VERSION = 'c719b5ea1c';
+const VERSION = 'af083502ea';
 const CORE = [
 "index.html",
 "builder.html",
@@ -26,6 +26,7 @@ const CORE = [
 "js/comandos.js",
 "js/comunidad.js",
 "js/config.js",
+"js/cuenta.js",
 "js/data/ala-asesina.js",
 "js/data/angeles-muerte.js",
 "js/data/asaltantes-phobos.js",
@@ -70,7 +71,9 @@ const CORE = [
 "imagenes/app/apple-touch-icon.png",
 "imagenes/app/icono-192.png",
 "imagenes/app/icono-512.png",
-"imagenes/app/icono-maskable-512.png"
+"imagenes/app/icono-maskable-512.png",
+"imagenes/app/logo-kt-sm.webp",
+"imagenes/app/logo-kt.webp"
 ];
 const IMAGES = [
 "imagenes/alaasesina.webp",

@@ -35,7 +35,7 @@
     const mine = me ? list.filter(c => !c.owner || c.owner === me.id) : list;
     $('#app').innerHTML = `
       <header class="m-hd">
-        <a class="back" href="index.html"><i class="ti ti-arrow-left"></i> Kill Team</a>
+        <a class="back" href="index.html"><i class="ti ti-arrow-left"></i> <img class="back-logo" src="imagenes/app/logo-kt-sm.webp" alt="Kill Team" width="440" height="139"></a>
         <h1>Campaña</h1>
         <p>Lleva la hoja de datos de tu comando de partida en partida: experiencia y rangos, honores de batalla, cicatrices, requisición y operaciones especiales. Es una adaptación propia del juego narrativo de la edición anterior a las reglas actuales.</p>
         <div class="row">${KT.user.chip('icon-btn')}<button class="icon-btn accent" data-a="new"><i class="ti ti-plus"></i> Nueva campaña</button></div>

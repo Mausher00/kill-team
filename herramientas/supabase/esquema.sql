@@ -182,3 +182,41 @@ create policy invitaciones_borrar on public.invitaciones for delete to authentic
 grant usage on schema public to authenticated;
 grant select, insert, update, delete on public.perfiles, public.bandas, public.partidas, public.grupos, public.miembros, public.publicaciones, public.invitaciones to authenticated;
 grant execute on function public.es_miembro(uuid), public.comparte_grupo(uuid), public.unirse_grupo(text), public.crear_grupo(text) to authenticated;
+
+-- ============================================================
+--  Cuentas (v2): registro con nombre de usuario, correo y contraseña
+-- ============================================================
+
+-- ¿Está libre este nombre de usuario? (se puede consultar antes de registrarse)
+create or replace function public.nombre_libre(n text) returns boolean
+  language sql stable security definer set search_path = public as
+$$ select not exists (select 1 from public.perfiles where lower(nombre) = lower(trim(n))) $$;
+
+-- Al registrarse se crea su perfil con el nombre elegido. Si el nombre ya está cogido, el registro falla.
+create or replace function public.nuevo_usuario() returns trigger
+  language plpgsql security definer set search_path = public as
+$$
+declare n text := trim(coalesce(new.raw_user_meta_data ->> 'nombre', ''));
+begin
+  if char_length(n) between 2 and 24 then
+    insert into public.perfiles (id, nombre) values (new.id, n);
+  end if;
+  return new;
+end $$;
+drop trigger if exists al_registrarse on auth.users;
+create trigger al_registrarse after insert on auth.users for each row execute function public.nuevo_usuario();
+
+-- Borrar la propia cuenta y todos sus datos (bandas, partidas, grupos creados, publicaciones…)
+-- Las imágenes subidas las borra antes la app con la API de almacenamiento.
+create or replace function public.borrar_cuenta() returns void
+  language plpgsql security definer set search_path = public, auth as
+$$
+begin
+  if auth.uid() is null then raise exception 'Hay que iniciar sesión'; end if;
+  delete from auth.users where id = auth.uid();
+end $$;
+
+revoke execute on function public.nuevo_usuario() from public, anon, authenticated;
+revoke execute on function public.borrar_cuenta() from public, anon;
+grant execute on function public.nombre_libre(text) to anon, authenticated;
+grant execute on function public.borrar_cuenta() to authenticated;
