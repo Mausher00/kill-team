@@ -23,6 +23,7 @@
   <script src="js/data/misiones.js"></script>
   <script src="js/data/zonas.js"></script>
   <script src="js/data/marcadores.js"></script>
+  <script src="js/data/terreno.js"></script>
   <script src="js/data/korps.js"></script>
   <script src="js/data/sucesores.js"></script>
   <script src="js/data/ala-asesina.js"></script>
@@ -40,6 +41,8 @@
   <script src="js/data/vespid.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/comandos.js"></script>
+  <script src="js/usuarios.js"></script>
+  <script src="js/calendario.js"></script>
   <script src="js/vendor/qrcode.js"></script>
   <script src="js/dual.js"></script>
 
@@ -49,9 +52,12 @@
       <div class="g-title" id="g-title"></div>
       <span class="g-net-slot"></span>
       <button class="icon-btn" id="btn-undo" title="Deshacer (Ctrl+Z)" aria-label="Deshacer"><i class="ti ti-arrow-back-up"></i></button>
+      <button class="icon-btn" id="btn-view" title="Vista reducida: solo turno, puntuación y puntos de mando (V)"><i class="ti ti-layout-list"></i><span class="hide-sm">Marcador</span></button>
+      <button class="icon-btn" id="btn-end" title="Fin de partida: recuento total (E)"><i class="ti ti-flag"></i><span class="hide-sm">Fin</span></button>
       <button class="icon-btn" id="btn-restart" title="Reiniciar esta partida (R)"><i class="ti ti-refresh"></i><span class="hide-sm">Reiniciar</span></button>
       <button class="icon-btn" id="btn-setup" title="Nueva partida (N)"><i class="ti ti-plus"></i><span class="hide-sm">Nueva</span></button>
       <button class="icon-btn" id="btn-fs" title="Pantalla completa (F)" aria-label="Pantalla completa"><i class="ti ti-maximize"></i></button>
+      <button class="icon-btn" id="btn-opt" title="Opciones de la partida (O)" aria-label="Opciones"><i class="ti ti-settings"></i></button>
       <button class="icon-btn" id="btn-help" title="Ayuda (?)" aria-label="Ayuda"><i class="ti ti-help"></i></button>
     </header>
     <aside class="g-col p1" id="col-0" aria-label="Operativos del jugador 1"></aside>
@@ -61,6 +67,9 @@
     </main>
     <aside class="g-col p2" id="col-1" aria-label="Operativos del jugador 2"></aside>
   </div>
+
+  <!-- Vista reducida (móvil): turno, puntuación por turno y puntos de mando -->
+  <div class="g-compact" id="compact" hidden></div>
 
   <!-- Preparación -->
   <div class="g-setup" id="setup" role="dialog" aria-modal="true" aria-label="Preparar partida">
@@ -98,6 +107,7 @@
     <h3>Gira el dispositivo</h3>
     <p>El modo de juego está pensado para verse en horizontal: operativos a los lados y el terreno en el centro.</p>
     <button class="icon-btn accent" id="rot-fs"><i class="ti ti-maximize"></i> Pantalla completa</button>
+    <button class="icon-btn" id="rot-compact"><i class="ti ti-layout-list"></i> Usar vista reducida</button>
     <button class="link-btn" id="rot-continue" style="background:none;border:none;color:var(--text-3);font-family:var(--font-display);letter-spacing:.1em;text-transform:uppercase;cursor:pointer">Continuar en vertical</button>
   </div>
 

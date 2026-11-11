@@ -16,7 +16,7 @@ def files(base, exts):
                 out.append(os.path.relpath(os.path.join(d, f), root).replace(os.sep, '/'))
     return sorted(out)
 
-core = ['index.html', 'builder.html', 'partida.html', 'historial.html', 'comandos.html', 'misiones/misiones.html', 'manifest.webmanifest']
+core = ['index.html', 'builder.html', 'partida.html', 'historial.html', 'comandos.html', 'liga.html', 'campana.html', 'comunidad.html', 'misiones/misiones.html', 'manifest.webmanifest']
 core += files('css', ('.css',)) + files('js', ('.js',)) + files('recursos', ('.otf', '.woff2', '.woff', '.ttf'))
 core += files('imagenes/app', ('.png',))
 core = [f for f in core if os.path.exists(os.path.join(root, f))]

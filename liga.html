@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>Ligas y torneos · Kill Team</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="imagenes/app/icono-192.png">
+  <link rel="stylesheet" href="css/iconos.css">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/fx.css">
+  <link rel="stylesheet" href="css/modos.css">
+</head>
+<body>
+  <script>const FACTIONS = {}; const KEYWORDS = {};</script>
+  <script src="js/ui.js"></script>
+  <script src="js/usuarios.js"></script>
+  <script src="js/calendario.js"></script>
+  <div class="m-wrap" id="app"></div>
+
+<script>
+// ============================================================
+//  Ligas y torneos entre los jugadores de este dispositivo
+//  kt.ligas = [{ id, name, type: 'liga' | 'liga2' | 'copa', pts: {w,d,l}, created,
+//               players: [{ id, name, user? }],
+//               matches: [{ id, round, a, b, res: null | { pa, pb, date, gid? }, when?, from?: [idA, idB] }] }]
+//  En la copa, `from` indica de qué enfrentamientos salen los dos jugadores.
+// ============================================================
+const $ = s => document.querySelector(s), esc = KT.esc;
+const KEY = 'ligas';
+const load = () => KT.store.get(KEY, []) || [];
+const saveAll = list => KT.store.set(KEY, list);
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+const TYPES = { liga: 'Liga · todos contra todos', liga2: 'Liga · ida y vuelta', copa: 'Torneo eliminatorio' };
+let cur = null, tab = 'tabla', form = null;
+
+// ── Calendario de enfrentamientos ────────────────────────────
+function roundRobin(ids, twice) {
+  const list = [...ids]; if (list.length % 2) list.push(null);
+  const n = list.length, out = [];
+  for (let r = 0; r < n - 1; r++) {
+    for (let k = 0; k < n / 2; k++) {
+      const a = list[k], b = list[n - 1 - k];
+      if (a != null && b != null) out.push({ id: uid('m'), round: r + 1, a: r % 2 ? b : a, b: r % 2 ? a : b, res: null });
+    }
+    list.splice(1, 0, list.pop());
+  }
+  if (twice) out.push(...out.map(m => ({ id: uid('m'), round: m.round + n - 1, a: m.b, b: m.a, res: null })));
+  return out;
+}
+function bracket(ids) {
+  const order = [...ids].sort(() => Math.random() - .5);
+  let size = 1; while (size < order.length) size *= 2;
+  const slots = Array.from({ length: size }, (_, k) => order[k] ?? null);
+  // reparte los descansos: los primeros pasan directamente
+  const first = [];
+  for (let k = 0; k < size / 2; k++) first.push({ id: uid('m'), round: 1, a: slots[k], b: slots[size - 1 - k], res: null });
+  const out = [...first];
+  let prev = first, round = 2;
+  while (prev.length > 1) {
+    const next = [];
+    for (let k = 0; k < prev.length; k += 2) next.push({ id: uid('m'), round, a: null, b: null, res: null, from: [prev[k].id, prev[k + 1].id] });
+    out.push(...next); prev = next; round++;
+  }
+  return out;
+}
+const winnerOf = m => !m ? null : (m.a != null && m.b == null && !m.from) ? m.a : (m.b != null && m.a == null && !m.from) ? m.b : !m.res ? null : m.res.pa === m.res.pb ? (m.res.tie ?? null) : m.res.pa > m.res.pb ? m.a : m.b;
+// Copa: rellena los cruces según se van decidiendo los anteriores
+function advance(L) {
+  if (L.type !== 'copa') return;
+  let changed = true;
+  while (changed) {
+    changed = false;
+    L.matches.filter(m => m.from).forEach(m => {
+      const [x, y] = m.from.map(id => winnerOf(L.matches.find(q => q.id === id)));
+      const fa = L.matches.find(q => q.id === m.from[0]), fb = L.matches.find(q => q.id === m.from[1]);
+      const bye = q => q.a == null && q.b == null && !q.from;          // cruce vacío
+      const a = bye(fa) ? null : x, b = bye(fb) ? null : y;
+      if (m.a !== a || m.b !== b) { m.a = a; m.b = b; if (m.res && (a == null || b == null)) m.res = null; changed = true; }
+    });
+  }
+}
+function standings(L) {
+  const T = Object.fromEntries(L.players.map(p => [p.id, { p, pj: 0, g: 0, e: 0, d: 0, pf: 0, pc: 0, pts: 0 }]));
+  L.matches.forEach(m => {
+    if (!m.res || !T[m.a] || !T[m.b]) return;
+    const A = T[m.a], B = T[m.b], { pa, pb } = m.res;
+    A.pj++; B.pj++; A.pf += pa; A.pc += pb; B.pf += pb; B.pc += pa;
+    if (pa === pb) { A.e++; B.e++; A.pts += L.pts.d; B.pts += L.pts.d; }
+    else { const [W, X] = pa > pb ? [A, B] : [B, A]; W.g++; X.d++; W.pts += L.pts.w; X.pts += L.pts.l; }
+  });
+  return Object.values(T).sort((x, y) => y.pts - x.pts || (y.pf - y.pc) - (x.pf - x.pc) || y.pf - x.pf || x.p.name.localeCompare(y.p.name, 'es'));
+}
+const roundName = (L, r) => {
+  if (L.type !== 'copa') return 'Jornada ' + r;
+  const max = Math.max(...L.matches.map(m => m.round)), left = max - r;
+  return left === 0 ? 'Final' : left === 1 ? 'Semifinales' : left === 2 ? 'Cuartos de final' : 'Ronda ' + r;
+};
+
+// ── Vistas ───────────────────────────────────────────────────
+function render() {
+  const list = load();
+  const L = cur && list.find(x => x.id === cur);
+  if (form) return renderForm();
+  if (!L) { cur = null; return renderHome(list); }
+  renderLeague(L);
+}
+function renderHome(list) {
+  $('#app').innerHTML = `
+    <header class="m-hd">
+      <a class="back" href="index.html"><i class="ti ti-arrow-left"></i> Kill Team</a>
+      <h1>Ligas y torneos</h1>
+      <p>Organiza una liga o un torneo eliminatorio entre los jugadores de este dispositivo. Cada enfrentamiento se puede jugar desde aquí: al terminar la partida el resultado se apunta solo.</p>
+      <div class="row">${KT.user.chip('icon-btn')}<button class="icon-btn accent" data-a="new"><i class="ti ti-plus"></i> Nueva liga o torneo</button></div>
+    </header>
+    ${list.length ? `<div class="m-grid">${list.map(L => {
+      const done = L.matches.filter(m => m.res).length, tot = L.matches.filter(m => m.a != null && m.b != null || m.from).length, top = L.type === 'copa' ? null : standings(L)[0];
+      const champ = L.type === 'copa' ? L.players.find(p => p.id === winnerOf(L.matches[L.matches.length - 1])) : null;
+      return `<button class="m-card" data-open="${L.id}"><small>${TYPES[L.type]}</small><b>${esc(L.name)}</b>
+        <span>${L.players.length} jugadores · ${done}/${tot} partidas${champ ? ' · campeón: ' + esc(champ.name) : top && done ? ' · líder: ' + esc(top.p.name) : ''}</span></button>`;
+    }).join('')}</div>` : `<div class="m-empty"><i class="ti ti-trophy" style="font-size:28px;display:block;margin-bottom:6px"></i>Aún no hay ligas ni torneos. Crea el primero.</div>`}`;
+}
+function renderForm() {
+  const users = KT.user.list();
+  $('#app').innerHTML = `
+    <header class="m-hd"><button class="back" data-a="cancel"><i class="ti ti-arrow-left"></i> Ligas y torneos</button><h1>Nueva competición</h1></header>
+    <form class="m-form" id="f">
+      <div class="m-row"><label>Nombre<input name="name" maxlength="40" value="${esc(form.name)}" placeholder="Liga del Bulto" required></label>
+        <label>Formato<select name="type">${Object.entries(TYPES).map(([k, v]) => `<option value="${k}" ${form.type === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label></div>
+      <div class="m-row" id="pts" ${form.type === 'copa' ? 'hidden' : ''}>
+        <label>Puntos por victoria<input name="w" type="number" min="0" max="9" value="${form.pts.w}"></label>
+        <label>Por empate<input name="d" type="number" min="0" max="9" value="${form.pts.d}"></label>
+        <label>Por derrota<input name="l" type="number" min="0" max="9" value="${form.pts.l}"></label></div>
+      <label>Jugadores <span style="text-transform:none;letter-spacing:0;font-weight:400">(mínimo ${form.type === 'copa' ? 2 : 3}${users.length ? ' · toca un usuario para añadirlo' : ''})</span></label>
+      <div class="m-chips">${form.players.map((p, k) => `<span class="m-chip">${p.user ? '<i class="ti ti-user-circle"></i>' : ''}${esc(p.name)}<button type="button" data-rm="${k}" aria-label="Quitar">×</button></span>`).join('')}
+        ${users.filter(u => !form.players.some(p => p.user === u.id)).map(u => `<button type="button" class="m-chip add" data-addu="${u.id}"><i class="ti ti-plus"></i>${esc(u.name)}</button>`).join('')}</div>
+      <div class="m-row"><input class="m-in" id="pname" maxlength="24" placeholder="Nombre de otro jugador" style="flex:1 1 200px"><button type="button" class="icon-btn" data-a="addp"><i class="ti ti-user-plus"></i> Añadir</button></div>
+      <div class="m-row"><button class="icon-btn accent" type="submit"><i class="ti ti-trophy"></i> Crear y generar enfrentamientos</button><button type="button" class="icon-btn" data-a="cancel">Cancelar</button></div>
+    </form>`;
+  const f = $('#f');
+  const sync = () => { const d = new FormData(f); form.name = d.get('name'); form.type = d.get('type'); form.pts = { w: +d.get('w') || 0, d: +d.get('d') || 0, l: +d.get('l') || 0 }; };
+  f.addEventListener('change', e => { sync(); if (e.target.name === 'type') render(); });
+  f.addEventListener('input', sync);
+  $('#pname').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addPlayer(); } });
+  f.addEventListener('submit', e => { e.preventDefault(); sync(); create(); });
+}
+function addPlayer() {
+  const v = $('#pname').value.trim();
+  if (!v) return;
+  if (form.players.some(p => KT.norm(p.name) === KT.norm(v))) { KT.toast('Ese jugador ya está', { type: 'err' }); return; }
+  form.players.push({ id: uid('p'), name: v }); render(); $('#pname').focus();
+}
+function create() {
+  const min = form.type === 'copa' ? 2 : 3;
+  if (form.players.length < min) { KT.toast(`Hacen falta al menos ${min} jugadores`, { type: 'err' }); return; }
+  const ids = form.players.map(p => p.id);
+  const L = { id: uid('l'), name: form.name.trim() || 'Liga', type: form.type, pts: form.pts, created: new Date().toISOString(), players: form.players,
+    matches: form.type === 'copa' ? bracket(ids) : roundRobin(ids, form.type === 'liga2') };
+  advance(L);
+  saveAll([L, ...load()]); form = null; cur = L.id; tab = L.type === 'copa' ? 'partidas' : 'tabla'; render();
+  KT.toast(`«${esc(L.name)}» creada: ${L.matches.filter(m => m.a != null && m.b != null).length} enfrentamientos`, { type: 'ok' });
+}
+function renderLeague(L) {
+  const name = id => L.players.find(p => p.id === id)?.name;
+  const st = standings(L), played = L.matches.filter(m => m.res).length;
+  const rounds = [...new Set(L.matches.map(m => m.round))].sort((a, b) => a - b);
+  const champ = L.type === 'copa' ? L.players.find(p => p.id === winnerOf(L.matches[L.matches.length - 1])) : (played && played === L.matches.length ? st[0].p : null);
+  const matchRow = m => {
+    const tbd = m.a == null || m.b == null;
+    if (tbd && !m.from) return m.a == null && m.b == null ? '' : `<div class="m-match bye"><span class="a">${esc(name(m.a) || '—')}</span><span class="sc tbd">pasa</span><span class="b">${esc(name(m.b) || '—')}</span><span class="acts"></span></div>`;
+    const w = winnerOf(m);
+    const when = m.when ? new Date(m.when).toLocaleString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+    return `<div class="m-match" data-m="${m.id}">
+      <span class="a ${w === m.a && w != null ? 'w' : ''}">${esc(name(m.a) || 'Por decidir')}</span>
+      <span class="sc ${m.res ? '' : 'tbd'}">${m.res ? `${m.res.pa} – ${m.res.pb}` : 'vs'}${m.res ? `<small>${new Date(m.res.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</small>` : when ? `<small>${when}</small>` : ''}</span>
+      <span class="b ${w === m.b && w != null ? 'w' : ''}">${esc(name(m.b) || 'Por decidir')}</span>
+      <span class="acts">${tbd ? '' : `
+        ${m.res ? '' : `<a class="icon-btn accent" href="partida.html?liga=${L.id}&m=${m.id}" title="Jugar esta partida: el resultado se apunta solo"><i class="ti ti-swords"></i><span>Jugar</span></a>
+        <button class="icon-btn" data-ma="date" title="Proponer fecha e invitar"><i class="ti ti-calendar-event"></i></button>`}
+        <button class="icon-btn" data-ma="res" title="${m.res ? 'Corregir el resultado' : 'Apuntar el resultado a mano'}"><i class="ti ti-${m.res ? 'pencil' : 'edit'}"></i></button>`}</span>
+    </div>`;
+  };
+  $('#app').innerHTML = `
+    <header class="m-hd">
+      <button class="back" data-a="home"><i class="ti ti-arrow-left"></i> Ligas y torneos</button>
+      <h1>${esc(L.name)}</h1>
+      <p>${TYPES[L.type]} · ${L.players.length} jugadores · ${played} partidas jugadas${champ ? ` · <b style="color:var(--orange)"><i class="ti ti-trophy"></i> Campeón: ${esc(champ.name)}</b>` : ''}</p>
+    </header>
+    <div class="m-tabs">${[L.type !== 'copa' && ['tabla', 'Clasificación'], ['partidas', L.type === 'copa' ? 'Cuadro' : 'Enfrentamientos'], ['ajustes', 'Ajustes']].filter(Boolean).map(([k, v]) => `<button class="${tab === k ? 'on' : ''}" data-tab="${k}">${v}</button>`).join('')}</div>
+    ${tab === 'tabla' && L.type !== 'copa' ? `<div class="m-scroll"><table class="m-tab"><thead><tr><th>#</th><th>Jugador</th><th title="Partidas jugadas">PJ</th><th title="Ganadas">G</th><th title="Empatadas">E</th><th title="Perdidas">P</th><th title="PV a favor">PV+</th><th title="PV en contra">PV−</th><th>Dif</th><th>Pts</th></tr></thead><tbody>
+      ${st.map((r, k) => `<tr class="${k === 0 && r.pj ? 'lead' : ''}"><td>${k + 1}</td><td class="n">${esc(r.p.name)}</td><td>${r.pj}</td><td>${r.g}</td><td>${r.e}</td><td>${r.d}</td><td>${r.pf}</td><td>${r.pc}</td><td>${r.pf - r.pc > 0 ? '+' : ''}${r.pf - r.pc}</td><td class="pts">${r.pts}</td></tr>`).join('')}
+      </tbody></table></div><p class="c-hint" style="font-size:12px;color:var(--text-3);margin-top:8px">${L.pts.w} puntos por victoria, ${L.pts.d} por empate, ${L.pts.l} por derrota. Desempate: diferencia de PV y PV a favor.</p>` : ''}
+    ${tab === 'partidas' || (tab === 'tabla' && L.type === 'copa') ? rounds.map(r => `<div class="m-round">${roundName(L, r)}</div>${L.matches.filter(m => m.round === r).map(matchRow).join('')}`).join('') : ''}
+    ${tab === 'ajustes' ? `<div class="m-form">
+      <div class="m-row"><label>Nombre<input id="rename" maxlength="40" value="${esc(L.name)}"></label></div>
+      <div class="m-row"><button class="icon-btn" data-a="rename"><i class="ti ti-device-floppy"></i> Guardar nombre</button><button class="icon-btn" data-a="export"><i class="ti ti-download"></i> Exportar</button><span style="flex:1"></span><button class="icon-btn" data-a="del" style="color:#f07070"><i class="ti ti-trash"></i> Borrar la competición</button></div>
+      <p style="font-size:12.5px;color:var(--text-3)">Jugadores: ${L.players.map(p => esc(p.name)).join(', ')}. Los enfrentamientos se generaron al crearla; para cambiar los jugadores crea una nueva.</p></div>` : ''}`;
+}
+function editResult(L, m) {
+  const name = id => L.players.find(p => p.id === id)?.name;
+  const close = KT.modal('Resultado', `<form class="usr" id="rf">
+    <div class="usr-form"><label>${esc(name(m.a))} · PV<input name="pa" type="number" min="0" max="30" value="${m.res?.pa ?? ''}" required autofocus></label>
+      <label>${esc(name(m.b))} · PV<input name="pb" type="number" min="0" max="30" value="${m.res?.pb ?? ''}" required></label></div>
+    ${L.type === 'copa' ? `<div class="usr-form"><label>Si hay empate, pasa<select name="tie"><option value="${m.a}">${esc(name(m.a))}</option><option value="${m.b}" ${m.res?.tie === m.b ? 'selected' : ''}>${esc(name(m.b))}</option></select></label></div>` : ''}
+    <div class="usr-row"><button class="icon-btn accent" type="submit"><i class="ti ti-check"></i> Guardar</button>${m.res ? '<button class="icon-btn" type="button" data-clear>Quitar resultado</button>' : ''}</div></form>`, 'edit');
+  const f = document.querySelector('#rf');
+  const commit = res => { const list = load(), LL = list.find(x => x.id === L.id), mm = LL.matches.find(x => x.id === m.id); mm.res = res; advance(LL); saveAll(list); close(); render(); };
+  f.addEventListener('submit', e => { e.preventDefault(); const d = new FormData(f); const res = { pa: +d.get('pa'), pb: +d.get('pb'), date: m.res?.date || new Date().toISOString() }; if (L.type === 'copa' && res.pa === res.pb) res.tie = d.get('tie'); commit(res); });
+  f.querySelector('[data-clear]')?.addEventListener('click', () => commit(null));
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-a], [data-open], [data-tab], [data-rm], [data-addu], [data-ma]'); if (!t) return;
+  const d = t.dataset, list = load(), L = list.find(x => x.id === cur);
+  if (d.open) { cur = d.open; tab = list.find(x => x.id === cur)?.type === 'copa' ? 'partidas' : 'tabla'; render(); }
+  else if (d.tab) { tab = d.tab; render(); }
+  else if (d.rm != null) { form.players.splice(+d.rm, 1); render(); }
+  else if (d.addu) { const u = KT.user.byId(d.addu); form.players.push({ id: uid('p'), name: u.name, user: u.id }); render(); }
+  else if (d.ma && L) {
+    const m = L.matches.find(x => x.id === t.closest('[data-m]').dataset.m), name = id => L.players.find(p => p.id === id)?.name;
+    if (d.ma === 'res') editResult(L, m);
+    else KT.cal.open({ title: `Kill Team · ${L.name}: ${name(m.a)} vs ${name(m.b)}`, desc: `${roundName(L, m.round)} de «${L.name}».`, start: m.when }, ev => { m.when = ev.start.toISOString(); saveAll(list); render(); KT.toast('Fecha guardada', { type: 'ok' }); });
+  }
+  else if (d.a === 'new') { const me = KT.user.current(); form = { name: '', type: 'liga', pts: { w: 3, d: 1, l: 0 }, players: me ? [{ id: uid('p'), name: me.name, user: me.id }] : [] }; render(); }
+  else if (d.a === 'cancel') { form = null; render(); }
+  else if (d.a === 'addp') addPlayer();
+  else if (d.a === 'home') { cur = null; render(); }
+  else if (d.a === 'rename' && L) { L.name = $('#rename').value.trim() || L.name; saveAll(list); render(); KT.toast('Guardado', { type: 'ok' }); }
+  else if (d.a === 'export' && L) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(L, null, 1)], { type: 'application/json' })); a.download = KT.norm(L.name).replace(/[^a-z0-9]+/g, '-') + '.ktliga.json'; a.click(); }
+  else if (d.a === 'del' && L) { if (!confirm(`¿Borrar «${L.name}» y todos sus resultados?`)) return; saveAll(list.filter(x => x.id !== L.id)); cur = null; render(); }
+});
+document.addEventListener('kt:user', () => { if (!cur || form) render(); });
+// abrir directamente una competición: liga.html#<id>
+if (location.hash.length > 1) { cur = location.hash.slice(1); tab = load().find(x => x.id === cur)?.type === 'copa' ? 'partidas' : 'tabla'; }
+KT.initFx && KT.initFx();
+render();
+</script>
+</body>
+</html>

@@ -69,6 +69,10 @@
     .c-badge { font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .08em; padding: 1px 6px; border-radius: 3px; background: var(--bg-3); color: var(--text-3); margin-left: 4px; }
     .c-badge.rep { background: rgba(212,160,16,.15); color: var(--action); }
     .c-empty { text-align: center; color: var(--text-3); padding: 26px 10px; border: 1px dashed var(--border-2); border-radius: 6px; font-size: 13px; }
+    .c-select { flex: 1 1 220px; min-width: 0; height: 36px; background: var(--bg-2); color: var(--text); border: 1px solid var(--border-2); border-radius: 4px; padding: 0 8px; font: 14px var(--font-body); }
+    .c-msgs .info { background: rgba(90,150,230,.1); color: #9fc2f0; }
+    .c-batch { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+    .c-batch .c-item small.bad { color: #f2a0a0; } .c-batch .c-item small.warn { color: #e6c56a; }
     .c-del { color: var(--text-3); }
     .c-del:hover { color: #f07070 !important; border-color: #a04040 !important; }
     @media (max-width: 720px) { .c-steps { grid-template-columns: 1fr; } .c-hd h1 { font-size: 32px; } .c-ops .hide-sm { display: none; } }
@@ -94,6 +98,8 @@
   <script src="js/data/vespid.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/comandos.js"></script>
+  <script src="js/usuarios.js"></script>
+  <script src="js/data/instruccion_ia.js"></script>
 
   <div class="c-wrap">
     <header class="c-hd">
@@ -103,8 +109,8 @@
     </header>
 
     <div class="c-steps">
-      <div class="c-step"><b>1</b><h3>Copia la instrucción</h3><p>Pulsa «Copiar instrucción». Ya incluye el formato exacto que necesita la app.</p></div>
-      <div class="c-step"><b>2</b><h3>Pásasela a la IA</h3><p>Abre una conversación nueva, adjunta el PDF del comando y pega la instrucción.</p></div>
+      <div class="c-step"><b>1</b><h3>Coge la instrucción</h3><p>Pulsa «Copiar instrucción» o descárgala como archivo <code>.md</code>. Ya incluye el formato exacto que necesita la app.</p></div>
+      <div class="c-step"><b>2</b><h3>Pásasela a la IA</h3><p>Abre una conversación nueva, adjunta el PDF del comando y pega la instrucción (o adjunta también el <code>.md</code> y escribe «sigue estas instrucciones»).</p></div>
       <div class="c-step"><b>3</b><h3>Sube el paquete</h3><p>Descarga el archivo que te dé la IA (o copia su respuesta) y súbelo aquí abajo.</p></div>
     </div>
 
@@ -113,7 +119,7 @@
       <pre id="prompt"></pre>
       <div class="c-prompt-ft">
         <button class="icon-btn accent" id="copy"><i class="ti ti-copy"></i> Copiar instrucción</button>
-        <button class="icon-btn" id="dl-prompt"><i class="ti ti-file-download"></i> Descargar .txt</button>
+        <button class="icon-btn" id="dl-prompt"><i class="ti ti-file-download"></i> Descargar .md</button>
         <button class="icon-btn" id="expand"><i class="ti ti-arrows-vertical"></i> <span>Ver entera</span></button>
       </div>
     </div>
@@ -121,13 +127,21 @@
 
     <div class="c-sec"><i class="ti ti-package-import"></i> Subir paquete</div>
     <label class="c-drop" id="drop">
-      <i class="ti ti-upload"></i><b>Elegir archivo</b><br>o arrástralo aquí (.json o .txt)
-      <input type="file" id="file" accept=".json,.txt,application/json,text/plain" hidden>
+      <i class="ti ti-upload"></i><b>Elegir archivos</b><br>o arrástralos aquí (.json o .txt) · puedes subir varios a la vez
+      <input type="file" id="file" accept=".json,.txt,.md,application/json,text/plain" multiple hidden>
     </label>
     <div class="c-or">o pega la respuesta de la IA</div>
     <textarea class="c-paste" id="paste" placeholder='{ "schema": "kt-comando/1", "comando": { … } }' spellcheck="false"></textarea>
     <div class="c-row" style="margin-top:8px"><button class="icon-btn accent" id="check"><i class="ti ti-checks"></i> Comprobar</button><button class="icon-btn" id="clear"><i class="ti ti-eraser"></i> Limpiar</button></div>
     <div id="preview"></div>
+
+    <div class="c-sec"><i class="ti ti-refresh-alert"></i> Actualizar reglas de un comando</div>
+    <p class="c-hint" style="margin-top:0">Cuando salga una fe de erratas o un cambio de equilibrio: elige el comando, coge la instrucción (lleva dentro sus datos actuales), pásasela a la IA junto al PDF de los cambios y sube aquí arriba el paquete que te devuelva. Antes de guardar verás qué ha cambiado.</p>
+    <div class="c-row">
+      <select id="upd-sel" class="c-select" aria-label="Comando que quieres actualizar"></select>
+      <button class="icon-btn accent" id="upd-copy"><i class="ti ti-copy"></i> Copiar instrucción</button>
+      <button class="icon-btn" id="upd-dl"><i class="ti ti-file-download"></i> Descargar .md</button>
+    </div>
 
     <div class="c-sec"><i class="ti ti-users-group"></i> Comandos añadidos en este dispositivo <span id="n-mine"></span></div>
     <div class="c-list" id="mine"></div>
@@ -139,97 +153,7 @@ const $ = s => document.querySelector(s), esc = KT.esc;
 
 // ── Instrucción para la IA ───────────────────────────────────
 const UNIV = (window.UNIVERSAL_EQUIPMENT || []).map(u => `${u.id} (${u.n})`).join(', ');
-const PROMPT = `Eres un asistente que convierte el PDF de reglas de un comando de Kill Team (edición 2024) en un archivo JSON para la app «Kill Team Companion». Te adjunto el PDF.
-
-TAREA
-Lee TODO el PDF y devuelve UN ÚNICO objeto JSON válido, sin comentarios. Si puedes crear archivos, entrégalo como archivo descargable llamado «nombre-del-comando.ktcomando.json»; si no, escríbelo completo dentro de un único bloque de código \`\`\`json. Si no cabe en una respuesta, corta donde sea y continúa exactamente desde ese punto cuando te diga «continúa».
-
-REGLAS
-1. Todo en español. Si el PDF está en inglés, tradúcelo con la terminología oficial española de Kill Team (glosario al final).
-2. Copia los textos de reglas COMPLETOS y literales; no resumas ni omitas párrafos. Saltos de línea con \\n, viñetas con «• » y acciones dentro de un texto como «▸ NOMBRE (1PA): texto».
-3. No inventes nada. Si un dato no aparece en el PDF, omite el campo o usa [].
-4. Ignora ilustraciones y la ambientación (resúmela en 1-2 frases en "desc").
-5. Las pulgadas se escriben con comillas escapadas: "6\\"".
-6. Usa exactamente los nombres de campo de este esquema.
-
-ESQUEMA
-{
-  "schema": "kt-comando/1",
-  "comando": {
-    "id": "nombre-en-minusculas-con-guiones",
-    "name": "Nombre del comando",
-    "subfaction": "Facción (p. ej. Adeptus Astartes, Imperio T'au, Orkos)",
-    "icon": "un emoji que lo represente",
-    "desc": "1-2 frases",
-    "tags": ["Arquetipos: Seguridad, Buscar y destruir, Reconocimiento o Infiltración"],
-    "version": "fecha o versión del PDF, si aparece",
-    "source": "título del PDF",
-    "frs": [
-      { "name": "Regla de facción", "text": "texto completo", "subs": [ { "n": "Apartado opcional", "t": "texto" } ] }
-    ],
-    "pl": {
-      "s": [ { "n": "Ardid de estrategia", "t": "texto completo" } ],
-      "f": [ { "n": "Ardid de tiroteo", "t": "texto completo" } ]
-    },
-    "eq": [ { "n": "Equipo de facción", "t": "texto completo; si da un arma: ▸ Nombre — ATQ 4 · IMP 3+ · DAÑO 3/4 · reglas" } ],
-    "ops": [
-      {
-        "id": "id-del-operativo",
-        "name": "Nombre completo de la ficha de datos",
-        "type": "TIPO EN MAYÚSCULAS (la palabra clave que identifica a ese operativo, p. ej. LÍDER DE ESCUADRA, ARTILLERO)",
-        "s": { "lpa": 2, "mov": "6\\"", "salv": "3+", "h": 13 },
-        "kw": ["PALABRAS CLAVE EN MAYÚSCULAS"],
-        "w": [ { "n": "Arma", "a": 4, "i": "3+", "d": "3/4", "r": ["Alcance 8\\"", "Letal 5+"] } ],
-        "ru": [
-          { "n": "Habilidad", "t": "texto completo" },
-          { "n": "Acción única (1PA)", "t": "texto completo", "isAct": true }
-        ]
-      }
-    ],
-    "er": [ { "v": "Fe de erratas · fecha", "ee": [ { "s": "Sección afectada", "t": "Cambio" } ] } ],
-    "roster": {
-      "archetypes": ["Seguridad", "Buscar y destruir"],
-      "required": [ { "type": "TIPO DEL LÍDER", "count": 1 } ],
-      "pool": {
-        "slots": 9,
-        "note": "Resumen en una frase de las limitaciones de selección",
-        "entries": [
-          { "type": "TIPO", "max": 1 },
-          { "type": "TIPO REPETIBLE", "max": null }
-        ]
-      },
-      "constraints": [ { "types": ["TIPO"], "max": 3, "label": "Máx. 3 …", "msg": "Explicación del límite" } ],
-      "equipment": { "slots": 4 }
-    },
-    "dudas": ["Opcional: cosas que no hayas podido leer o interpretar con seguridad"]
-  }
-}
-
-OPERATIVOS ("ops")
-- Una entrada por cada ficha de datos. "a" = Ataques (número), "i" = Impactar, "d" = "daño normal/daño crítico".
-- "w" incluye TODAS las armas de la ficha (a distancia y cuerpo a cuerpo), también las alternativas. "r" es la lista de reglas de arma ([] si no tiene).
-- "ru": habilidades de la ficha. Marca "isAct": true solo en las acciones con coste en PA; su nombre debe terminar en «(1PA)», «(2PA)», etc.
-- "type" debe ser único por ficha (salvo que el PDF use la misma palabra clave para varias).
-
-COMPOSICIÓN ("roster", sección «Selección de operativos» del PDF)
-- "required": operativos que siempre van (normalmente el líder) y cuántos ("count").
-- "pool.slots": cuántos operativos más se eligen aparte de los obligatorios.
-- "pool.entries": cada operativo elegible. "max": 1 si solo se puede elegir una vez; null si se puede repetir. Su "type" debe ser IDÉNTICO al "type" de una ficha de "ops".
-- Si un operativo ocupa medio hueco, añade "half": true.
-- Si un operativo elige entre combinaciones de armas, añade "loadouts": [ { "label": "Bólter; bayoneta", "w": [ { "n": "Bólter" }, { "n": "Bayoneta" } ] } ] (los "n" deben coincidir con armas de su "w").
-- Si hay varias versiones del mismo tipo que se eligen por separado (p. ej. un Artillero con armas distintas, cada una solo una vez), crea una entrada por versión con "key" único y "label".
-- "constraints": límites que afectan a varios operativos a la vez ("min"/"max" sobre "types").
-- "equipment.slots": cuántos equipos se eligen (normalmente 4). Equipo universal disponible (no lo copies, la app ya lo tiene): ${UNIV || 'el habitual'}.
-
-GLOSARIO INGLÉS → ESPAÑOL
-Reglas de arma: Accurate → Certera X · Balanced → Equilibrada · Blast → Área X" · Brutal → Brutal · Ceaseless → Incesante · Devastating → Devastadora X · Heavy → Pesada · Hot → Sobrecalentamiento · Lethal → Letal X+ · Limited → Limitada X · Piercing → Penetración X · Piercing Crits → Críticos de penetración X · Punishing → Castigadora · Range → Alcance X" · Relentless → Implacable · Rending → Desgarradora · Saturate → Saturación · Seek → Buscadora · Severe → Severa · Shock → Choque · Silent → Silenciosa · Stun → Aturdidora · Torrent → Ráfaga X".
-Términos: APL → LPA · Move → Mov · Save → Salv · Wounds → Heridas · AP (puntos de acción) → PA · CP → PM · Strategy ploy → ardid de estrategia · Firefight ploy → ardid de tiroteo · Turning point → punto de inflexión · Killzone → zona de aniquilación · operative → agente · friendly/enemy → amigo/enemigo · Conceal/Engage order → orden de ocultarse/trabarse · incapacitated → incapacitado · control range → zona de control · Dash → Correr · Reposition → Reposicionarse · Fall Back → Retroceder · Charge → Cargar · Fight → Combatir · Shoot → Disparar · Pick Up Marker → Recoger marcador · Place Marker → Colocar marcador · Guard → Guardia · Counteract → Contraatacar · Faction rule → regla de facción · Equipment → equipo · Datacard → ficha de datos.
-
-ANTES DE ENTREGAR, COMPRUEBA
-- Que el JSON es válido (comillas dobles, sin comas finales, sin texto fuera del objeto).
-- Que el número de fichas, ardides y equipos coincide con el PDF.
-- Que cada "type" de "roster" existe en "ops".
-- Que ningún texto se ha quedado a medias.`;
+const PROMPT = (window.KT_PROMPT_MD || '').replace('{{UNIVERSAL}}', UNIV ? 'Equipo universal que NO debes copiar: ' + UNIV + '.' : '');
 $('#prompt').textContent = PROMPT;
 
 async function copy(text) {
@@ -246,7 +170,7 @@ function download(name, text, type = 'application/json') {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
 }
 $('#copy').onclick = async () => KT.toast((await copy(PROMPT)) ? 'Instrucción copiada. Pégala en la IA junto al PDF.' : 'No se pudo copiar; selecciona el texto a mano', { type: 'ok' });
-$('#dl-prompt').onclick = () => download('instruccion-ia-kill-team.txt', PROMPT, 'text/plain');
+$('#dl-prompt').onclick = () => download('convertir-comando-kill-team.md', PROMPT, 'text/markdown');
 $('#expand').onclick = () => { const o = $('#prompt-box').classList.toggle('open'); $('#expand span').textContent = o ? 'Recoger' : 'Ver entera'; };
 
 // ── Importar ─────────────────────────────────────────────────
@@ -260,17 +184,21 @@ function check(text) {
   let raw;
   try { raw = KTC.parse(text); }
   catch (e) { box.innerHTML = `<div class="c-prev"><ul class="c-msgs">${li('err', 'alert-triangle', e.message)}</ul></div>`; return; }
+  const many = KTC.split(raw);
+  if (many.length > 1) { batch(many.map((r, k) => ({ name: 'comando ' + (k + 1), raw: r }))); return; }
   const { f, errors, warnings } = KTC.normalize(raw);
   if (!f) { box.innerHTML = `<div class="c-prev"><ul class="c-msgs">${errors.map(e => li('err', 'alert-triangle', e)).join('')}</ul></div>`; return; }
   const cur = FACTIONS[f.id];
   if (cur && !cur._user) warnings.unshift(`Ya existe el comando incluido «${cur.name}» con el mismo id: este lo sustituirá en este dispositivo (útil para actualizar reglas). Si lo borras, vuelve el original.`);
   else if (cur && cur._user) warnings.unshift(`Ya tienes añadido «${cur.name}»: se actualizará.`);
+  const changes = cur ? KTC.diff(cur, f) : [];
+  if (cur && !changes.length) changes.push('No hay diferencias con la versión que ya tienes.');
   const R = f.roster, nPloys = f.pl.s.length + f.pl.f.length;
   const counts = [['Operativos', f.ops.length], ['Reglas de facción', f.frs.length], ['Ardides', nPloys], ['Equipo', f.eq.length], ['Plazas', R ? (R.required.reduce((a, r) => a + r.count, 0) + R.pool.slots) : '—']];
   box.innerHTML = `<div class="c-prev">
     <div class="c-prev-hd"><img src="${f.img}" alt=""><div><small>${esc(f.subfaction || 'Comando')}${f.version ? ' · ' + esc(f.version) : ''}</small><h2>${esc(f.name)}</h2><p>${esc(f.desc)}</p></div></div>
     <div class="c-count">${counts.map(([k, v]) => `<div><b>${v}</b><small>${k}</small></div>`).join('')}</div>
-    <ul class="c-msgs">${errors.map(e => li('err', 'alert-triangle', e)).join('')}${warnings.map(w => li('warn', 'alert-circle', w)).join('')}${!errors.length && !warnings.length ? li('ok', 'circle-check', 'Todo correcto.') : ''}</ul>
+    <ul class="c-msgs">${errors.map(e => li('err', 'alert-triangle', e)).join('')}${changes.map(c => li('info', 'git-compare', c)).join('')}${warnings.map(w => li('warn', 'alert-circle', w)).join('')}${!errors.length && !warnings.length ? li('ok', 'circle-check', 'Todo correcto.') : ''}</ul>
     <table class="c-ops"><thead><tr><th>Operativo</th><th>LPA · Mov · Salv · H</th><th class="hide-sm">Armas</th><th class="hide-sm">Habilidades</th></tr></thead><tbody>
       ${f.ops.map(o => `<tr><td class="n">${esc(o.name)}<br><small style="font-family:var(--font-mono);font-size:9.5px;color:var(--text-3)">${esc(o.type)}</small></td><td class="m">${o.s.lpa} · ${esc(o.s.mov)} · ${esc(o.s.salv)} · ${o.s.h}</td><td class="hide-sm">${o.w.map(w => esc(w.n)).join(', ')}</td><td class="hide-sm">${o.ru.map(r => esc(r.n)).join(', ') || '—'}</td></tr>`).join('')}
     </tbody></table>
@@ -292,17 +220,65 @@ function save() {
     pending = null; $('#preview').innerHTML = ''; $('#paste').value = ''; renderMine();
   } catch (e) { KT.toast(esc(e.message), { type: 'err' }); }
 }
-async function readFile(file) {
-  if (!file) return;
-  if (file.size > 3e6) { KT.toast('El archivo es demasiado grande', { type: 'err' }); return; }
-  const text = await file.text();
-  $('#paste').value = text; check(text);
+// Varios paquetes a la vez: lista con el estado de cada uno y «Guardar los válidos»
+let lote = [];
+function batch(items) {
+  lote = items.map(it => {
+    if (it.error) return it;
+    const { f, errors, warnings } = KTC.normalize(it.raw);
+    const cur = f && FACTIONS[f.id];
+    return { ...it, f, errors, warnings, changes: cur && f ? KTC.diff(cur, f) : null };
+  });
+  const ok = lote.filter(x => x.f && !x.errors.length);
+  $('#preview').innerHTML = `<div class="c-prev"><div class="c-prev-hd"><div><small>Importación múltiple</small><h2>${lote.length} paquetes</h2><p>${ok.length} listos para guardar${lote.length - ok.length ? ` · ${lote.length - ok.length} con errores` : ''}</p></div></div>
+    <div class="c-batch">${lote.map(x => {
+      const bad = x.error || !x.f || x.errors.length;
+      const msg = x.error || (!x.f ? x.errors[0] : x.errors.length ? x.errors.join(' · ') : [x.changes ? (x.changes.length ? 'Actualiza el que ya tienes: ' + x.changes.join(' · ') : 'Igual que el que ya tienes') : 'Nuevo', x.warnings.length ? x.warnings.length + ' aviso(s)' : ''].filter(Boolean).join(' · '));
+      return `<div class="c-item">${x.f ? `<img src="${x.f.img}" alt="">` : '<i class="ti ti-alert-triangle" style="font-size:26px;color:#f07070"></i>'}
+        <div class="t"><b>${esc(x.f?.name || x.name)}</b><small class="${bad ? 'bad' : x.warnings.length ? 'warn' : ''}">${esc(x.f ? `${x.f.ops.length} operativos · ` : '')}${esc(msg)}</small></div></div>`;
+    }).join('')}</div>
+    <p class="c-hint">Para ver el detalle y los avisos de uno, súbelo solo.</p>
+    <div class="c-row" style="margin-top:12px"><button class="icon-btn accent" id="save-all" ${ok.length ? '' : 'disabled'}><i class="ti ti-device-floppy"></i> Guardar los ${ok.length} válidos</button><button class="icon-btn" id="cancel"><i class="ti ti-x"></i> Descartar</button></div></div>`;
+  $('#cancel').onclick = () => { $('#preview').innerHTML = ''; lote = []; };
+  $('#save-all').onclick = () => {
+    let n = 0;
+    try { ok.forEach(x => { KTC.save(x.f); n++; }); } catch (e) { KT.toast(esc(e.message), { type: 'err' }); }
+    KT.toast(`${n} comando(s) guardados`, { type: 'ok' });
+    $('#preview').innerHTML = ''; $('#paste').value = ''; lote = []; renderMine(); fillUpd();
+  };
+  $('#preview').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-$('#file').onchange = e => { readFile(e.target.files[0]); e.target.value = ''; };
+async function readFiles(files) {
+  files = [...(files || [])].filter(f => f.size <= 3e6);
+  if (!files.length) return;
+  if (files.length === 1) { const text = await files[0].text(); $('#paste').value = text; check(text); return; }
+  const items = [];
+  for (const file of files) {
+    try { KTC.split(KTC.parse(await file.text())).forEach((raw, k, all) => items.push({ name: file.name + (all.length > 1 ? ' #' + (k + 1) : ''), raw })); }
+    catch (e) { items.push({ name: file.name, error: e.message }); }
+  }
+  $('#paste').value = ''; batch(items);
+}
+const readFile = f => readFiles(f ? [f] : []);
+$('#file').onchange = e => { readFiles(e.target.files); e.target.value = ''; };
+
+// ── Actualizar reglas: instrucción con los datos actuales del comando ──
+function fillUpd() {
+  const sel = $('#upd-sel'), cur = sel.value;
+  sel.innerHTML = Object.values(FACTIONS).sort((a, b) => a.name.localeCompare(b.name, 'es')).map(f => `<option value="${esc(f.id)}">${esc(f.name)}${f._user ? ' (añadido)' : ''}</option>`).join('');
+  if (cur && FACTIONS[cur]) sel.value = cur;
+}
+function updPrompt() {
+  const f = FACTIONS[$('#upd-sel').value]; if (!f) return '';
+  const pk = KTC.pack(f); delete pk.comando.img; pk.comando.ops = pk.comando.ops.map(o => { const c = { ...o }; delete c.img; return c; });
+  return (window.KT_PROMPT_UPD || '').replace('{{PAQUETE}}', JSON.stringify(pk, null, 1));
+}
+$('#upd-copy').onclick = async () => KT.toast((await copy(updPrompt())) ? 'Instrucción copiada con los datos del comando. Pégala en la IA junto al PDF de erratas.' : 'No se pudo copiar; usa «Descargar .md»', { type: 'ok', ms: 4500 });
+$('#upd-dl').onclick = () => download('actualizar-' + $('#upd-sel').value + '.md', updPrompt(), 'text/markdown');
 const drop = $('#drop');
 ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
 ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
-drop.addEventListener('drop', e => readFile(e.dataTransfer.files[0]));
+drop.addEventListener('drop', e => readFiles(e.dataTransfer.files));
 $('#check').onclick = () => check($('#paste').value);
 $('#clear').onclick = () => { $('#paste').value = ''; check(''); };
 $('#paste').addEventListener('paste', () => setTimeout(() => check($('#paste').value), 0));
@@ -337,7 +313,7 @@ $('#mine').addEventListener('click', e => {
 });
 
 KT.initFx && KT.initFx();
-renderMine();
+renderMine(); fillUpd();
 </script>
 </body>
 </html>

@@ -72,6 +72,7 @@ function commit(fn, opts = {}) {
     if (hist.length > 80) hist.shift();
     save();
     Net.ops('S', ops);
+    if (S.ended) saveHistory();
   }
   if (opts.render !== false) render(opts.only);
   syncUndo();
@@ -121,6 +122,32 @@ function killInfo(i) {
   const grade = Math.max(0, Math.min(5, base + adj));
   return { start, dead, row, base, adj, grade, next: base < 5 ? row[base] : null };
 }
+// Puntuación por punto de inflexión: score.tp.{crit,tac}[pi-1] y score.killAt[pi-1] (grado acumulado al cerrar el PI)
+const zero4 = () => [0, 0, 0, 0];
+const newScore = () => ({ crit: 0, tac: 0, killAdj: 0, tp: { crit: zero4(), tac: zero4() }, killAt: [null, null, null, null] });
+function ensureScore(P, tp = 1) {
+  const sc = P.score || (P.score = newScore());
+  if (!sc.tp) { sc.tp = { crit: zero4(), tac: zero4() }; sc.tp.crit[tp - 1] = sc.crit || 0; sc.tp.tac[tp - 1] = sc.tac || 0; }
+  if (!sc.killAt) sc.killAt = [null, null, null, null];
+}
+// PV de eliminación ganados en cada punto de inflexión
+function killByTp(i) {
+  const at = S.players[i].score.killAt, g = killInfo(i).grade, out = zero4();
+  let prev = 0;
+  for (let n = 0; n < MAX_TP; n++) {
+    const cur = n + 1 < S.tp ? Math.min(at[n] ?? prev, g) : n + 1 === S.tp ? g : null;
+    if (cur == null) break;
+    out[n] = cur - prev; prev = cur;
+  }
+  return out;
+}
+function addScore(i, op, v, tp = S.tp) {
+  const P = S.players[i], cell = P.score.tp[op][tp - 1] + v, tot = P.score[op] + v;
+  if (cell < 0) return false;
+  if (tot > 6) { KT.toast('Máximo 6PV por operación'); return false; }
+  commit(() => { P.score.tp[op][tp - 1] = cell; P.score[op] = tot; }, { only: 'bar' });
+  return true;
+}
 function scoreOf(i) {
   const P = S.players[i], k = killInfo(i), ko = killInfo(1 - i);
   const bonus = S.ended && k.grade > ko.grade ? 1 : 0;
@@ -140,12 +167,21 @@ function saveHistory() {
     players: S.players.map((P, i) => ({
       name: P.name || 'Jugador ' + (i + 1), faction: P.factionId, title: P.title, tacOp: P.tac, primOp: P.prim,
       vp: { crit: sc[i].crit, kill: sc[i].kill, tac: sc[i].tac, prim: sc[i].prim }, total: sc[i].total,
+      tp: { crit: [...P.score.tp.crit], tac: [...P.score.tp.tac], kill: killByTp(i) },
       ops: P.ops.length, lost: P.ops.filter(o => o.w <= 0).length,
+      roster: P.src?.kind === 'roster' ? P.src.id : null,
+      list: P.ops.map(o => ({ id: o.opId, n: o.label || opData(P, o)?.name || o.opId, ko: o.w <= 0 })),   // para la campaña
     })),
+    ...(S.liga ? { liga: S.liga } : {}),
   };
   const list = (KT.store.get('historial', []) || []).filter(r => r.id !== rec.id);
   list.unshift(rec);
   KT.store.set('historial', list.slice(0, 300));
+  // partida de liga/torneo: apunta el resultado en su enfrentamiento
+  if (S.liga) {
+    const ligas = KT.store.get('ligas', []) || [], L = ligas.find(x => x.id === S.liga.id), M = L?.matches.find(x => x.id === S.liga.m);
+    if (M) { M.res = { pa: sc[0].total, pb: sc[1].total, date: rec.date, gid: rec.id }; KT.store.set('ligas', ligas); }
+  }
 }
 
 // ── Construir jugador desde un comando guardado o un comando completo ─
@@ -195,7 +231,7 @@ function buildPlayer(src, name) {
     name: name || '', src, factionId: f.id, title, ploys0, equipment: [...equipment], ops,
     cp: 2,                                   // «Elegir agentes: cada jugador gana 2PM»
     tac: null, tacShown: false, prim: null,
-    score: { crit: 0, tac: 0, killAdj: 0 },
+    score: newScore(),
     cards: { rr: 0, i1: 0, i2: 0, i3: 0 },   // 0 no la tiene · 1 la tiene · 2 usada
     ployUsed: {},                            // nombre -> punto de inflexión en que se usó
   };
@@ -242,9 +278,26 @@ const objName = (o, side) => { const w = ownerOf(o.x, o.y, side); return w === '
 // ── Render ───────────────────────────────────────────────────
 // En la preparación se puede usar el móvil en vertical (la partida, en horizontal)
 const syncBody = () => document.body.classList.toggle('setup-open', $('#setup').classList.contains('on'));
+// Vista: 'auto' (reducida en pantallas pequeñas), 'full' o 'compact' — solo este dispositivo
+const mqSmall = matchMedia('(max-width: 820px), (max-height: 520px)');
+let VIEW = KT.store.get('partida.vista', 'auto') || 'auto';
+const isCompact = () => VIEW === 'compact' || (VIEW === 'auto' && mqSmall.matches);
+function toggleView() {
+  const to = !isCompact();
+  VIEW = to === mqSmall.matches ? 'auto' : to ? 'compact' : 'full';
+  KT.store.set('partida.vista', VIEW);
+  hideTip(); render();
+}
 function render(only) {
-  if (!S || !S.started) { $('#app').hidden = true; openSetup(); return; }
-  $('#app').hidden = false;
+  const C = $('#compact');
+  if (!S || !S.started) { $('#app').hidden = true; C.hidden = true; document.body.classList.remove('compact'); openSetup(); return; }
+  S.players.forEach(P => ensureScore(P, S.tp));
+  const compact = isCompact();
+  document.body.classList.toggle('compact', compact);
+  C.hidden = !compact; $('#app').hidden = compact;
+  $('#btn-end').classList.toggle('accent', !!S.ended);
+  actNotice(nextToAct());
+  if (compact) { $('#bar').innerHTML = ''; renderCompact(); if (sheet) renderSheet(); return; }
   if (!only || only === 'top') renderTop();
   if (!only || only === 0 || only === 'cols') renderCol(0);
   if (!only || only === 1 || only === 'cols') renderCol(1);
@@ -269,6 +322,7 @@ function renderCol(i) {
   const col = $('#col-' + i);
   const alive = P.ops.filter(o => o.w > 0);
   const ready = alive.filter(o => !o.used).length;
+  const turn = nextToAct(), myTurn = turn && turn.p === i;
   const eqAll = eqOptions(f).all;
   const extras = [
     ...P.ploys0.map(p => `<button class="g-chip zero" data-tipploy="${esc(p)}" title="Ardid a 0PM">${esc(p)} · 0PM</button>`),
@@ -286,9 +340,9 @@ function renderCol(i) {
   const nPloys = ployList(P).filter(p => P.ployUsed[p.n] === S.tp).length;
   col.innerHTML = `
     <div class="g-ph">
-      <img src="${f.img}" alt="" onerror="this.style.visibility='hidden'">
+      <button class="g-pteam" data-sheet="team" data-p="${i}" title="Ver el comando: lista, reglas de facción y enlaces"><img src="${f.img}" alt="" onerror="this.style.visibility='hidden'"><i class="ti ti-book-2"></i></button>
       <div class="g-pn"><div class="g-pname">${esc(pname(i))}${isDual() && S.dual && SEAT === i ? ' <small class="g-you">tú</small>' : ''}</div><div class="g-pfac">${esc(f.name)} · ${esc(P.title)}</div></div>
-      <div class="g-pcount" title="Por activar / en pie / total"><b>${ready}</b> por activar<br>${alive.length}/${P.ops.length} en pie</div>
+      <div class="g-pcount ${myTurn ? 'turn' : ''}" title="Por activar / en pie / total">${myTurn ? '<em>Activa</em>' : ''}<b>${ready}</b> por activar<br>${alive.length}/${P.ops.length} en pie</div>
     </div>
     <div class="g-mis">
       <button class="g-mchip ${t ? (P.tacShown ? 'shown' : 'secret') : 'todo'}" data-sheet="tac" data-p="${i}" title="Operación táctica"><i class="ti ti-${t && !P.tacShown ? 'lock' : 'target-arrow'}"></i><span>Táctica</span><b>${esc(tacTxt)}</b></button>
@@ -354,6 +408,7 @@ function renderBoard() {
     </div>`;
   $('#board').innerHTML = (g
     ? `<div class="g-mapbox" id="mapbox"><img src="${g.m.img}" alt="Mapa ${esc(g.m.label)} de ${esc(g.z.name)}" id="board-img" class="${g.rot ? 'flip' : ''}" onerror="this.outerHTML='<div class=g-empty><i class=\\'ti ti-photo-off\\'></i>No se encuentra la imagen<br>${g.m.img}</div>'">
+       <div class="g-terr" id="terr">${terrLayer(g.m.img, g.z.id, g.rot)}</div>
        <div class="g-objs" id="objs"></div>
        <div class="g-side s-${g.shown}" style="--pc:var(--p1)">${esc(pname(0))}</div><div class="g-side s-${OPP[g.shown]}" style="--pc:var(--p2)">${esc(pname(1))}</div></div>`
     : `<div class="g-empty"><i class="ti ti-map-2"></i>Elige una zona y un mapa en la preparación</div>`) + tags + tools;
@@ -512,7 +567,7 @@ function renderBar() {
     <button class="g-cell vp p${i + 1}" data-sheet="score" data-p="${i}" title="Puntuación por operación">
       <div class="lbl"><b>J${i + 1}</b> · <span class="l">Puntos de victoria</span><span class="s">PV</span></div>
       <div class="val" id="v-vp-${i}">${s.total}</div>
-      <div class="brk"><span title="Op. crítica">C<b>${s.crit}</b></span><span title="Op. de eliminación">E<b>${s.kill}</b></span><span title="Op. táctica">T<b>${s.tac}</b></span>${s.prim ? `<span title="Op. principal">P<b>${s.prim}</b></span>` : ''}</div>
+      <div class="brk"><span title="Op. crítica">C<b>${s.crit}</b></span><span title="Op. de eliminación">E<b>${s.kill}</b></span><span title="Op. táctica">T<b>${s.tac}</b></span>${s.prim ? `<span title="Op. principal">P<b>${s.prim}</b></span>` : ''}${S.ended ? '' : `<span class="now" title="Puntos ganados en este punto de inflexión">PI${S.tp}<b>+${tpTotals(i)[S.tp - 1]}</b></span>`}</div>
     </button>`;
   };
   const dots = Array.from({ length: MAX_TP }, (_, n) => `<button class="g-tp-dot ${!S.ended && n + 1 === S.tp ? 'on' : n + 1 < S.tp || S.ended ? 'done' : ''}" data-tp="${n + 1}">${n + 1}</button>`).join('');
@@ -528,9 +583,303 @@ function renderBar() {
         <button class="g-tp-dot ${S.tp === MAX_TP && !S.ended ? 'fin' : ''}" data-tpstep="1" title="${S.tp === MAX_TP ? 'Terminar la batalla' : 'Siguiente (reinicia activaciones)'}" aria-label="Siguiente punto de inflexión"><i class="ti ti-${S.tp === MAX_TP ? 'flag' : 'chevron-right'}"></i></button>
       </div>
       <button class="g-ini ${S.ini == null ? '' : 'p' + (S.ini + 1)}" data-sheet="ini" title="Tirada de iniciativa del punto de inflexión">Iniciativa: <b>${ini}</b></button>
+      ${OPT.activ && nextToAct() ? `<div class="g-act">${actLabel(nextToAct())}</div>` : ''}
     </div>
     ${cp(1)}
     ${vp(1)}`;
+}
+
+// ── Opciones de la partida (solo este dispositivo) ───────────
+const OPT = Object.assign({ cierre: false, activ: false }, KT.store.get('partida.opciones', {}) || {});
+const setOpt = (k, v) => { OPT[k] = v; KT.store.set('partida.opciones', OPT); render(); };
+function optBody() {
+  const sw = (k, t, d) => `<label class="g-opt-sw"><input type="checkbox" data-opt="${k}" ${OPT[k] ? 'checked' : ''}><span><b>${t}</b><small>${d}</small></span></label>`;
+  return `
+    <h4>Ayudas opcionales</h4>
+    ${sw('cierre', 'Cierre guiado de turno', 'Al pasar de punto de inflexión se abre un resumen con los marcadores que controla cada jugador y la regla de puntuación, para apuntar los PV del turno.')}
+    ${sw('activ', 'Contador de activaciones', 'Indica a quién le toca activar y avisa cuando un jugador se queda sin operativos listos.')}
+    <h4>Vista</h4>
+    <div class="g-row"><button class="icon-btn" data-optact="view"><i class="ti ti-${isCompact() ? 'layout-board-split' : 'layout-list'}"></i> ${isCompact() ? 'Vista completa' : 'Vista reducida (marcador)'}</button>
+      <button class="icon-btn" data-optact="fs"><i class="ti ti-maximize"></i> Pantalla completa</button></div>
+    <h4>Partida</h4>
+    <div class="g-row"><button class="icon-btn" data-optact="restart"><i class="ti ti-refresh"></i> Reiniciar</button><button class="icon-btn" data-optact="new"><i class="ti ti-plus"></i> Nueva partida</button>
+      <button class="icon-btn" data-optact="end"><i class="ti ti-flag"></i> Fin de partida</button><button class="icon-btn" data-optact="help"><i class="ti ti-help"></i> Ayuda</button></div>
+    <p class="g-hint">Estas opciones se guardan en este dispositivo.</p>`;
+}
+// A quién le toca activar: se deduce de las activaciones hechas y de la iniciativa
+function nextToAct() {
+  if (!OPT.activ || S.ended || S.ini == null) return null;
+  const ready = [0, 1].map(i => S.players[i].ops.filter(o => o.w > 0 && !o.used).length);
+  const done = [0, 1].map(i => S.players[i].ops.filter(o => o.used).length);
+  if (!ready[0] && !ready[1]) return { p: null, ready, all: true };
+  let p = done[S.ini] <= done[1 - S.ini] ? S.ini : 1 - S.ini;
+  if (!ready[p]) p = 1 - p;
+  return { p, ready, solo: !ready[1 - p] };
+}
+let ACT_KEY = '';
+function actNotice(a) {
+  const key = !a ? '' : a.all ? 'all' + S.tp : a.solo ? 'solo' + a.p + S.tp : '';
+  if (key && key !== ACT_KEY) KT.toast(a.all ? 'Todos los operativos han activado: pasa al siguiente punto de inflexión' : `${esc(pname(1 - a.p))} ya no tiene operativos listos: ${esc(pname(a.p))} activa los ${a.ready[a.p]} que le quedan`, { ms: 4500 });
+  ACT_KEY = key;
+}
+const actLabel = a => !a ? '' : a.all ? 'Todos activados' : `Activa <b class="p${a.p + 1}">${esc(pname(a.p))}</b> · quedan ${a.ready[0]}–${a.ready[1]}`;
+
+// Cierre guiado del punto de inflexión: marcadores controlados + regla de puntuación + PV del turno
+function ctrlCount() {
+  const c = [0, 0]; let d = 0, sec = [0, 0];
+  (S.obj || []).forEach(o => { if (o.ctrl === 0 || o.ctrl === 1) c[o.ctrl]++; else if (o.ctrl === 'd') d++; if (o.sec === 0 || o.sec === 1) sec[o.sec]++; });
+  return { c, d, sec, n: (S.obj || []).length };
+}
+function critSuggest() {                       // solo donde la regla se puede calcular con seguridad
+  const k = ctrlCount();
+  if (S.crit === 1 && S.tp > 1) return [0, 1].map(i => (k.sec[i] > 0 ? 1 : 0) + (k.sec[i] > k.sec[1 - i] ? 1 : 0));
+  return null;
+}
+function closeBody() {
+  const c = critOf(S.crit), k = ctrlCount(), sug = critSuggest(), last = S.tp >= MAX_TP;
+  const pl = i => {
+    const P = S.players[i], t = tacOf(P.tac), see = t && (P.tacShown || !isDual() || SEAT === i);
+    return `<section class="g-end-p p${i + 1}">
+      <header><div><b>${esc(pname(i))}</b><small>${k.n ? `${k.c[i]} de ${k.n} marcadores controlados${S.crit === 1 ? ' · ' + k.sec[i] + ' asegurados' : ''}` : 'sin marcadores en el mapa'}</small></div><div class="tot">${tpTotals(i)[S.tp - 1]}<small>PV este PI</small></div></header>
+      ${tpGrid(i)}
+      ${sug ? `<div class="g-end-row"><span>Sugerencia: crítica <b style="color:var(--pc)">+${sug[i]}</b><small>según los marcadores asegurados</small></span><button class="icon-btn" data-closeact="sug" data-p="${i}" ${P.score.tp.crit[S.tp - 1] === sug[i] ? 'disabled' : ''}>Aplicar</button></div>` : ''}
+      <div class="g-end-row"><span>Táctica <small>${t ? (see ? esc(t.name) : 'oculta') : 'sin elegir'}</small></span>${t && see ? `<button class="icon-btn" data-sheet="tac" data-p="${i}">Ver</button>` : ''}</div>
+    </section>`;
+  };
+  return `
+    <div class="g-end">
+      ${c ? `<h4>Operación crítica · ${esc(c.name)}</h4>${c.pv.map(l => `<p class="${l.startsWith('•') ? 'b' : ''}">${esc(l.replace(/^•\s*/, ''))}</p>`).join('')}` : '<p class="g-hint warn">No hay operación crítica elegida.</p>'}
+      ${k.d ? `<p class="g-hint">${k.d} marcador(es) disputado(s): no cuentan para nadie.</p>` : ''}
+      ${S.tp === 1 ? '<p class="g-hint">En el primer punto de inflexión normalmente no se puntúa la operación crítica.</p>' : ''}
+      <div class="g-end-cols">${pl(0)}${pl(1)}</div>
+      <p class="g-hint">Actualiza antes el control de los marcadores en el mapa si ha cambiado. La eliminación se calcula sola.</p>
+      <div class="g-row g-end-acts"><span style="flex:1"></span><button class="icon-btn" data-closeact="cancel">Seguir en el PI ${S.tp}</button>
+        <button class="icon-btn accent" data-closeact="go"><i class="ti ti-${last ? 'flag' : 'chevron-right'}"></i> ${last ? 'Terminar la batalla' : `Cerrar el PI ${S.tp} y pasar al ${S.tp + 1}`}</button></div>
+    </div>`;
+}
+
+// ── Puntuación por punto de inflexión (rejilla compartida) ───
+let CTP = null;                                   // PI seleccionado para puntuar (local); null = el actual
+const selTp = () => Math.min(MAX_TP, Math.max(1, CTP || S.tp));
+const tpTotals = i => { const t = S.players[i].score.tp, k = killByTp(i); return zero4().map((_, n) => t.crit[n] + t.tac[n] + k[n]); };
+function tpGrid(i) {
+  const P = S.players[i], s = scoreOf(i), kb = killByTp(i), sel = selTp(), tot = tpTotals(i);
+  const cls = n => `${n === sel ? 'sel' : ''} ${n === S.tp && !S.ended ? 'cur' : ''} ${n > S.tp ? 'fut' : ''}`;
+  const head = [1, 2, 3, 4].map(n => `<button class="h ${cls(n)}" data-ctp="${n}" title="Puntuar el punto de inflexión ${n}">PI ${n}</button>`).join('');
+  const row = (lbl, tip, vals, total, auto) => `<div class="l" title="${tip}">${lbl}</div>${vals.map((v, n) => `<button class="c ${cls(n + 1)} ${v ? 'has' : ''} ${auto ? 'auto' : ''}" data-ctp="${n + 1}">${n + 1 > S.tp && !v ? '·' : v}</button>`).join('')}<div class="t">${total}</div>`;
+  const step = (op, lbl) => `<div class="st"><span>${lbl}</span><button data-tps="${op}" data-p="${i}" data-v="-1" aria-label="Restar ${lbl}">−</button><b>${P.score.tp[op][sel - 1]}</b><button data-tps="${op}" data-p="${i}" data-v="1" aria-label="Sumar ${lbl}">+</button></div>`;
+  return `
+    <div class="g-tpg p${i + 1}">
+      <div class="grid"><div class="l"></div>${head}<div class="t h">Total</div>
+        ${row('Crítica', 'Operación crítica', P.score.tp.crit, s.crit)}
+        ${row('Táctica', 'Operación táctica', P.score.tp.tac, s.tac)}
+        ${row('Elim.', 'Operación de eliminación: se calcula sola con las bajas', kb, s.kill + (s.bonus ? '<small>+1</small>' : ''), true)}
+        <div class="l sum">Turno</div>${tot.map((v, n) => `<div class="c sum ${cls(n + 1)}">${n + 1 > S.tp ? '·' : v}</div>`).join('')}<div class="t sum">${s.total}${s.prim ? `<small title="Incluye la operación principal">★${s.prim}</small>` : ''}</div>
+      </div>
+      <div class="edit ${sel !== S.tp ? 'past' : ''}">${sel !== S.tp ? `<button class="back" data-ctp="${S.tp}" title="Volver a puntuar el punto de inflexión actual"><em>PI ${sel}</em><small>volver al ${S.tp}</small></button>` : `<em>PI ${sel}</em>`}${step('crit', 'Crítica')}${step('tac', 'Táctica')}</div>
+    </div>`;
+}
+// Clics de la rejilla (vale en la vista reducida, la hoja de puntuación y el fin de partida)
+function onScoreClick(e) {
+  const t = e.target.closest('[data-ctp], [data-tps], [data-endprim], [data-endadj], [data-endact], [data-closeact], [data-optact], [data-opt]');
+  if (!t || !S) return;
+  const d = t.dataset;
+  if (d.opt) { setOpt(d.opt, t.checked); return; }
+  if (d.optact) {
+    closeSheet();
+    ({ view: toggleView, fs: toggleFS, restart: askRestart, new: newGame, end: () => endGame(), help: showHelp })[d.optact]?.();
+    return;
+  }
+  if (d.closeact) {
+    if (d.closeact === 'sug') { const i = +d.p, sug = critSuggest(); if (sug) addScore(i, 'crit', sug[i] - S.players[i].score.tp.crit[S.tp - 1], S.tp); return; }
+    closeSheet();
+    if (d.closeact === 'go') setTP(S.tp + 1, true);
+    return;
+  }
+  if (d.ctp) { CTP = +d.ctp === S.tp ? null : +d.ctp; render('bar'); }
+  else if (d.tps) { if (addScore(+d.p, d.tps, +d.v, selTp())) KT.bump(t.parentNode.querySelector('b')); }
+  else if (d.endprim) commit(() => { const P = S.players[+d.p]; P.prim = P.prim === d.endprim ? null : d.endprim; });
+  else if (d.endadj) {
+    const i = +d.p, v = +d.v, g = killInfo(i).grade;
+    if ((v < 0 && g <= 0) || (v > 0 && g >= 5)) return;
+    commit(() => { S.players[i].score.killAdj += v; });
+  }
+  else if (d.endact === 'share') shareResult();
+  else if (d.endact === 'reopen') { closeSheet(); CTP = null; commit(() => { S.ended = false; }); KT.toast('Batalla reabierta'); }
+  else if (d.endact === 'rematch') { closeSheet(); restartGame(); }
+  else if (d.endact === 'new') { closeSheet(); newGame(); }
+}
+
+// ── Vista reducida (móvil): turno, puntuación por turno y puntos de mando ──
+function renderCompact() {
+  const s = [scoreOf(0), scoreOf(1)];
+  const dots = Array.from({ length: MAX_TP }, (_, n) => `<button class="g-tp-dot ${!S.ended && n + 1 === S.tp ? 'on' : n + 1 < S.tp || S.ended ? 'done' : ''}" data-tp="${n + 1}">${n + 1}</button>`).join('');
+  const lead = s[0].total === s[1].total ? null : s[0].total > s[1].total ? 0 : 1;
+  const pl = i => {
+    const P = S.players[i], f = FACTIONS[P.factionId];
+    return `
+    <section class="gc-p p${i + 1} ${lead === i ? 'lead' : ''}">
+      <div class="gc-ph">
+        <button class="gc-team" data-sheet="team" data-p="${i}" title="Ver el comando"><img src="${f.img}" alt="" onerror="this.style.visibility='hidden'">
+          <span><b>${esc(pname(i))}${isDual() && S.dual && SEAT === i ? ' <small class="g-you">tú</small>' : ''}</b><small>${esc(f.name)}</small></span></button>
+        <button class="gc-vp" data-sheet="score" data-p="${i}" title="Puntos de victoria: ver detalle"><b id="v-vp-${i}">${s[i].total}</b><small>PV</small></button>
+      </div>
+      <div class="gc-cp"><span>Puntos de mando</span><button class="pm" data-bar="cp" data-p="${i}" data-v="-1" aria-label="Restar PM">−</button><b id="v-cp-${i}">${P.cp}</b><button class="pm" data-bar="cp" data-p="${i}" data-v="1" aria-label="Sumar PM">+</button></div>
+      ${tpGrid(i)}
+    </section>`;
+  };
+  $('#compact').innerHTML = `
+    <header class="gc-top">
+      <a class="btn-back" href="index.html" title="Volver a la app" aria-label="Volver a la app"><i class="ti ti-arrow-left"></i></a>
+      <span class="g-net-slot"></span>
+      <span style="flex:1"></span>
+      <button class="icon-btn" data-c="undo" title="Deshacer" aria-label="Deshacer" ${hist.length ? '' : 'disabled'}><i class="ti ti-arrow-back-up"></i></button>
+      <button class="icon-btn" data-sheet="seq" title="Secuencia de juego" aria-label="Secuencia de juego"><i class="ti ti-list-numbers"></i></button>
+      <button class="icon-btn" data-c="view" title="Vista completa: operativos y mapa"><i class="ti ti-layout-board-split"></i><span>Completa</span></button>
+      <button class="icon-btn" data-c="menu" title="Reiniciar o nueva partida" aria-label="Más opciones"><i class="ti ti-dots-vertical"></i></button>
+    </header>
+    <section class="gc-tp ${S.ended ? 'end' : ''}">
+      <div class="lbl">${S.ended ? 'Fin de la batalla' : `Punto de inflexión <b>${S.tp}</b> de ${MAX_TP}`}</div>
+      <div class="g-tp-row">
+        <button class="g-tp-dot" data-tpstep="-1" aria-label="Punto de inflexión anterior"><i class="ti ti-chevron-left"></i></button>
+        <div class="g-tp-dots">${dots}</div>
+        <button class="g-tp-dot" data-tpstep="1" aria-label="Siguiente punto de inflexión" ${S.tp === MAX_TP || S.ended ? 'disabled' : ''}><i class="ti ti-chevron-right"></i></button>
+      </div>
+      <button class="g-ini ${S.ini == null ? '' : 'p' + (S.ini + 1)}" data-sheet="ini">Iniciativa: <b>${S.ini == null ? '—' : esc(pname(S.ini))}</b></button>
+      ${OPT.activ && nextToAct() ? `<div class="g-act">${actLabel(nextToAct())}</div>` : ''}
+    </section>
+    ${pl(0)}${pl(1)}
+    <footer class="gc-ft">
+      <button class="icon-btn" data-sheet="crit"><i class="ti ti-target"></i> ${critOf(S.crit) ? esc(critOf(S.crit).name) : 'Op. crítica'}</button>
+      <button class="icon-btn accent" data-c="end"><i class="ti ti-flag"></i> ${S.ended ? 'Ver resultado' : 'Fin de partida'}</button>
+    </footer>`;
+  renderNet();
+}
+function onCompactClick(e) {
+  const c = e.target.closest('[data-c]');
+  if (!c) { onBarClick(e); return; }
+  const a = c.dataset.c;
+  if (a === 'undo') undo();
+  else if (a === 'view') toggleView();
+  else if (a === 'end') endGame();
+  else if (a === 'menu') openSheet('opt');
+}
+
+// ── Fin de partida ───────────────────────────────────────────
+// force: sin preguntar (al pasar del último punto de inflexión)
+function endGame(force) {
+  if (!S?.started) return;
+  if (S.ended) { openSheet('end'); return; }
+  const go = () => { CTP = null; commit(() => { S.ended = true; }); saveHistory(); openSheet('end'); };
+  if (force || S.tp >= MAX_TP) { go(); return; }
+  const close = KT.modal('Terminar la batalla', `
+    <div class="g-resume">
+      <p>Vais por el <b>punto de inflexión ${S.tp}</b> de ${MAX_TP}. Al terminar se revela la operación principal de cada jugador y se calcula el total.</p>
+      <p class="g-hint">Podrás reabrir la batalla desde el resultado si te has equivocado.</p>
+      <div class="g-row"><button class="icon-btn accent" data-r="end"><i class="ti ti-flag"></i> Terminar y contar puntos</button><span style="flex:1"></span><button class="icon-btn" data-r="cancel">Seguir jugando</button></div>
+    </div>`, 'flag');
+  document.querySelector('.g-resume')?.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-r]'); if (!b) return;
+    close(); if (b.dataset.r === 'end') go();
+  });
+}
+function resultText() {
+  const s = [scoreOf(0), scoreOf(1)], z = zoneOf(S.zone), m = mapOf(z, S.map), c = critOf(S.crit);
+  const win = s[0].total === s[1].total ? null : s[0].total > s[1].total ? 0 : 1;
+  const tt = [tpTotals(0), tpTotals(1)];
+  const line = i => `${pname(i)} (${FACTIONS[S.players[i].factionId].name}): ${s[i].total} PV — crítica ${s[i].crit}, eliminación ${s[i].kill}, táctica ${s[i].tac}, principal +${s[i].prim}`;
+  return [
+    `Kill Team · ${z ? z.name + (m ? ' ' + m.label : '') : 'sin mapa'}${c ? ' · ' + c.name : ''}`,
+    win == null ? `Empate a ${s[0].total}` : `Gana ${pname(win)} ${s[win].total}–${s[1 - win].total}`,
+    line(0), line(1),
+    'Por punto de inflexión: ' + [0, 1, 2, 3].map(n => `PI${n + 1} ${tt[0][n]}–${tt[1][n]}`).join(' · '),
+  ].join('\n');
+}
+async function shareResult() {
+  const text = resultText();
+  try {
+    if (navigator.share) await navigator.share({ title: 'Resultado de Kill Team', text });
+    else { await navigator.clipboard.writeText(text); KT.toast('Resultado copiado al portapapeles', { type: 'ok' }); }
+  } catch (e) { if (e?.name !== 'AbortError') { try { await navigator.clipboard.writeText(text); KT.toast('Resultado copiado', { type: 'ok' }); } catch { KT.toast('No se pudo compartir', { type: 'err' }); } } }
+}
+function endBody() {
+  const s = [scoreOf(0), scoreOf(1)];
+  const win = s[0].total === s[1].total ? null : s[0].total > s[1].total ? 0 : 1;
+  const pl = i => {
+    const P = S.players[i], f = FACTIONS[P.factionId], k = s[i].k;
+    return `
+    <section class="g-end-p p${i + 1} ${win === i ? 'win' : ''}">
+      <header><img src="${f.img}" alt="" onerror="this.style.visibility='hidden'"><div><b>${esc(pname(i))}</b><small>${esc(f.name)} · ${esc(P.title)}</small></div><div class="tot">${s[i].total}<small>PV</small></div></header>
+      ${tpGrid(i)}
+      <div class="g-end-row"><span>Grado de eliminación <small>${k.dead} de ${k.start} enemigos incapacitados${s[i].bonus ? ' · +1PV por grado mayor que el rival' : ''}</small></span>
+        <div class="g-spm"><button data-endadj data-p="${i}" data-v="-1" aria-label="Bajar grado">−</button><b>${k.grade}</b><button data-endadj data-p="${i}" data-v="1" aria-label="Subir grado">+</button></div></div>
+      <div class="g-end-row col"><span>Operación principal <small>suma la mitad (hacia arriba) de lo puntuado con ella</small></span>
+        <div class="g-pick prim">${['crit', 'kill', 'tac'].map(o => `<button class="${P.prim === o ? 'on' : ''}" data-endprim="${o}" data-p="${i}">${OPN[o].replace('Op. ', '').replace('de ', '')}<small>${s[i][o]} → +${Math.ceil(s[i][o] / 2)}</small></button>`).join('')}</div></div>
+      <div class="g-end-sum"><span>Crítica <b>${s[i].crit}</b></span><i>+</i><span>Eliminación <b>${s[i].kill}</b></span><i>+</i><span>Táctica <b>${s[i].tac}</b></span><i>+</i><span>Principal <b>${s[i].prim}</b></span><i>=</i><span class="t"><b>${s[i].total}</b> PV</span></div>
+    </section>`;
+  };
+  return `
+    <div class="g-end">
+      <div class="g-end-vs"><span class="p1 ${win === 0 ? 'w' : ''}">${esc(pname(0))}</span><b>${s[0].total}<i>–</i>${s[1].total}</b><span class="p2 ${win === 1 ? 'w' : ''}">${esc(pname(1))}</span></div>
+      ${S.players.some(P => !P.prim) ? '<p class="g-hint warn"><i class="ti ti-alert-triangle"></i> Falta elegir la operación principal de algún jugador: márcala abajo para sumar su bonificación.</p>' : ''}
+      <div class="g-end-cols">${pl(0)}${pl(1)}</div>
+      <p class="g-hint">Corrige aquí cualquier punto: toca un PI para editarlo. El resultado se guarda en el historial y se actualiza con cada cambio.</p>
+      <div class="g-row g-end-acts">
+        <button class="icon-btn accent" data-endact="share"><i class="ti ti-share"></i> Compartir resultado</button>
+        <a class="icon-btn" href="historial.html"><i class="ti ti-history"></i> Historial</a>
+        <span style="flex:1"></span>
+        <button class="icon-btn" data-endact="reopen" title="Volver a la batalla para seguir jugando"><i class="ti ti-arrow-back-up"></i> Reabrir</button>
+        <button class="icon-btn" data-endact="rematch" title="Mismos comandos y misión, todo a cero"><i class="ti ti-refresh"></i> Revancha</button>
+        <button class="icon-btn" data-endact="new"><i class="ti ti-plus"></i> Nueva partida</button>
+      </div>
+    </div>`;
+}
+
+// ── Comando del jugador: consulta rápida y enlaces ───────────
+function teamBody(i) {
+  const P = S.players[i], f = FACTIONS[P.factionId], eqAll = eqOptions(f).all;
+  const txt = t => esc(t || '').replace(/\n/g, '<br>');
+  const det = (n, t, extra = '') => `<details><summary>${esc(n)}${extra}</summary><p>${txt(t)}</p></details>`;
+  const groups = {};
+  P.ops.forEach(o => { const od = opData(P, o); if (!od) return; const k = o.label || od.name; (groups[k] = groups[k] || { od, n: 0, wpn: o.wpn }).n++; });
+  const saved = P.src?.kind === 'roster' && (KT.store.get('rosters', []) || []).some(r => r.id === P.src.id);
+  const L = ployList(P).filter(p => !p.uni);
+  return `
+    <div class="g-row g-team-links">
+      ${saved ? `<a class="icon-btn accent" href="builder.html#r=${encodeURIComponent(P.src.id)}"><i class="ti ti-hammer"></i> Abrir mi lista guardada</a>` : ''}
+      <a class="icon-btn ${saved ? '' : 'accent'}" href="index.html#${encodeURIComponent(f.id)}"><i class="ti ti-books"></i> Ficha completa del comando</a>
+    </div>
+    <p class="g-hint">La partida se queda guardada: en esas páginas verás el botón <b>Volver a la partida</b>.</p>
+    <h4>Lista <small>${esc(P.title)} · ${P.ops.length} agentes</small></h4>
+    <div class="g-team-ops">${Object.entries(groups).map(([n, g]) => `<div><b>${g.n > 1 ? g.n + '× ' : ''}${esc(n)}</b><small>${esc(g.wpn.join(' · '))}</small></div>`).join('')}</div>
+    ${P.equipment.length ? `<h4>Equipo</h4><div class="g-ab">${P.equipment.map(id => { const it = eqAll.find(e => e.id === id); return det(it?.n || id, it?.t || ''); }).join('')}</div>` : ''}
+    ${(f.frs || []).length ? `<h4>Reglas de facción</h4><div class="g-ab">${f.frs.map(r => det(r.name, r.text + (r.subs || []).map(x => '\n\n' + x.n + ': ' + x.t).join(''))).join('')}</div>` : ''}
+    ${L.length ? `<h4>Ardides del comando</h4><div class="g-ab">${L.map(p => det(p.n, p.t, `<small>${p.k === 's' ? 'estrategia' : 'tiroteo'}</small>`)).join('')}</div>` : ''}`;
+}
+
+// ── Escenografía: qué es cada elemento del mapa ──────────────
+function terrOf(g) {
+  const T = window.TERRENO; if (!T || !g) return null;
+  const pts = T.mapas[g.m.img], zn = T.zonas[g.z.id];
+  return pts && zn ? { pts, zn } : null;
+}
+function terrLayer(img, zoneId, rot) {
+  const T = window.TERRENO, pts = T?.mapas[img];
+  if (!pts || !T.zonas[zoneId]) return '';
+  return pts.map(([x, y, k]) => `<button class="g-th" data-terr="${k}" data-zone="${zoneId}" style="left:${rot ? 100 - x : x}%;top:${rot ? 100 - y : y}%" aria-label="Escenografía ${k}"></button>`).join('');
+}
+function terrHtml(zoneId, k) {
+  const zn = window.TERRENO?.zonas[zoneId], t = zn?.[k]; if (!t) return null;
+  const z = zoneOf(zoneId), src = z?.claves?.[t.c];
+  const [x, y, w, h] = t.b;
+  const pic = src ? `<div class="g-terr-pic" style="aspect-ratio:${(w * 536 / (h * 749)).toFixed(3)};background-image:url('${src}');background-size:${(10000 / w).toFixed(1)}% ${(10000 / h).toFixed(1)}%;background-position:${(x / (100 - w) * 100).toFixed(1)}% ${(y / (100 - h) * 100).toFixed(1)}%"></div>` : '';
+  return { title: `${k} · ${t.n}`, cat: t.t, html: pic + (t.d ? `<p>${esc(t.d)}</p>` : '') };
+}
+function onTerrClick(e) {
+  const b = e.target.closest('[data-terr]'); if (!b) return false;
+  const info = terrHtml(b.dataset.zone, b.dataset.terr);
+  if (info) showTip(b, info.title, info.cat, '', 't:' + b.dataset.terr + b.style.left + b.style.top, info.html);
+  return true;
 }
 
 // ── Ardides ──────────────────────────────────────────────────
@@ -560,13 +909,14 @@ function ruleInfo(rule, f) {
   return gk ? { n: rule, ...KEYWORDS[gk] } : { n: rule, cat: 'Regla de arma', t: 'Sin definición en el glosario.' };
 }
 let tipEl = null;
-function showTip(anchor, title, cat, text, key) {
+function showTip(anchor, title, cat, text, key, html) {
   if (tipEl && tipEl.dataset.key === key) { hideTip(); return; }
   hideTip();
   tipEl = document.createElement('div');
   tipEl.className = 'g-tip';
   tipEl.dataset.key = key || '';
-  tipEl.innerHTML = `<small>${esc(cat || '')}</small><b>${esc(title)}</b><p>${esc(text || '')}</p>`;
+  tipEl.innerHTML = `<small>${esc(cat || '')}</small><b>${esc(title)}</b>${html || `<p>${esc(text || '')}</p>`}`;
+  if (html) tipEl.classList.add('pic');
   document.body.appendChild(tipEl);
   const r = anchor.getBoundingClientRect(), w = tipEl.offsetWidth, h = tipEl.offsetHeight;
   const x = Math.min(innerWidth - w - 8, Math.max(8, r.left + r.width / 2 - w / 2));
@@ -651,10 +1001,13 @@ function renderSheet() {
     const showPrim = S.ended || sheet.peek || (isDual() && mine(i));
     const seeTac = P.tacShown || sheet.peek || (isDual() && mine(i));
     B.innerHTML = `
-      ${row('crit', 'Operación crítica', c ? esc(c.n + '. ' + c.name) : 'sin elegir', s.crit, pmc('crit', s.crit))}
+      <h4>Por punto de inflexión <small>toca un PI para puntuarlo</small></h4>
+      ${tpGrid(i)}
+      <h4>Por operación</h4>
+      ${row('crit', 'Operación crítica', c ? esc(c.n + '. ' + c.name) : 'sin elegir', s.crit, `<div class="g-spm ro"><b>${s.crit}</b></div>`)}
       ${row('kill', 'Operación de eliminación', `Grado ${kk.grade}/5 · ${kk.dead} de ${kk.start} enemigos incapacitados${kk.next != null ? ` · siguiente grado con ${kk.next}` : ''}${s.bonus ? ' · +1 por grado mayor' : ''}${kk.adj ? ` · ajuste ${kk.adj > 0 ? '+' : ''}${kk.adj}` : ''}`, s.kill,
         `<div class="g-spm" title="Ajuste manual del grado (agentes que no cuentan, etc.)"><button data-sc="killAdj" data-v="-1" aria-label="Bajar grado">−</button><b>${s.kill}</b><button data-sc="killAdj" data-v="1" aria-label="Subir grado">+</button></div>`)}
-      ${row('tac', 'Operación táctica', t ? (seeTac ? esc(t.name) : 'oculta') : 'sin elegir', s.tac, pmc('tac', s.tac))}
+      ${row('tac', 'Operación táctica', t ? (seeTac ? esc(t.name) : 'oculta') : 'sin elegir', s.tac, `<div class="g-spm ro"><b>${s.tac}</b></div>`)}
       <h4>Operación principal <small>(gambito estratégico del PI 1, secreta)</small></h4>
       ${(showPrim || !P.prim) && (mine(i) || S.ended)
         ? `<div class="g-pick prim">${['crit', 'kill', 'tac'].map((o, n) => `<button class="${P.prim === o ? 'on' : ''}" data-prim="${o}"><b>${n + 1}</b>${OPN[o].replace('Op. ', '')}</button>`).join('')}</div>`
@@ -675,10 +1028,10 @@ function renderSheet() {
     const r = S.iniRoll && S.iniRoll.tp === S.tp ? S.iniRoll : null;
     const prevNo = S.tp === 1 ? (S.ini0 != null ? 1 - S.ini0 : null) : (S.ini != null ? 1 - S.ini : null);
     T.innerHTML = `<small>Punto de inflexión ${S.tp}</small>Iniciativa`;
-    const die = v => `<span class="g-die ${v ? '' : 'empty'}">${v || '?'}</span>`;
+    const die = (v, k) => dieHtml(v, k);
     B.innerHTML = `
       <p>Tirada enfrentada (aplicad antes las reglas de tirada de vuestros equipos y las cartas de iniciativa). ${prevNo != null ? `Si hay empate gana quien no tenía la iniciativa: <b>${esc(pname(prevNo))}</b>.` : ''}</p>
-      <div class="g-dice"><span class="p1">${esc(pname(0))}</span>${die(r?.roll[0])}<small>vs</small>${die(r?.roll[1])}<span class="p2">${esc(pname(1))}</span>
+      <div class="g-dice" data-rid="pi${S.tp}" data-rk="${r ? r.roll.join('-') : ''}"><span class="p1">${esc(pname(0))}</span>${die(r?.roll[0], 0)}<small>vs</small>${die(r?.roll[1], 1)}<span class="p2">${esc(pname(1))}</span>
         <button class="icon-btn accent ripple" data-iniroll><i class="ti ti-dice-5"></i> Tirar</button></div>
       ${r ? `<p class="g-hint">Gana la tirada <b>${esc(pname(r.win))}</b>${S.tp < MAX_TP ? ` · ${esc(pname(1 - r.win))} recibe la carta <b>±${S.tp}</b>` : ''}.</p>` : ''}
       <h4>¿Quién tiene la iniciativa?</h4>
@@ -689,17 +1042,24 @@ function renderSheet() {
     T.innerHTML = `<small>Leyenda del terreno</small>${esc(z.name)}`;
     B.innerHTML = `<div class="g-keys">${z.claves.map(src => `<button data-img="${src}"><img src="${src}" alt="Leyenda de ${esc(z.name)}" loading="lazy"></button>`).join('')}</div>`;
   } else if (k === 'end') {
-    const s = [scoreOf(0), scoreOf(1)];
-    const win = s[0].total === s[1].total ? null : s[0].total > s[1].total ? 0 : 1;
+    const sc = [scoreOf(0), scoreOf(1)];
+    const win = sc[0].total === sc[1].total ? null : sc[0].total > sc[1].total ? 0 : 1;
+    box.style.setProperty('--pc', win == null ? 'var(--orange)' : `var(--p${win + 1})`);
     T.innerHTML = `<small>Fin de la batalla</small>${win == null ? 'Empate' : 'Gana ' + esc(pname(win))}`;
-    B.innerHTML = `
-      <table class="g-res"><tr><th></th><th class="p1">${esc(pname(0))}</th><th class="p2">${esc(pname(1))}</th></tr>
-        ${[['crit', 'Op. crítica'], ['kill', 'Op. de eliminación'], ['tac', 'Op. táctica']].map(([o, n]) => `<tr><td>${n}</td>${[0, 1].map(j => `<td>${s[j][o]}${S.players[j].prim === o ? ' <i class="ti ti-star" title="Principal"></i>' : ''}</td>`).join('')}</tr>`).join('')}
-        <tr><td>Op. principal (½)</td>${[0, 1].map(j => `<td>+${s[j].prim}</td>`).join('')}</tr>
-        <tr class="tot"><td>Total</td>${[0, 1].map(j => `<td>${s[j].total}</td>`).join('')}</tr></table>
-      ${S.players.some(P => !P.prim) ? '<p class="g-hint">Algún jugador no tiene operación principal elegida: ábrela desde su puntuación.</p>' : ''}
-      <div class="g-row"><a class="icon-btn" href="historial.html"><i class="ti ti-history"></i> Historial</a><button class="icon-btn" data-sheet-go="score" data-p="0">Puntuación J1</button><button class="icon-btn" data-sheet-go="score" data-p="1">Puntuación J2</button><span style="flex:1"></span><button class="icon-btn accent" data-newgame><i class="ti ti-refresh"></i> Nueva partida</button></div>`;
+    B.innerHTML = endBody();
+  } else if (k === 'close') {
+    T.innerHTML = `<small>Cierre de turno</small>Punto de inflexión ${S.tp}`;
+    B.innerHTML = closeBody();
+  } else if (k === 'opt') {
+    T.innerHTML = `<small>Partida</small>Opciones`;
+    B.innerHTML = optBody();
+  } else if (k === 'team') {
+    const P = S.players[i], f = FACTIONS[P.factionId];
+    T.innerHTML = `<small>${esc(pname(i))} · comando</small>${esc(f.name)}`;
+    B.innerHTML = teamBody(i);
   }
+  box.classList.toggle('wide', k === 'end' || k === 'close');
+  animateDice();
 }
 
 function onSheetClick(e) {
@@ -729,10 +1089,7 @@ function onSheetClick(e) {
       if ((v < 0 && g <= 0) || (v > 0 && g >= 5)) return;
       commit(() => { P.score.killAdj += v; }, { only: 'bar' });
     } else {
-      const nv = P.score[d.sc] + v;
-      if (nv < 0) return;
-      if (nv > 6) { KT.toast('Máximo 6PV por operación'); return; }
-      commit(() => { P.score[d.sc] = nv; }, { only: 'bar' });
+      addScore(i, d.sc, v, selTp());
     }
   } else if (d.sheetGo) openSheet(d.sheetGo, +d.p);
   else if (t.hasAttribute('data-newgame')) { closeSheet(); newGame(); }
@@ -747,7 +1104,7 @@ function onSheetClick(e) {
       const card = 'i' + S.tp;
       if (S.tp < MAX_TP && S.players[lose].cards[card] === 0) S.players[lose].cards[card] = 1;
     });
-    KT.toast(`${esc(pname(win))} gana la tirada (${a}–${b})${a === b ? ' por empate' : ''}`, { type: 'ok' });
+    afterDice(() => KT.toast(`${esc(pname(win))} gana la tirada (${a}–${b})${a === b ? ' por empate' : ''}`, { type: 'ok' }));
   }
   else if (d.setini != null) commit(() => { S.ini = +d.setini; }, { only: 'bar' });
 }
@@ -821,6 +1178,7 @@ function onBarClick(e) {
 }
 
 function onBoardClick(e) {
+  if (!pop && onTerrClick(e)) return;
   if (e.target.closest('#objs')) { onObjsClick(e); return; }
   if (e.target.id === 'board-img') { if (pop) { pop = null; renderBoard(); return; } openViewer(); return; }
   const t = e.target.closest('button'); if (!t) return;
@@ -833,22 +1191,22 @@ function onBoardClick(e) {
   }
 }
 
-function setTP(n) {
+function setTP(n, force) {
+  if (!S.ended && OPT.cierre && !force && n === S.tp + 1) { CTP = null; openSheet('close'); return; }
   if (S.ended) {                                  // reabrir la batalla
     if (n > MAX_TP) { openSheet('end'); return; }
+    CTP = null;
     commit(() => { S.ended = false; S.tp = Math.min(n, MAX_TP); });
     return;
   }
-  if (n > MAX_TP) {
-    commit(() => { S.ended = true; });
-    saveHistory();
-    openSheet('end');
-    return;
-  }
+  if (n > MAX_TP) { endGame(true); return; }
   if (n < 1 || n === S.tp) return;
   const forward = n > S.tp;
+  const g = [killInfo(0).grade, killInfo(1).grade], old = S.tp;
+  CTP = null;
   commit(() => {
     S.tp = n;
+    S.players.forEach((P, i) => { for (let k = 0; k < MAX_TP; k++) P.score.killAt[k] = k + 1 < n ? (k + 1 >= old ? g[i] : P.score.killAt[k] ?? g[i]) : null; });
     if (forward) {
       S.players.forEach(P => P.ops.forEach(o => { o.used = false; }));
       // estados de marcador que duran un punto de inflexión
@@ -926,7 +1284,15 @@ const mine = i => SEAT == null || SEAT === i;
 
 function newDraft() {
   const z = zoneOf(S?.zone) || ZONAS[0];
+  const d = draftBase(z);
+  // usuario con sesión iniciada: su nombre y sus bandas primero (en su asiento)
+  const me = KT.user?.current(), k = SEAT ?? 0;
+  if (me) { d.usr[k] = me.id; if (!d.names[k]) d.names[k] = me.name; }
+  return d;
+}
+function draftBase(z) {
   return {
+    usr: [null, null],                                         // usuario elegido por jugador (solo este dispositivo)
     mode: 'wiz', step: 0,
     names: S ? S.players.map(p => p.name) : ['', ''],
     src: S && !S.dual ? S.players.map(p => p.src) : [null, null],
@@ -946,6 +1312,14 @@ function openSetup() {
   // ?p1=<id> desde el constructor
   const q = new URLSearchParams(location.search).get('p1');
   if (q && rosters.some(r => r.id === q) && !draft.src[0] && !isDual()) draft.src[0] = { kind: 'roster', id: q };
+  // ?liga=<id>&m=<enfrentamiento>: partida de liga, con los nombres ya puestos
+  const qs = new URLSearchParams(location.search), lg = (KT.store.get('ligas', []) || []).find(x => x.id === qs.get('liga')), mt = lg?.matches.find(x => x.id === qs.get('m'));
+  if (mt && !isDual() && !draft.liga) {
+    const pl = id => lg.players.find(x => x.id === id);
+    draft.liga = { id: lg.id, m: mt.id, name: lg.name };
+    [mt.a, mt.b].forEach((id, k) => { const x = pl(id); if (!x) return; draft.names[k] = x.name; draft.usr[k] = x.user || null; });
+    KT.toast(`Partida de «${esc(lg.name)}»: el resultado se apuntará solo al terminar`, { ms: 4500 });
+  }
   renderSetup();
   $('#setup').classList.add('on');
   syncBody();
@@ -962,11 +1336,16 @@ function renderSetup() {
   if (isDual() && SEAT === 0) KT.store.set('partida.lobby', draft);
   if (nameIdx != null) { const el = document.querySelector(`[data-name="${nameIdx}"]`); if (el) { el.focus(); try { el.setSelectionRange(...sel); } catch {} } }
   renderNet();
+  animateDice();
 }
 
 // ── Bloques compartidos ──
 function playerPicker(i) {
-  const rosters = KT.store.get('rosters', []) || [];
+  const users = KT.user?.list() || [], usr = users.find(u => u.id === draft.usr?.[i]) || null;
+  const rosters = (KT.store.get('rosters', []) || []).filter(r => !usr || !r.owner || r.owner === usr.id);
+  const who = users.length ? `<div class="g-sp-users" role="group" aria-label="Usuario">
+      <button class="${usr ? '' : 'on'}" data-usr="${i}" data-id="">Todos</button>
+      ${users.map(u => `<button class="${usr?.id === u.id ? 'on' : ''}" data-usr="${i}" data-id="${u.id}"><i class="ti ti-user-circle"></i>${esc(u.name)}</button>`).join('')}</div>` : '';
   const cur = isDual() ? draft.src[i] : draft.src[i];
   const isOn = s => cur && cur.kind === s.kind && cur.id === s.id;
   const rost = rosters.length ? rosters.map(r => {
@@ -980,8 +1359,9 @@ function playerPicker(i) {
   return `
     <div class="g-sp p${i + 1}">
       <div class="g-sp-hd"><span class="t">J${i + 1}${isDual() ? ' · tú' : ''}</span><input value="${esc(draft.names[i])}" placeholder="Jugador ${i + 1}" data-name="${i}" aria-label="Nombre del jugador ${i + 1}"></div>
+      ${mine(i) ? who : ''}
       <div class="g-sp-list">
-        <div class="g-sp-sec">Mis comandos</div>${rost}
+        <div class="g-sp-sec">${usr ? 'Comandos de ' + esc(usr.name) : 'Mis comandos'}</div>${rost}
         <div class="g-sp-sec">Comando completo</div>${full}
       </div>
     </div>`;
@@ -1010,6 +1390,7 @@ function invitePanel() {
       <a class="icon-btn g-wa" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener"><i class="ti ti-brand-whatsapp"></i> WhatsApp</a>
       ${navigator.share ? '<button class="icon-btn" data-share><i class="ti ti-share"></i> Compartir</button>' : ''}
       <button class="icon-btn" data-copy="${esc(url)}"><i class="ti ti-copy"></i> Copiar enlace</button>
+      <button class="icon-btn" data-calinv title="Quedar un día: invitación para el calendario con el enlace de la partida"><i class="ti ti-calendar-event"></i> Proponer fecha</button>
     </div></div>`;
 }
 function missionPicker(withCritDesc) {
@@ -1080,9 +1461,31 @@ const stepHint = {
   pi1: () => isDual() ? 'Falta la iniciativa del PI 1 o tu operación principal' : 'Falta la iniciativa del PI 1 o alguna operación principal',
 };
 
+// Dados: uno por jugador, con su color. Se animan cuando cambia la tirada (también la que llega del otro dispositivo)
+const dieHtml = (v, k) => `<span class="g-die dj${k + 1} ${v ? 'v' + v : 'empty'}" data-v="${v || ''}" role="img" aria-label="${v ? 'Dado: ' + v : 'Dado sin tirar'}">${'<i></i>'.repeat(9)}</span>`;
+const DICE_SEEN = {};
+function animateDice() {
+  document.querySelectorAll('.g-dice[data-rid]').forEach(box => {
+    const id = box.dataset.rid, key = box.dataset.rk, prev = DICE_SEEN[id];
+    DICE_SEEN[id] = key;
+    if (prev === undefined || prev === key || !key || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const dice = [...box.querySelectorAll('.g-die')], fin = dice.map(d => d.dataset.v);
+    box.classList.add('rolling');
+    let n = 0;
+    const tick = () => {
+      if (!box.isConnected) return;
+      const last = ++n > 12;
+      dice.forEach((d, k) => { d.className = d.className.replace(/\bv\d\b/, 'v' + (last ? fin[k] : d6())); d.style.setProperty('--r', (last ? 0 : (Math.random() * 50 - 25)) + 'deg'); });
+      if (last) { box.classList.remove('rolling'); box.classList.add('landed'); return; }
+      setTimeout(tick, 60 + n * 6);
+    };
+    tick();
+  });
+}
+const afterDice = fn => setTimeout(fn, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1250);
 function diceRow(roll, label) {
-  const die = v => `<span class="g-die ${v ? '' : 'empty'}">${v || '?'}</span>`;
-  return `<div class="g-dice"><span class="p1">${esc(pname(0))}</span>${die(roll?.[0])}<small>vs</small>${die(roll?.[1])}<span class="p2">${esc(pname(1))}</span>
+  const die = (v, k) => dieHtml(v, k);
+  return `<div class="g-dice" data-rid="${label}" data-rk="${roll ? roll.join('-') : ''}"><span class="p1">${esc(pname(0))}</span>${die(roll?.[0], 0)}<small>vs</small>${die(roll?.[1], 1)}<span class="p2">${esc(pname(1))}</span>
     <button class="icon-btn accent ripple" data-roll="${label}"><i class="ti ti-dice-5"></i> Tirar</button></div>`;
 }
 const pbtn = (attr, cur) => [0, 1].map(p => `<button class="g-pbtn p${p + 1} ${cur === p ? 'on' : ''}" data-${attr}="${p}">${esc(pname(p))}</button>`).join('');
@@ -1095,7 +1498,7 @@ function mapPreview(dzPlayer, z0, m0) {
   const sides = dzPlayer == null
     ? `<span class="g-dz s-${info.j1} or">Zona naranja</span><span class="g-dz s-${OPP[info.j1]} gr">Zona contraria</span>`
     : lab(dzPlayer, info.j1) + lab(1 - dzPlayer, OPP[info.j1]);
-  return `<div class="g-prev"><img src="${m.img}" alt="Mapa ${esc(m.label)}">${sides}${info.o.map(([x, y]) => `<i class="g-prev-o" style="left:${x}%;top:${y}%"></i>`).join('')}</div>`;
+  return `<div class="g-prev"><img src="${m.img}" alt="Mapa ${esc(m.label)}">${sides}${info.o.map(([x, y]) => `<i class="g-prev-o" style="left:${x}%;top:${y}%"></i>`).join('')}${terrLayer(m.img, z.id, false)}</div>`;
 }
 
 // ¿Está todo lo de este dispositivo listo para empezar?
@@ -1276,7 +1679,15 @@ function onSetupClick(e) {
   const before = isDual() ? sharedOf(draft) : null;
   const ownChange = () => { if (isDual()) draft.ready[SEAT] = false; };
   const hostOnly = () => isDual() && SEAT !== 0;
-  if (d.src != null) {
+  if (d.usr != null) {
+    const i = +d.usr, u = KT.user.byId(d.id);
+    if (!mine(i)) return;
+    draft.usr = draft.usr || [null, null];
+    const names = KT.user.list().map(x => x.name);
+    draft.usr[i] = u ? u.id : null;
+    if (u && (!draft.names[i].trim() || names.includes(draft.names[i]))) draft.names[i] = u.name;   // no pisa un nombre escrito a mano
+  }
+  else if (d.src != null) {
     const i = +d.src;
     if (!mine(i)) return;
     draft.src[i] = { kind: d.kind, id: d.id };
@@ -1291,7 +1702,7 @@ function onSetupClick(e) {
     Object.assign(draft, { zone: z.id, map: m.id, crit: c.n, dzPick: null });
     KT.toast(`${z.name} · mapa ${m.label} · ${c.name}`, { type: 'ok' });
   }
-  else if (d.roll === 'r0') { const r = rollOff(null); Object.assign(draft, { roll: r.roll, win0: r.win, ini0: r.win, dzPick: null }); KT.toast(`${esc(pname(r.win))} gana la tirada (${r.roll[0]}–${r.roll[1]})`, { type: 'ok' }); }
+  else if (d.roll === 'r0') { const r = rollOff(null); Object.assign(draft, { roll: r.roll, win0: r.win, ini0: r.win, dzPick: null }); afterDice(() => KT.toast(`${esc(pname(r.win))} gana la tirada (${r.roll[0]}–${r.roll[1]})`, { type: 'ok' })); }
   else if (d.win0 != null) { Object.assign(draft, { win0: +d.win0, ini0: +d.win0, roll: null, dzPick: null }); }
   else if (d.ini0 != null) { draft.ini0 = +d.ini0; draft.dzPick = null; }
   else if (d.dz) { draft.dzPick = d.dz === 'or' ? draft.ini0 : 1 - draft.ini0; }
@@ -1308,7 +1719,7 @@ function onSetupClick(e) {
   else if (d.hide != null) { draft.cover = null; }
   else if (d.tac) { const i = isDual() ? SEAT : draft.cover; if (i == null) return; draft.tac[i] = d.tac; ownChange(); }
   else if (t.hasAttribute('data-all')) { const i = isDual() ? SEAT : draft.cover; draft.tacAll[i] = t.checked; }
-  else if (d.roll === 'r1') { const r = rollOff(1 - (draft.ini0 ?? 0)); Object.assign(draft, { roll1: r.roll, win1: r.win, ini1: r.win }); KT.toast(`${esc(pname(r.win))} gana la tirada${r.roll[0] === r.roll[1] ? ' (empate)' : ''} (${r.roll[0]}–${r.roll[1]})`, { type: 'ok' }); }
+  else if (d.roll === 'r1') { const r = rollOff(1 - (draft.ini0 ?? 0)); Object.assign(draft, { roll1: r.roll, win1: r.win, ini1: r.win }); afterDice(() => KT.toast(`${esc(pname(r.win))} gana la tirada${r.roll[0] === r.roll[1] ? ' (empate)' : ''} (${r.roll[0]}–${r.roll[1]})`, { type: 'ok' })); }
   else if (d.win1 != null) { Object.assign(draft, { win1: +d.win1, ini1: +d.win1, roll1: null }); }
   else if (d.ini1 != null) { draft.ini1 = +d.ini1; }
   else if (d.primcover != null) { draft.primCover = +d.primcover; }
@@ -1347,6 +1758,7 @@ function begin({ players, ini, ini0, dz }) {
   S = { v: V, gid: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), started: true, ended: false, tp: 1, ini, ini0,
     zone: d.zone, map: d.map, crit: d.crit, dz, players, obj: initObjs(d.zone, d.map, d.crit), dual: isDual() ? Net.cfg.room : null,
     start: { ini, cards: players.map(P => clone(P.cards)) } };
+  if (d.liga) S.liga = d.liga;
   save();
   if (isDual()) Net.startGame();
   enterGame();
@@ -1367,7 +1779,7 @@ function restartGame() {
     Object.assign(S, { tp: 1, ended: false, ini: st.ini ?? null, iniRoll: null, obj: initObjs(S.zone, S.map, S.crit) });
     S.players.forEach((P, i) => {
       P.ops.forEach(o => { o.w = opData(P, o)?.s.h ?? o.w; o.order = 'conceal'; o.used = false; });
-      Object.assign(P, { cp: 2, tacShown: false, ployUsed: {}, score: { crit: 0, tac: 0, killAdj: 0 }, cards: clone(st.cards?.[i]) || { rr: 0, i1: 0, i2: 0, i3: 0 } });
+      Object.assign(P, { cp: 2, tacShown: false, ployUsed: {}, score: newScore(), cards: clone(st.cards?.[i]) || { rr: 0, i1: 0, i2: 0, i3: 0 } });
     });
   });
   OPEN.clear(); KT.store.set('partida.abiertos', []);
@@ -1614,7 +2026,12 @@ function showHelp() {
     ['− +', 'Daño / curación · el grado de eliminación del rival se calcula solo'],
     ['Marcadores', 'Toca un objetivo del mapa para marcar control y estados de la operación'],
     ['Ardides', 'Úsalos desde la columna del jugador: descuentan los PM'],
-    ['PV', 'Toca los puntos de victoria para puntuar cada operación'],
+    ['PV', 'Toca los puntos de victoria para puntuar cada punto de inflexión'],
+    ['Escenografía', 'Toca la letra de un elemento del mapa para ver qué pieza es'],
+    ['Comando', 'Toca el emblema del jugador: lista, reglas de facción y enlaces'],
+    ['V', 'Cambiar entre vista completa y reducida (marcador)'],
+    ['O', 'Opciones: cierre guiado de turno y contador de activaciones'],
+    ['E', 'Fin de partida: recuento total'],
     ['Rep. ±1', 'Cartas de iniciativa: toca para marcar disponible / usada'],
     [MOD_KEY + ' Z', 'Deshacer el último cambio'],
     ['→', 'Siguiente punto de inflexión (tras el 4.º, fin de la batalla)'],
@@ -1655,6 +2072,19 @@ window.addEventListener('load', () => {
   $('#btn-setup').addEventListener('click', newGame);
   $('#btn-restart').addEventListener('click', askRestart);
   $('#btn-undo').addEventListener('click', undo);
+  $('#btn-end').addEventListener('click', () => endGame());
+  $('#btn-view').addEventListener('click', toggleView);
+  $('#btn-opt').addEventListener('click', () => openSheet('opt'));
+  $('#compact').addEventListener('click', onCompactClick);
+  $('#rot-compact').addEventListener('click', () => { VIEW = 'compact'; KT.store.set('partida.vista', VIEW); render(); });
+  document.addEventListener('click', onScoreClick);
+  document.addEventListener('click', e => {
+    if (!e.target.closest('[data-calinv]') || !Net.cfg || !KT.cal) return;
+    const n = draft?.names || S?.players.map(P => P.name) || [];
+    KT.cal.open({ title: `Kill Team: ${n[0] || 'Jugador 1'} vs ${n[1] || 'Jugador 2'}`, desc: '¡Te reto a una partida de Kill Team! El día de la partida, únete desde tu móvil con este enlace:', url: KTD.inviteUrl(Net.cfg) });
+  });
+  document.addEventListener('click', e => { if (e.target.closest('.g-prev')) onTerrClick(e); });
+  mqSmall.addEventListener('change', () => { if (S?.started) render(); });
   $('#btn-fs').addEventListener('click', toggleFS);
   $('#btn-help').addEventListener('click', showHelp);
   $('#viewer-close').addEventListener('click', closeViewer);
@@ -1662,7 +2092,7 @@ window.addEventListener('load', () => {
   $('#rot-fs').addEventListener('click', toggleFS);
   document.addEventListener('click', e => { if (e.target.closest('[data-invite]') && Net.cfg) KT.modal('Invitar al otro jugador', invitePanel(), 'user-plus'); });
   document.addEventListener('click', e => { const c = e.target.closest('.cmdk [data-copy]'); if (c) navigator.clipboard?.writeText(c.dataset.copy).then(() => KT.toast('Enlace copiado', { type: 'ok' })); const sh = e.target.closest('.cmdk [data-share]'); if (sh) navigator.share({ title: 'Kill Team', url: KTD.inviteUrl(Net.cfg) }).catch(() => {}); });
-  document.addEventListener('click', e => { if (tipEl && !e.target.closest('.g-tip, [data-rule], [data-tipeq], [data-tipploy]')) hideTip(); });
+  document.addEventListener('click', e => { if (tipEl && !e.target.closest('.g-tip, [data-rule], [data-tipeq], [data-tipploy], [data-terr]')) hideTip(); });
   new ResizeObserver(() => placeObjs()).observe($('#board'));
   document.addEventListener('visibilitychange', () => { if (S?.started) keepAwake(); });
 
@@ -1676,6 +2106,9 @@ window.addEventListener('load', () => {
     'n': () => newGame(),
     'r': () => { if (playing()) askRestart(); else return false; },
     'c': () => { if (playing()) openSheet('crit'); else return false; },
+    'v': () => { if (playing()) toggleView(); else return false; },
+    'o': () => { if (playing()) openSheet('opt'); else return false; },
+    'e': () => { if (playing() && !sheet) endGame(); else return false; },
     's': () => { if (playing()) openSheet('seq'); else return false; },
     '?': showHelp,
     'Escape': () => {
@@ -1709,8 +2142,14 @@ window.addEventListener('load', () => {
     Net.resume(sala).then(() => { if (!draft) { draft = newDraft(); draft.room = sala.room; } openSetup(); Net.lobby(); });
   }
   else if (sala) { Net.resume(sala); openSetup(); }
-  else if (new URLSearchParams(location.search).get('p1')) { $('#app').hidden = !(S && S.started); openSetup(); if (S?.started) render(); }
-  else { render(); if (S?.started && !S.dual) askResume(); }
+  else if (new URLSearchParams(location.search).get('p1') || new URLSearchParams(location.search).get('liga')) { $('#app').hidden = !(S && S.started); openSetup(); if (S?.started) render(); }
+  else {
+    render();
+    // «Volver a la partida» desde otra página: se reanuda sin preguntar
+    const back = new URLSearchParams(location.search).has('volver');
+    if (back) history.replaceState(null, '', location.pathname);
+    if (S?.started && !S.dual && !back) askResume();
+  }
   syncUndo();
   if (S?.started) keepAwake();
 });

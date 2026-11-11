@@ -300,6 +300,7 @@ button { cursor: pointer; font-family: var(--font-body); }
 <script src="js/data/vespid.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/comandos.js"></script>
+<script src="js/usuarios.js"></script>
 <script src="js/vendor/qrcode.js"></script>
 
 <div class="wrap">
@@ -314,6 +315,7 @@ button { cursor: pointer; font-family: var(--font-body); }
       <a class="btn-back" href="misiones/misiones.html"><i class="ti ti-map"></i> Misiones</a>
       <a class="btn-back" href="comandos.html"><i class="ti ti-file-plus"></i> Añadir comando</a>
       <span style="flex:1"></span>
+      <span id="user-slot"></span>
       <button class="btn-back" onclick="showHelp()" title="Atajos (?)"><i class="ti ti-keyboard"></i> Atajos</button>
     </nav>
   </header>
@@ -467,6 +469,7 @@ const firstError = f => (checks(f).find(c => !c.ok) || {}).err || null;
 // ── Borrador automático y comandos guardados ─────────────────
 const saveDraft = () => { if (state.factionId) KT.store.set(DRAFT_KEY, { ...state, open: {} }); };
 const savedList = () => KT.store.get(SAVED_KEY, []);
+let SHOW_ALL = false;        // ver también las bandas de otros usuarios de este dispositivo
 
 function serialize() {
   const f = F();
@@ -489,6 +492,8 @@ function serialize() {
     factionId: state.factionId, factionVersion: f.version || null,
     ops, ploys0, equipment: [...state.equipment],
     created: (savedList().find(r => r.id === state.editingId) || {}).created || now, updated: now,
+    // dueño: se conserva al editar; si es nueva, el usuario con sesión iniciada
+    ...(() => { const prev = savedList().find(r => r.id === state.editingId), o = prev ? prev.owner : KT.user.current()?.id; return o ? { owner: o } : {}; })(),
   };
 }
 
@@ -743,7 +748,9 @@ function updateActionInfo() {
 
 // ═══ PASO 1 — COMANDO ══════════════════════════════════════
 function renderStep1() {
-  const saved = savedList();
+  const me = KT.user.current();
+  const saved = me && !SHOW_ALL ? savedList().filter(r => !r.owner || r.owner === me.id) : savedList();
+  const hidden = savedList().length - saved.length;
   const savedHtml = saved.length
     ? `<div class="saved-grid">${saved.map((r, i) => {
         const f = FACTIONS[r.factionId];
@@ -752,7 +759,7 @@ function renderStep1() {
         return `<div class="saved spot lift reveal" style="--i:${i}" tabindex="0" onclick="openSaved('${r.id}')"
                   onkeydown="if(event.key==='Enter')openSaved('${r.id}')">
           <div class="saved-name">${KT.esc(r.name)}</div>
-          <div class="saved-meta"><b>${KT.esc(f?.name || r.factionId)}</b> · ${n} agentes · ${d}</div>
+          <div class="saved-meta"><b>${KT.esc(f?.name || r.factionId)}</b> · ${n} agentes · ${d}${r.owner && (!me || r.owner !== me.id) ? ' · <i class="ti ti-user"></i> ' + KT.esc(KT.user.byId(r.owner)?.name || '') : ''}</div>
           <div class="saved-acts">
             <button class="icon-btn" title="Duplicar" aria-label="Duplicar" onclick="duplicateSaved('${r.id}', event)"><i class="ti ti-copy"></i></button>
             <button class="icon-btn" title="Compartir (WhatsApp, QR, enlace)" aria-label="Compartir" onclick="shareSaved('${r.id}', event)"><i class="ti ti-share"></i></button>
@@ -781,9 +788,11 @@ function renderStep1() {
   }).join('');
 
   return `
-    <div class="sec-lbl">Mis comandos <span style="font-family:var(--font-mono);font-weight:400;color:var(--orange)">${saved.length || ''}</span></div>
+    <div class="sec-lbl">${me ? 'Comandos de ' + KT.esc(me.name) : 'Mis comandos'} <span style="font-family:var(--font-mono);font-weight:400;color:var(--orange)">${saved.length || ''}</span></div>
     <div class="tools-row">
       <button class="icon-btn" onclick="document.getElementById('import-file').click()"><i class="ti ti-upload"></i> Importar JSON</button>
+      ${me && (hidden || SHOW_ALL) ? `<button class="icon-btn" onclick="SHOW_ALL=!SHOW_ALL;render()"><i class="ti ti-users"></i> ${SHOW_ALL ? 'Ver solo los míos' : `Ver también los de otros usuarios (${hidden})`}</button>` : ''}
+      ${!me ? `<button class="icon-btn" data-user-chip><i class="ti ti-user-circle"></i> Entrar con tu usuario</button>` : ''}
     </div>
     ${savedHtml}
     <div class="sec-lbl">Nuevo comando</div>
@@ -1107,8 +1116,17 @@ window.addEventListener('load', () => {
   const factions = Object.values(FACTIONS).filter(f => f.roster);
   console.log('[Builder] Facciones con roster:', factions.map(f => f.id), '· equipo universal:', (window.UNIVERSAL_EQUIPMENT || []).length);
 
+  document.getElementById('user-slot').innerHTML = KT.user.chip('btn-back');
+  document.addEventListener('kt:user', () => { if (state.step === 1) render(); });
   const hash = location.hash.replace('#', '');
   if (hash.startsWith('c=')) { setStep(1); importFromLink(hash.slice(2)); return; }
+  // builder.html#r=<id>: abrir directamente una banda guardada (desde la partida, el inicio o el perfil)
+  if (hash.startsWith('r=')) {
+    const id = decodeURIComponent(hash.slice(2));
+    history.replaceState(null, '', location.pathname);
+    if (savedList().some(r => r.id === id)) { openSaved(id); return; }
+    KT.toast('Esa banda ya no está guardada en este dispositivo', { type: 'err' });
+  }
   const draft = KT.store.get(DRAFT_KEY);
   if (draft && FACTIONS[draft.factionId]?.roster && (!hash || hash === draft.factionId)) {
     state = { ...newState(), ...draft, open: {} };

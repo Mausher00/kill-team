@@ -20,7 +20,7 @@
   const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const slug = s => norm(s).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48);
   // Texto seguro: sin etiquetas HTML (la app pinta los datos como HTML)
-  const txt = (v, def = '') => v == null ? def : String(v).replace(/</g, '‹').replace(/>/g, '›').replace(/\r\n?/g, '\n').trim();
+  const txt = (v, def = '') => v == null ? def : (Array.isArray(v) ? v.map(x => x && typeof x === 'object' ? [x.n || x.name, x.t || x.text].filter(Boolean).join(': ') : x).join('\n') : String(v)).replace(/</g, '‹').replace(/>/g, '›').replace(/\r\n?/g, '\n').trim();
   // Texto que acaba en atributos o claves: además sin comillas ni barras
   const tag = v => txt(v).replace(/["'`\\]/g, '').replace(/\s+/g, ' ');
   const arr = v => Array.isArray(v) ? v : v == null || v === '' ? [] : [v];
@@ -37,28 +37,50 @@
   // ── Lectura tolerante del texto que devuelve la IA ─────────
   function parse(text) {
     let s = String(text || '').replace(/^﻿/, '').trim();
-    const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    if (fence) s = fence[1].trim();
-    const a = s.indexOf('{'), b = s.lastIndexOf('}');
-    if (a < 0 || b < a) throw new Error('No se encuentra ningún objeto JSON en el texto.');
-    s = s.slice(a, b + 1);
-    try { return JSON.parse(s); } catch (e1) {
-      // arreglos típicos: comas finales y comillas tipográficas fuera de cadenas
-      const fixed = s.replace(/,\s*([}\]])/g, '$1');
-      try { return JSON.parse(fixed); } catch {
-        const m = String(e1.message).match(/position (\d+)/);
-        let where = '';
-        if (m) { const p = +m[1], line = s.slice(0, p).split('\n').length; where = ` (línea ${line}: «${s.slice(Math.max(0, p - 30), p + 30).replace(/\s+/g, ' ')}»)`; }
-        throw new Error('El JSON no es válido' + where + '. Pide a la IA que lo revise y lo devuelva completo.');
-      }
+    // Varias partes pegadas seguidas («continúa»): se unen los bloques de código
+    const seg = s.split(/```[a-zA-Z]*[ \t]*\n?/);
+    if (seg.length > 1) s = seg.length % 2 ? seg.filter((_, k) => k % 2).join('') : seg.slice(1).join('');   // bloques cerrados · o una respuesta cortada y su continuación
+    const a = s.indexOf('{');
+    if (a < 0) throw new Error('No se encuentra ningún objeto JSON en el texto. Comprueba que has pegado la respuesta de la IA entera.');
+    // Equilibrio de llaves fuera de cadenas: detecta respuestas cortadas y texto sobrante al final
+    let depth = 0, inStr = false, escp = false, end = -1;
+    for (let k = a; k < s.length; k++) {
+      const c = s[k];
+      if (inStr) { if (escp) escp = false; else if (c === '\\') escp = true; else if (c === '"') inStr = false; continue; }
+      if (c === '"') inStr = true;
+      else if (c === '{' || c === '[') depth++;
+      else if (c === '}' || c === ']') { depth--; if (depth === 0) { end = k; break; } }
     }
+    if (end < 0) throw new Error('La respuesta de la IA está cortada (faltan llaves por cerrar). Escríbele «continúa» y pega aquí todas las partes seguidas, en orden.');
+    s = s.slice(a, end + 1);
+    // saltos de línea crudos dentro de una cadena (respuesta partida a mitad de un texto): JSON no los admite
+    { let out = '', q = false, e2 = false;
+      for (const c of s) { if (q) { if (e2) e2 = false; else if (c === '\\') e2 = true; else if (c === '"') q = false; if (c === '\n' || c === '\r') continue; } else if (c === '"') q = true; out += c; }
+      s = out; }
+    const commas = x => x.replace(/,\s*([}\]])/g, '$1');
+    const quotes = x => x.replace(/[“”]/g, '"');
+    const notes = x => x.replace(/(^|[\s,{\[])\/\/[^\n"]*$/gm, '$1');
+    const tries = [x => x, commas, x => commas(notes(x)), x => commas(quotes(x)), x => commas(notes(quotes(x)))];
+    let first = null;
+    for (const fix of tries) { try { return JSON.parse(fix(s)); } catch (e) { first = first || e; } }
+    const m = String(first.message).match(/position (\d+)/);
+    let where = '';
+    if (m) { const p = +m[1], line = s.slice(0, p).split('\n').length; where = ` (línea ${line}: «${s.slice(Math.max(0, p - 30), p + 30).replace(/\s+/g, ' ')}»)`; }
+    throw new Error('El JSON no es válido' + where + '. Pide a la IA: «el JSON no es válido, revísalo y devuélvelo completo».');
   }
+
+  // Reglas de arma que la IA haya dejado en inglés → nombre del glosario de la app
+  const RULES_EN = { 'piercing crits': 'Críticos de penetración', accurate: 'Certera', balanced: 'Equilibrada', blast: 'Área', brutal: 'Brutal', ceaseless: 'Incesante',
+    devastating: 'Devastadora', heavy: 'Pesada', hot: 'Sobrecalentamiento', lethal: 'Letal', limited: 'Limitada', piercing: 'Penetración', punishing: 'Castigadora',
+    range: 'Alcance', relentless: 'Implacable', rending: 'Desgarradora', saturate: 'Saturación', seek: 'Buscadora', severe: 'Severa', shock: 'Choque', silent: 'Silenciosa',
+    stun: 'Aturdidora', torrent: 'Ráfaga' };
+  const esRule = r => { const k = Object.keys(RULES_EN).find(k => r.toLowerCase().startsWith(k) && !/[a-záéíóúñ]/i.test(r[k.length] || '')); return k ? RULES_EN[k] + r.slice(k.length) : r; };
 
   // ── Normaliza y valida un paquete → { f, errors, warnings } ──
   function normalize(raw) {
     const errors = [], warnings = [];
     if (raw && raw.schema && raw.schema !== SCHEMA) warnings.push(`Formato «${raw.schema}» desconocido; se intentará leer igualmente.`);
-    const src = raw && (raw.comando || raw.faction || raw.kill_team || raw);
+    const src = raw && (raw.comando || raw.faction || raw.kill_team || raw.killteam || raw.team || raw);
     if (!src || typeof src !== 'object' || Array.isArray(src)) return { f: null, errors: ['El archivo no contiene un comando.'], warnings };
 
     const f = {};
@@ -74,7 +96,8 @@
 
     // Operativos
     const seenOp = new Set();
-    f.ops = arr(src.ops || src.operativos).map((o, i) => {
+    const seenType = new Set();
+    f.ops = arr(src.ops || src.operativos || src.operatives || src.datacards).map((o, i) => {
       const where = `Operativo ${i + 1}${o && o.name ? ` («${txt(o.name)}»)` : ''}`;
       if (!o || typeof o !== 'object') { errors.push(`${where}: formato no válido.`); return null; }
       const op = { name: txt(o.name) };
@@ -83,20 +106,26 @@
       while (seenOp.has(id)) id += '-' + i;
       seenOp.add(id); op.id = id;
       op.type = tag(o.type || op.name).toUpperCase();
+      if (seenType.has(op.type)) warnings.push(`${where}: el «type» ${op.type} está repetido; el constructor no podrá distinguir esas fichas.`);
+      seenType.add(op.type);
       op.img = '';
       const s = o.s || o.stats || {};
       op.s = { lpa: num(s.lpa ?? s.apl, 2), mov: txt(s.mov ?? s.move, '6"'), salv: txt(s.salv ?? s.save, '4+'), h: num(s.h ?? s.wounds, 8) };
       if (!/\d/.test(String(s.lpa ?? s.apl ?? '')) || !/\d/.test(String(s.h ?? s.wounds ?? ''))) warnings.push(`${where}: atributos incompletos (LPA/Heridas); revisa los valores.`);
       if (!/"$/.test(op.s.mov)) op.s.mov = op.s.mov.replace(/[^\d]/g, '') + '"';
       if (!/\+$/.test(op.s.salv)) op.s.salv = op.s.salv.replace(/[^\d]/g, '') + '+';
-      op.kw = arr(o.kw || o.keywords).map(k => tag(k).toUpperCase()).filter(Boolean);
+      op.kw = arr(o.kw || o.keywords || o.palabras_clave).flatMap(k => String(k).split(/\s*,\s*/)).map(k => tag(k).toUpperCase()).filter(Boolean);
       op.w = arr(o.w || o.weapons).map((w, j) => {
         if (!w || !w.n && !w.name) { warnings.push(`${where}: arma ${j + 1} sin nombre, se omite.`); return null; }
         let r = w.r ?? w.rules ?? [];
         if (typeof r === 'string') r = r.split(/,(?![^(]*\))/);
-        r = r.map(x => txt(x)).filter(x => x && x !== '-' && x !== '—');
+        r = r.map(x => esRule(txt(x))).filter(x => x && x !== '-' && x !== '—');
         const i2 = txt(w.i ?? w.hit, '4+');
-        return { n: txt(w.n || w.name), a: num(w.a ?? w.atk, 4), i: /\+$/.test(i2) ? i2 : i2.replace(/[^\d]/g, '') + '+', d: txt(w.d ?? w.dmg, '3/4').replace(/\s+/g, ''), r };
+        let dm = w.d ?? w.dmg ?? w.damage;
+        if (Array.isArray(dm)) dm = dm.join('/');
+        else if (dm && typeof dm === 'object') dm = [dm.normal ?? dm.n, dm.crit ?? dm.critical ?? dm.c].join('/');
+        if (dm == null || !/\d/.test(String(dm))) warnings.push(`${where}: el arma «${txt(w.n || w.name)}» no tiene daño; revisa el valor.`);
+        return { n: txt(w.n || w.name), a: num(w.a ?? w.atk ?? w.attacks, 4), i: /\+$/.test(i2) ? i2 : i2.replace(/[^\d]/g, '') + '+', d: txt(dm, '3/4').replace(/\s+/g, ''), r };
       }).filter(Boolean);
       if (!op.w.length) warnings.push(`${where}: no tiene armas.`);
       op.ru = arr(o.ru || o.rules || o.abilities).map(r => {
@@ -111,17 +140,17 @@
     if (f.ops.length > 40) errors.push('Demasiados operativos (máx. 40).');
 
     // Reglas de facción
-    let frs = arr(src.frs || src.reglas);
+    let frs = arr(src.frs || src.reglas || src.faction_rules);
     if (!frs.length && src.fr) frs = [src.fr, ...arr(src.fr.orders).map(o => ({ name: o.n, text: o.t }))];
     f.frs = frs.map(r => r && (r.name || r.n) ? { name: txt(r.name || r.n), text: txt(r.text || r.t), subs: arr(r.subs).filter(x => x && (x.n || x.name)).map(x => ({ n: txt(x.n || x.name), t: txt(x.t || x.text) })) } : null).filter(Boolean);
     if (!f.frs.length) warnings.push('No hay reglas de facción («frs»).');
 
     // Ardides y equipo
-    const pl = src.pl || src.ardides || {};
+    const pl = src.pl || src.ardides || src.ploys || { s: src.strategy_ploys, f: src.firefight_ploys };
     const ploys = list => arr(list).map(p => p && (p.n || p.name) ? { n: txt(p.n || p.name), t: txt(p.t || p.text) } : null).filter(Boolean);
     f.pl = { s: ploys(pl.s || pl.estrategia || pl.strategy), f: ploys(pl.f || pl.tiroteo || pl.firefight) };
     if (!f.pl.s.length && !f.pl.f.length) warnings.push('No hay ardides («pl»).');
-    f.eq = arr(src.eq || src.equipo).map(e => e && (e.n || e.name) ? { n: txt(e.n || e.name), t: txt(e.t || e.text) } : null).filter(Boolean);
+    f.eq = arr(src.eq || src.equipo || src.equipment || src.faction_equipment).map(e => e && (e.n || e.name) ? { n: txt(e.n || e.name), t: txt(e.t || e.text) } : null).filter(Boolean);
     if (!f.eq.length) warnings.push('No hay equipo de facción («eq»).');
     f.er = arr(src.er).map(v => v && arr(v.ee).length ? { v: txt(v.v, 'Erratas'), ee: arr(v.ee).map(e => ({ s: txt(e.s), t: txt(e.t) })) } : null).filter(Boolean);
 
@@ -155,8 +184,12 @@
         if (e.cost != null && Number.isFinite(+e.cost)) out.cost = +e.cost;
         if (e.note) out.note = txt(e.note);
         const lo = loadouts(e.loadouts); if (lo.length) out.loadouts = lo;
+        const od = f.ops.find(o => o.type === t);
+        if (od) lo.forEach(l => l.w.forEach(x => { if (!od.w.some(y => norm(y.n) === norm(x.n))) warnings.push(`Composición: en «${t}» la opción «${l.label}» usa el arma «${x.n}», que no está en su ficha.`); }));
         return out;
       }).filter(Boolean) };
+      const total = ro.required.reduce((a, r) => a + r.count, 0) + ro.pool.slots;
+      if (ro.pool.slots && (total < 4 || total > 20)) warnings.push(`Composición: el comando tendría ${total} agentes; comprueba «required» y «pool.slots».`);
       if (!ro.pool.slots) warnings.push('Composición: «pool.slots» (plazas a elegir) es 0.');
       ro.constraints = arr(R.constraints).map(c => {
         if (!c || (c.min == null && c.max == null)) return null;
@@ -182,6 +215,12 @@
   function register(f, meta = {}) {
     if (typeof FACTIONS === 'undefined' || !f || !f.id) return;
     if (FACTIONS[f.id] && !FACTIONS[f.id]._user && !BUILTIN[f.id]) BUILTIN[f.id] = FACTIONS[f.id];
+    // Al sustituir un comando incluido se conservan sus imágenes (los paquetes no las traen)
+    const base = BUILTIN[f.id];
+    if (base) {
+      if (base.img) f.img = base.img;
+      f.ops.forEach(o => { const b = base.ops.find(x => x.id === o.id) || base.ops.find(x => norm(x.name) === norm(o.name)); if (b?.img) o.img = b.img; });
+    }
     FACTIONS[f.id] = Object.assign(f, { _user: true, _recv: !!meta.recv, _added: meta.added || Date.now() });
   }
   function unregister(id) {
@@ -205,6 +244,35 @@
       return rec;
     },
     remove(id) { write(read().filter(x => x.f.id !== id)); unregister(id); },
+    // Varios comandos en un mismo archivo: { comandos: [...] } o una lista
+    split(raw) {
+      if (Array.isArray(raw)) return raw;
+      if (raw && Array.isArray(raw.comandos)) return raw.comandos.map(c => ({ schema: raw.schema, comando: c.comando || c }));
+      return [raw];
+    },
+    // Resumen de diferencias entre la versión cargada y una nueva (para «Actualizar reglas»)
+    diff(old, neu) {
+      old = normalize({ schema: SCHEMA, comando: JSON.parse(JSON.stringify(clean(old))) }).f || old;   // misma forma que el paquete nuevo
+      const out = [], key = x => norm(x.id || x.n || x.name), same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+      const cmp = (label, A = [], B = [], strip = x => x) => {
+        const ma = new Map(A.map(x => [key(x), x])), mb = new Map(B.map(x => [key(x), x]));
+        const add = [...mb.keys()].filter(k => !ma.has(k)).map(k => mb.get(k)), del = [...ma.keys()].filter(k => !mb.has(k)).map(k => ma.get(k));
+        const chg = [...mb.keys()].filter(k => ma.has(k) && !same(strip(ma.get(k)), strip(mb.get(k)))).map(k => mb.get(k));
+        const nm = l => l.map(x => x.name || x.n).join(', ');
+        if (chg.length) out.push(`${label}: ${chg.length} modificado(s) — ${nm(chg)}`);
+        if (add.length) out.push(`${label}: ${add.length} nuevo(s) — ${nm(add)}`);
+        if (del.length) out.push(`${label}: ${del.length} eliminado(s) — ${nm(del)}`);
+      };
+      const noImg = o => { const c = { ...o }; delete c.img; return c; };
+      cmp('Operativos', old.ops, neu.ops, noImg);
+      cmp('Reglas de facción', old.frs, neu.frs);
+      cmp('Ardides de estrategia', old.pl?.s, neu.pl?.s);
+      cmp('Ardides de tiroteo', old.pl?.f, neu.pl?.f);
+      cmp('Equipo', old.eq, neu.eq);
+      if (old.roster && neu.roster && !same(old.roster, neu.roster)) out.push('Composición del comando: modificada');
+      if (old.roster && !neu.roster) out.push('Composición del comando: el paquete nuevo no la trae (se perdería el constructor)');
+      return out;
+    },
     // Paquete para compartir / reimportar
     pack: f => ({ schema: SCHEMA, comando: clean(f) }),
     // Archivo js/data/<id>.js para añadirlo al repositorio

@@ -315,6 +315,9 @@ function paletteSource() {
   out.push({ group: 'Ir a', icon: 'hammer', title: 'Constructor de comando', sub: 'Montar y guardar un comando', tag: 'página', suggest: true, boost: 2, run: () => location.href = 'builder.html' });
   out.push({ group: 'Ir a', icon: 'swords', title: 'Partida', sub: 'Modo de juego: operativos, mapa, PM y PV', tag: 'página', suggest: true, boost: 2, run: () => location.href = 'partida.html' });
   out.push({ group: 'Ir a', icon: 'history', title: 'Historial de partidas', sub: 'Resultados y estadísticas', tag: 'página', run: () => location.href = 'historial.html' });
+  out.push({ group: 'Ir a', icon: 'trophy', title: 'Ligas y torneos', sub: 'Clasificación y enfrentamientos entre jugadores', tag: 'página', run: () => location.href = 'liga.html' });
+  out.push({ group: 'Ir a', icon: 'world', title: 'Comunidad', sub: 'Cuenta, grupos, buscar jugadores e invitaciones', tag: 'página', run: () => location.href = 'comunidad.html' });
+  out.push({ group: 'Ir a', icon: 'flag-3', title: 'Campaña', sub: 'Hoja de datos, experiencia, honores y cicatrices', tag: 'página', run: () => location.href = 'campana.html' });
   out.push({ group: 'Ir a', icon: 'file-plus', title: 'Añadir comando', sub: 'Importar un comando desde su PDF con ayuda de una IA', tag: 'página', run: () => location.href = 'comandos.html' });
   out.push({ group: 'Ir a', icon: 'map', title: 'Misiones y zonas', sub: 'Terreno, acciones y misiones', tag: 'página', suggest: true, boost: 2, run: () => location.href = 'misiones/misiones.html' });
   Object.values(FACTIONS).forEach(f => {
@@ -415,3 +418,6 @@ async function offlineDownload() {
   if (ok) { KT.toast('Listo: la app funciona sin conexión en este dispositivo', { type: 'ok', ms: 4000 }); offlineSync(); }
   else { label.textContent = 'Reintentar descarga'; KT.toast('No se pudieron descargar todas las imágenes', { type: 'err' }); }
 }
+
+// Cambio de usuario: refrescar el inicio (sus bandas)
+document.addEventListener('kt:user', () => { if (!currentFaction) render(); });

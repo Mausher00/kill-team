@@ -111,6 +111,17 @@ function weaponIcon(w) {
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || '');
 const MOD = IS_MAC ? '⌘' : 'Ctrl';
 
+// Bandas guardadas del usuario con sesión iniciada (o todas, si no hay sesión)
+function homeBands() {
+  if (!window.KT?.user) return '';
+  const me = KT.user.current();
+  const list = me ? KT.user.rosters(me.id) : KT.user.rosters(null).concat((KT.store.get('rosters', []) || []).filter(r => r.owner && FACTIONS[r.factionId]));
+  if (!list.length) return me ? `<div class="section-label">Bandas de ${KT.esc(me.name)}</div><p class="bands-empty">Aún no tienes bandas guardadas. <a href="builder.html">Crea la primera en el constructor</a>.</p>` : '';
+  return `<div class="section-label">${me ? 'Bandas de ' + KT.esc(me.name) : 'Bandas guardadas'} <span class="sl-count">${list.length}</span></div>
+    <div class="bands reveal" style="--i:1">${KT.user.cards(list.slice(0, 8), { hideOwner: !!me })}</div>
+    ${list.length > 8 ? `<p class="bands-empty"><a href="builder.html">Ver las ${list.length} en el constructor</a></p>` : ''}`;
+}
+
 function renderHome() {
   const all = Object.values(FACTIONS);
   const filt = window.homeFilter || '';
@@ -160,7 +171,11 @@ function renderHome() {
           <a class="nav-link" href="misiones/misiones.html"><i class="ti ti-map"></i> Misiones</a>
           <a class="nav-link" href="partida.html"><i class="ti ti-swords"></i> Partida</a>
           <a class="nav-link" href="historial.html"><i class="ti ti-history"></i> Historial</a>
+          <a class="nav-link" href="liga.html" title="Ligas y torneos entre los jugadores"><i class="ti ti-trophy"></i> Liga</a>
+          <a class="nav-link" href="comunidad.html" title="Cuenta, grupos, buscar jugadores e invitaciones"><i class="ti ti-world"></i> Comunidad</a>
+          <a class="nav-link" href="campana.html" title="Campaña: experiencia, honores y cicatrices de tu comando"><i class="ti ti-flag-3"></i> Campaña</a>
           <a class="nav-link" href="comandos.html" title="Añadir un comando a partir de su PDF"><i class="ti ti-file-plus"></i> Añadir comando</a>
+          ${window.KT?.user ? KT.user.chip() : ''}
           <button class="nav-link" id="btn-offline" onclick="offlineDownload()" title="Guardar todo en este dispositivo para usar la app sin conexión" hidden><i class="ti ti-download"></i> <span>Sin conexión</span></button>
         </nav>
       </header>
@@ -169,6 +184,7 @@ function renderHome() {
         <span>Buscar operativo, arma, regla, ardid…</span>
         <span class="st-keys"><kbd>${MOD}</kbd><kbd>K</kbd></span>
       </button>
+      ${homeBands()}
       <div class="section-label">Comandos disponibles <span class="sl-count">${n}</span></div>
       <div class="chips" role="toolbar" aria-label="Filtrar comandos">${chips}</div>
       <div class="faction-grid">${cards}${filt ? '' : soon}</div>

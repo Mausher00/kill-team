@@ -47,3 +47,23 @@ Ver `pdf/LEEME.md`.
 - **Archivo para la app** descarga `js/data/<id>.js`: cópialo a `js/data/`, añade su `<script>` en
   `index.html`, `builder.html`, `partida.html`, `historial.html` y `comandos.html`, y regenera `sw.js`.
 - En partidas a dos dispositivos el comando se envía solo al otro jugador (queda como «recibido en partida»).
+
+## Instrucción para la IA (convertir un PDF en paquete)
+- El texto se edita solo en `recursos/convertir-comando.md`. Después: `python herramientas/ia/generar.py`
+  regenera `js/data/instruccion_ia.js`, que es lo que lee la página «Añadir comando» (copiar / descargar `.md`).
+
+## Escenografía pulsable de los mapas
+- `js/data/terreno.js`: posición de cada etiqueta (A, B, C1…) en cada mapa y ficha de cada pieza por zona
+  (nombre, tipo y recorte de la imagen de leyenda). Se puede editar a mano.
+- `misiones/terreno_detectar.py` + `misiones/terreno_datos.py`: detección automática y correcciones, por si llegan mapas nuevos.
+
+## Usuarios
+- `js/usuarios.js`: perfiles locales (`kt.usuarios`, sesión en `kt.usuario`); las bandas guardadas llevan `owner`.
+  No hay servidor: todo vive en el navegador de cada dispositivo.
+
+## Liga, campaña y calendario
+- `liga.html`: ligas y torneos (`kt.ligas`). «Jugar» abre `partida.html?liga=<id>&m=<enfrentamiento>` y el resultado se apunta solo.
+- `campana.html` + `js/campana.js` (`kt.campanas`). Las reglas (rangos, tablas de honores y cicatrices, costes) son una
+  adaptación de la casa y se editan en `js/data/campana.js`.
+- `js/calendario.js`: invitaciones con fecha (.ics, Google Calendar, WhatsApp). Sin servidor.
+- `recursos/actualizar-comando.md`: instrucción para aplicar erratas a un comando ya cargado (se regenera con `herramientas/ia/generar.py`).
