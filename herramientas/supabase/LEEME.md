@@ -85,4 +85,33 @@ Cada comunidad tiene cuatro pestañas: **Tablón**, **Partidas**, **Galería** y
 - **Compartir:** imagen y texto por el menú del móvil, o WhatsApp, Telegram y X en el ordenador. No lleva enlace a la app.
 
 Tras actualizar, vuelve a ejecutar `esquema.sql` y `almacenamiento.sql`.
-Pendiente: eventos, calendario y ligas de comunidad (fase 2); partidas en directo con vídeo y campañas compartidas (fase 3).
+
+
+## Comunidad · fase 2 (versión 5)
+
+Pestaña **Eventos** en cada comunidad:
+
+- **Lista y mes:** próximos y en curso, pasados, y un calendario mensual.
+- **Tipos:** partida, quedada, liga, torneo y campaña. Los crean los administradores de la comunidad.
+- **Asistencia:** voy, quizá o no puedo. En ligas, torneos y campañas «voy» es la inscripción.
+- **Ligas y torneos:** los inscritos apuntan sus partidas; los administradores pueden generar los emparejamientos
+  de todos contra todos. Clasificación con 3 puntos por victoria y 1 por empate.
+- **Cierre:** al cerrar con ganador, este recibe una distinción (5 puntos de rango). Se puede reabrir.
+- Cada evento se puede añadir al calendario del móvil y compartir en redes.
+
+Tras actualizar, vuelve a ejecutar `esquema.sql`.
+
+
+## Comunidad · fase 3 (versión 6)
+
+- **Partidas en directo:** nadie ve una partida si el jugador no lo activa. Se activa en el último paso de la preparación
+  («Hacerla visible») o en Opciones → *Compartir en directo*, eligiendo las comunidades. Los miembros ven en la pestaña
+  Partidas la sección «En directo» y, al abrirla, los marcadores a los lados (puntos de victoria por punto de inflexión,
+  puntos de mando, operativos en pie) y el mapa en el centro. Se actualiza sola cada pocos segundos.
+  Al empezar otra partida hay que volver a activarlo.
+- **Vídeo:** el jugador puede pegar un enlace de YouTube, Twitch o Vimeo. Sustituye al mapa en la vista del espectador y,
+  si quiere, también en su propia pantalla de partida (botón «Ver mapa / Ver vídeo»). No se admiten otros sitios.
+- **Campañas compartidas:** en Campaña → *Compartir en comunidad*. Los miembros ven la hoja de datos (operativos, rangos,
+  honores, cicatrices y últimas partidas) en la pestaña Partidas, en solo lectura. Se actualiza al cambiarla.
+
+Tras actualizar, vuelve a ejecutar `esquema.sql`.

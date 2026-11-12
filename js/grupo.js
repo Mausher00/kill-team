@@ -1,6 +1,6 @@
 // ============================================================
 //  grupo.js — Página de una comunidad (dentro de comunidad.html)
-//  Pestañas: Tablón · Partidas · Galería · Miembros
+//  Pestañas: Tablón · Eventos (eventos.js) · Partidas · Galería · Miembros
 //  · Roles: fundador, administrador, miembro (los permisos los comprueba el servidor)
 //  · Rango honorífico: partidas jugadas en la comunidad + 5 por cada distinción
 //    (torneo o evento ganado, que dan los administradores)
@@ -45,6 +45,9 @@
       });
       who.forEach(u => S[u].pj++);
     });
+    // partidas de ligas, torneos y campañas de la comunidad
+    (D.ev || []).forEach(e => e.encuentros.forEach(x => { if (x.pa == null) return;
+      [[x.a, x.pa, x.pb], [x.b, x.pb, x.pa]].forEach(([u, m, o]) => { if (!S[u]) return; S[u].pj++; if (m > o) S[u].g++; }); }));
     (D.dist || []).forEach(x => { if (S[x.usuario]) { S[x.usuario].ev++; S[x.usuario].dist.push(x); } });
     Object.values(S).forEach(s => {
       s.pts = s.pj + 5 * s.ev;
@@ -115,7 +118,8 @@
   function render() {
     if (!G) return;
     const M = D.mem, S = stats(), P = D.posts, GA = D.gal, R = D.res;
-    const tabs = [['tablon', 'Tablón', 'messages', P?.length], ['partidas', 'Partidas', 'swords', R?.length], ['galeria', 'Galería', 'photo', GA?.length], ['miembros', 'Miembros', 'users-group', M?.length]];
+    const ctx = { G, D, canAdmin: canAdmin(), run, load, render };
+    const tabs = [['tablon', 'Tablón', 'messages', P?.length], ['eventos', 'Eventos', 'calendar-event', KT.eventos.count(D)], ['partidas', 'Partidas', 'swords', R?.length], ['galeria', 'Galería', 'photo', GA?.length], ['miembros', 'Miembros', 'users-group', M?.length]];
     const rolTxt = { fundador: 'Eres el fundador', admin: 'Eres administrador', miembro: 'Eres miembro', externo: 'Moderando como administrador de la app' }[G.rol];
     app.innerHTML = `<header class="m-hd g-hd">
         <a class="back" href="#" data-g="home"><i class="ti ti-arrow-left"></i> Comunidades</a>
@@ -130,7 +134,7 @@
           ${G.rol === 'fundador' ? '' : G.rol === 'externo' ? '' : '<button class="icon-btn" data-g="leave"><i class="ti ti-logout"></i> Salir</button>'}
         </div></header>
       <div class="m-tabs g-tabs">${tabs.map(([k, v, ic, n]) => `<button class="${tab === k ? 'on' : ''}" data-gtab="${k}"><i class="ti ti-${ic}"></i> ${v}${n ? ` <span>${n}</span>` : ''}</button>`).join('')}</div>
-      ${tab === 'tablon' ? boardHtml(S) : tab === 'partidas' ? gamesHtml(S) : tab === 'galeria' ? galleryHtml() : membersHtml(S)}`;
+      ${tab === 'tablon' ? boardHtml(S) : tab === 'eventos' ? KT.eventos.html(ctx) : tab === 'partidas' ? gamesHtml(S) : tab === 'galeria' ? galleryHtml() : membersHtml(S)}`;
     bindForms();
   }
 
@@ -162,7 +166,7 @@
     const R = D.res, st = standings(), H = (KT.store.get('historial', []) || []).slice(0, 12);
     const seen = new Set(), list = (R || []).filter(p => { const id = p.datos?.id || p.id; if (!p.datos?.players || seen.has(id)) return false; seen.add(id); return true; });
     const byName = {}; (D.mem || []).forEach(m => { byName[KT.norm(m.nombre)] = m.usuario; });
-    return `${H.length ? `<form class="m-form" id="rf"><div class="m-row"><select class="m-in" name="res" style="flex:1 1 240px" aria-label="Partida de mi historial">${H.map(r => `<option value="${esc(r.id)}">${esc(r.players[0].name)} ${r.players[0].total}–${r.players[1].total} ${esc(r.players[1].name)} · ${new Date(r.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</option>`).join('')}</select>
+    return `${KT.directo.listHtml(D.live)}${H.length ? `<form class="m-form" id="rf"><div class="m-row"><select class="m-in" name="res" style="flex:1 1 240px" aria-label="Partida de mi historial">${H.map(r => `<option value="${esc(r.id)}">${esc(r.players[0].name)} ${r.players[0].total}–${r.players[1].total} ${esc(r.players[1].name)} · ${new Date(r.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</option>`).join('')}</select>
         <button class="icon-btn accent" type="submit"><i class="ti ti-trophy"></i> Publicar este resultado</button></div></form>` : '<p class="g-note">Cuando termines una partida, aparecerá aquí para publicarla en la comunidad.</p>'}
       ${R == null ? '<div class="m-empty">Cargando…</div>' : !st.length ? '<div class="m-empty"><i class="ti ti-swords" style="font-size:28px;display:block;margin-bottom:6px"></i>Todavía no hay partidas publicadas.</div>' : `
       <div class="m-sec"><i class="ti ti-trophy"></i> Clasificación</div>
@@ -171,7 +175,29 @@
       <div class="m-sec"><i class="ti ti-history"></i> Resultados <span>${list.length}</span></div>
       ${list.map(p => `<article class="q-post g-game" data-res="${p.id}"><header><small>${p.datos.date ? dia(p.datos.date) : fecha(p.creado)}${p.datos.crit ? ' · ' + esc(p.datos.crit) : ''} · publicado por ${esc(p.nombre)}</small></header>
         ${resHtml(p.datos)}
-        <footer class="g-acts"><button data-ra="share"><i class="ti ti-share"></i> Compartir</button>${p.mia || canAdmin() ? '<button data-ra="del" class="warn"><i class="ti ti-trash"></i> Borrar</button>' : ''}</footer></article>`).join('')}`}`;
+        <footer class="g-acts"><button data-ra="share"><i class="ti ti-share"></i> Compartir</button>${p.mia || canAdmin() ? '<button data-ra="del" class="warn"><i class="ti ti-trash"></i> Borrar</button>' : ''}</footer></article>`).join('')}`}${campsHtml()}`;
+  }
+
+  // ── Campañas compartidas por los miembros (solo lectura) ───
+  const CR = () => (window.CAMPANA?.rangos || [{ n: 'Recluta', xp: 0 }]);
+  const cRank = xp => { let k = 0; CR().forEach((r, i) => { if (xp >= r.xp) k = i; }); return CR()[k].n; };
+  function campsHtml() {
+    const C = D.camps; if (!C?.length) return '';
+    return `<div class="m-sec"><i class="ti ti-flag-3"></i> Campañas de los miembros <span>${C.length}</span></div><div class="m-grid">${C.map(c => {
+      const d = c.datos || {}, L = (d.log || []).filter(l => !l.spec), w = L.filter(l => l.res === 'w').length, dr = L.filter(l => l.res === 'd').length;
+      return `<button class="m-card" data-camp="${c.usuario}|${esc(c.id)}"><small>${esc(c.jugador)} · ${esc(FACTIONS[c.comando]?.name || c.comando)}</small><b>${esc(c.nombre)}</b><span>${L.length} partidas · ${w}-${dr}-${L.length - w - dr} · ${(d.ops || []).filter(o => o.st !== 'dead').length} operativos</span></button>`; }).join('')}</div>`;
+  }
+  function campModal(c) {
+    const d = c.datos || {}, f = FACTIONS[c.comando], L = (d.log || []).filter(l => !l.spec), ST = { ok: '', rec: 'En recuperación', dead: 'Caído' };
+    const nm = o => o.name || f?.ops.find(x => x.id === o.opId)?.name || o.opId;
+    KT.modal(`${esc(c.nombre)} · ${esc(c.jugador)}`, `<div class="g-camp">
+      <div class="m-kv"><div><b>${(d.ops || []).filter(o => o.st !== 'dead').length}</b><small>Operativos</small></div><div><b>${d.pr ?? 0}</b><small>Requisición</small></div><div><b>${L.length}</b><small>Partidas</small></div><div><b>${L.filter(l => l.res === 'w').length}-${L.filter(l => l.res === 'd').length}-${L.filter(l => l.res === 'l').length}</b><small>G-E-P</small></div></div>
+      <small class="g-note">${esc(f?.name || c.comando)} · actualizada el ${dia(c.actualizado)}. Solo lectura: la hoja la lleva ${esc(c.jugador)}.</small>
+      <div class="m-sec"><i class="ti ti-users-group"></i> Operativos</div>
+      ${[...(d.ops || [])].sort((a, b) => (a.st === 'dead') - (b.st === 'dead') || b.xp - a.xp).map(o => `<div class="g-cop${o.st === 'dead' ? ' dead' : ''}"><b>${esc(nm(o))}</b><span class="rk rk${Math.min(5, CR().findIndex(r => r.n === cRank(o.xp || 0)) + 1)}">${cRank(o.xp || 0)}</span><small>${o.xp || 0} XP · ${o.games || 0} partidas${ST[o.st] ? ' · ' + ST[o.st] : ''}</small>
+        ${(o.hon || []).length ? `<small class="hon"><i class="ti ti-award"></i> ${o.hon.map(h => esc(h.n)).join(' · ')}</small>` : ''}${(o.scar || []).length ? `<small class="scar"><i class="ti ti-bandage"></i> ${o.scar.map(h => esc(h.n)).join(' · ')}</small>` : ''}</div>`).join('') || '<p class="g-note">Sin operativos.</p>'}
+      ${L.length ? `<div class="m-sec"><i class="ti ti-history"></i> Últimas partidas</div>${L.slice(0, 8).map(l => `<div class="g-clog"><span class="${l.res}">${{ w: 'Victoria', d: 'Empate', l: 'Derrota' }[l.res] || ''}</span> ${l.vp ? l.vp[0] + '–' + l.vp[1] : ''} ${l.vs ? 'contra ' + esc(l.vs) : ''} <small>${l.date ? dia(l.date) : ''}</small></div>`).join('')}` : ''}
+    </div>`, 'flag-3');
   }
 
   // ── Galería ────────────────────────────────────────────────
@@ -209,7 +235,7 @@
         return `<div class="ad-row" data-mem="${m.usuario}">
           ${N.avatar(m.nombre, m.usuario, 'ad-av')}
           <div class="ad-who"><b>${esc(m.nombre)} ${role ? `<span class="acc-badge">${role}</span>` : ''}${me ? ' <span class="acc-badge">Tú</span>' : ''}</b>
-            <small>${rankChip(s, true)} ${s.pj} ${s.pj === 1 ? 'partida' : 'partidas'} · ${s.g} ${s.g === 1 ? 'victoria' : 'victorias'} · ${s.pts} puntos de rango · ${next}</small>
+            <small>${rankChip(s, true)} ${s.pj} ${s.pj === 1 ? 'partida' : 'partidas'} · ${s.g} ${s.g === 1 ? 'victoria' : 'victorias'} · ${s.pts} ${s.pts === 1 ? 'punto' : 'puntos'} de rango · ${next}</small>
             ${s.dist.length ? `<div class="g-dist">${s.dist.map(x => `<span class="g-medal" title="${TIPOS[x.tipo] || ''} · ${dia(x.fecha)}"><i class="ti ti-award"></i> ${esc(x.titulo)}${canAdmin() ? `<button data-ma="undist" data-id="${x.id}" aria-label="Quitar distinción">×</button>` : ''}</span>`).join('')}</div>` : ''}</div>
           <div class="ad-acts">
             ${canAdmin() ? '<button class="icon-btn" data-ma="dist" title="Dar una distinción por un torneo o evento ganado"><i class="ti ti-award"></i><span>Distinción</span></button>' : ''}
@@ -219,7 +245,7 @@
       }).join('')}</div>
       <div class="m-sec"><i class="ti ti-military-rank"></i> Rangos</div>
       <div class="g-ranks">${RANGOS.map(([min, n], i) => `<span class="rk rk${i} big">${n}</span><small>${min} puntos</small>`).join('')}</div>
-      <p class="g-note">Cada partida jugada en la comunidad da 1 punto de rango. Cada distinción (un torneo, liga o evento ganado, que conceden los administradores) da 5 puntos y una estrella.</p>`;
+      <p class="g-note">Cada partida jugada en la comunidad (publicada en Partidas o de una liga o torneo) da 1 punto de rango. Cada distinción (un torneo, liga o evento ganado, que conceden los administradores) da 5 puntos y una estrella.</p>`;
   }
   function distModal(m) {
     const today = new Date().toISOString().slice(0, 10);
@@ -285,10 +311,15 @@
 
   // ── Datos ──────────────────────────────────────────────────
   async function load() {
-    const [posts, gal, res, mem, dist] = await Promise.all([N.tablon(G.id), N.galeria(G.id), N.resultados(G.id), N.miembros(G.id), N.distinciones(G.id)]);
-    D = { posts, gal, res, mem, dist }; render();
+    const [posts, gal, res, mem, dist, ev, live, camps] = await Promise.all([N.tablon(G.id), N.galeria(G.id), N.resultados(G.id), N.miembros(G.id), N.distinciones(G.id), N.eventos(G.id), N.directos(G.id), N.campanas(G.id)]);
+    D = { posts, gal, res, mem, dist, ev, live, camps }; render();
   }
   function exit() { G = null; D = {}; replyTo = null; onHome?.(); }
+  // la lista «En directo» se refresca sola mientras se mira la pestaña Partidas
+  setInterval(async () => {
+    if (!G || tab !== 'partidas' || document.hidden || busy || app.contains(document.activeElement) && /SELECT|INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+    try { const g = G.id, live = await N.directos(g); if (!G || G.id !== g) return; const sig = l => JSON.stringify((l || []).filter(KT.directo.alive).map(x => [x.usuario, x.actualizado])); if (sig(live) !== sig(D.live)) { D.live = live; if (tab === 'partidas') render(); } } catch { /* sin conexión */ }
+  }, 20000);
 
   // ── Eventos ────────────────────────────────────────────────
   app.addEventListener('input', e => {
@@ -306,10 +337,13 @@
   });
   app.addEventListener('click', e => {
     if (!G) return;
-    const t = e.target.closest('[data-g], [data-gtab], [data-pa], [data-ra], [data-ma], [data-ph]'); if (!t) return;
+    const t = e.target.closest('[data-g], [data-gtab], [data-pa], [data-ra], [data-ma], [data-ph], [data-ev], [data-live], [data-camp]'); if (!t) return;
     const d = t.dataset;
-    if (d.gtab) { tab = d.gtab; replyTo = null; render(); return; }
+    if (d.gtab) { tab = d.gtab; replyTo = null; KT.eventos.reset(); render(); return; }
+    if (d.ev) { KT.eventos.click(t, { G, D, canAdmin: canAdmin(), run, load, render }); return; }
     if (d.ph) { const p = D.gal.find(x => x.id === d.ph); if (p) photoModal(p); return; }
+    if (d.live) { const x = (D.live || []).find(y => y.usuario === d.live); if (x) KT.directo.watch(G.id, x); return; }
+    if (d.camp) { const c = (D.camps || []).find(y => y.usuario + '|' + y.id === d.camp); if (c) campModal(c); return; }
     if (d.g) {
       e.preventDefault();
       if (d.g === 'home') exit();
@@ -361,7 +395,7 @@
 
   KT.grupo = {
     get active() { return !!G; },
-    open(g, home) { G = g; onHome = home; tab = 'tablon'; D = {}; replyTo = null; render(); run(load); },
+    open(g, home) { G = g; onHome = home; tab = 'tablon'; D = {}; replyTo = null; KT.eventos.reset(); render(); run(load); },
     close() { G = null; D = {}; },
     render,
   };

@@ -485,3 +485,203 @@ revoke execute on function public.es_admin_grupo(uuid), public.fijar_publicacion
   public.nuevo_codigo(uuid), public.cambiar_rol(uuid, uuid, text), public.expulsar(uuid, uuid) from public, anon;
 grant execute on function public.es_admin_grupo(uuid), public.fijar_publicacion(uuid, boolean), public.editar_grupo(uuid, text, text),
   public.nuevo_codigo(uuid), public.cambiar_rol(uuid, uuid, text), public.expulsar(uuid, uuid) to authenticated;
+
+-- ============================================================
+--  Comunidad · fase 2 (v5): eventos, asistencia y ligas/torneos
+--  · eventos      partida, quedada, liga, torneo o campaña con fecha y lugar; los crean los administradores
+--  · asistencias  voy / quizá / no puedo; en ligas y torneos «voy» es la inscripción
+--  · encuentros   partidas de una liga o torneo (emparejamientos y resultados)
+--  Al cerrar un evento con ganador se le concede una distinción automáticamente.
+-- ============================================================
+create table if not exists public.eventos (
+  id uuid primary key default gen_random_uuid(),
+  grupo uuid not null references public.grupos (id) on delete cascade,
+  creador uuid references auth.users (id) on delete set null,
+  tipo text not null check (tipo in ('partida', 'quedada', 'liga', 'torneo', 'campana')),
+  titulo text not null check (char_length(titulo) between 2 and 80),
+  descripcion text check (descripcion is null or char_length(descripcion) <= 1000),
+  lugar text check (lugar is null or char_length(lugar) <= 120),
+  inicio timestamptz not null,
+  fin timestamptz,
+  estado text not null default 'abierto' check (estado in ('abierto', 'cerrado')),
+  ganador uuid references auth.users (id) on delete set null,
+  creado timestamptz not null default now()
+);
+create index if not exists eventos_grupo_idx on public.eventos (grupo, inicio);
+
+create table if not exists public.asistencias (
+  evento uuid not null references public.eventos (id) on delete cascade,
+  usuario uuid not null references auth.users (id) on delete cascade,
+  estado text not null check (estado in ('voy', 'quiza', 'no')),
+  actualizado timestamptz not null default now(),
+  primary key (evento, usuario)
+);
+
+create table if not exists public.encuentros (
+  id uuid primary key default gen_random_uuid(),
+  evento uuid not null references public.eventos (id) on delete cascade,
+  ronda int check (ronda is null or ronda between 1 and 99),
+  a uuid not null references auth.users (id) on delete cascade,
+  b uuid not null references auth.users (id) on delete cascade,
+  pa int check (pa is null or pa between 0 and 99),
+  pb int check (pb is null or pb between 0 and 99),
+  jugado timestamptz,
+  registrado_por uuid references auth.users (id) on delete set null,
+  creado timestamptz not null default now(),
+  check (a <> b),
+  check ((pa is null) = (pb is null))
+);
+create index if not exists encuentros_evento_idx on public.encuentros (evento);
+
+alter table public.distinciones add column if not exists evento uuid references public.eventos (id) on delete cascade;
+
+create or replace function public.grupo_de_evento(e uuid) returns uuid
+  language sql stable security definer set search_path = public as
+$$ select grupo from public.eventos where id = e $$;
+
+-- Reglas de los encuentros que no caben en una política
+create or replace function public.reglas_encuentro() returns trigger
+  language plpgsql security definer set search_path = public as
+$$
+declare ev public.eventos; adm boolean;
+begin
+  if auth.uid() is null then return new; end if;
+  select * into ev from public.eventos where id = new.evento;
+  if ev.id is null then raise exception 'El evento no existe'; end if;
+  if ev.tipo not in ('liga', 'torneo', 'campana') then raise exception 'Solo las ligas, torneos y campañas tienen partidas'; end if;
+  adm := public.es_admin_grupo(ev.grupo);
+  if ev.estado <> 'abierto' and not adm then raise exception 'El evento está cerrado'; end if;
+  if tg_op = 'UPDATE' and not adm then
+    if new.a <> old.a or new.b <> old.b or new.evento <> old.evento then raise exception 'No se pueden cambiar los jugadores de la partida'; end if;
+  end if;
+  if not adm and auth.uid() not in (new.a, new.b) then raise exception 'Solo los jugadores de la partida pueden apuntar su resultado'; end if;
+  if (select count(*) from public.asistencias s where s.evento = new.evento and s.estado = 'voy' and s.usuario in (new.a, new.b)) < 2 then
+    raise exception 'Los dos jugadores tienen que estar inscritos en el evento';
+  end if;
+  if new.pa is not null then new.jugado := coalesce(new.jugado, now()); new.registrado_por := auth.uid(); else new.jugado := null; end if;
+  return new;
+end $$;
+drop trigger if exists encuentros_reglas on public.encuentros;
+create trigger encuentros_reglas before insert or update on public.encuentros for each row execute function public.reglas_encuentro();
+
+-- Cerrar un evento y, si hay ganador, concederle la distinción
+create or replace function public.cerrar_evento(e uuid, g uuid, t text) returns void
+  language plpgsql security definer set search_path = public as
+$$
+declare ev public.eventos;
+begin
+  select * into ev from public.eventos where id = e;
+  if ev.id is null then raise exception 'El evento no existe'; end if;
+  if not public.es_admin_grupo(ev.grupo) then raise exception 'Solo los administradores pueden cerrar eventos'; end if;
+  if g is not null and not exists (select 1 from public.miembros m where m.grupo = ev.grupo and m.usuario = g) then raise exception 'El ganador tiene que ser miembro de la comunidad'; end if;
+  update public.eventos set estado = 'cerrado', ganador = g where id = e;
+  delete from public.distinciones where evento = e;
+  if g is not null then
+    insert into public.distinciones (grupo, usuario, titulo, tipo, fecha, otorgada_por, evento)
+    values (ev.grupo, g, left(coalesce(nullif(trim(t), ''), 'Ganador: ' || ev.titulo), 60),
+            case ev.tipo when 'liga' then 'liga' when 'torneo' then 'torneo' when 'campana' then 'campana' else 'evento' end,
+            current_date, auth.uid(), e);
+  end if;
+end $$;
+
+create or replace function public.reabrir_evento(e uuid) returns void
+  language plpgsql security definer set search_path = public as
+$$
+declare g uuid;
+begin
+  select grupo into g from public.eventos where id = e;
+  if g is null then raise exception 'El evento no existe'; end if;
+  if not public.es_admin_grupo(g) then raise exception 'Solo los administradores pueden reabrir eventos'; end if;
+  update public.eventos set estado = 'abierto', ganador = null where id = e;
+  delete from public.distinciones where evento = e;
+end $$;
+
+alter table public.eventos     enable row level security;
+alter table public.asistencias enable row level security;
+alter table public.encuentros  enable row level security;
+
+drop policy if exists eventos_ver on public.eventos;
+create policy eventos_ver on public.eventos for select to authenticated using (public.es_miembro(grupo) or public.es_admin());
+drop policy if exists eventos_crear on public.eventos;
+create policy eventos_crear on public.eventos for insert to authenticated
+  with check (public.es_admin_grupo(grupo) and creador = auth.uid() and estado = 'abierto' and ganador is null);
+drop policy if exists eventos_editar on public.eventos;
+create policy eventos_editar on public.eventos for update to authenticated using (public.es_admin_grupo(grupo)) with check (public.es_admin_grupo(grupo));
+drop policy if exists eventos_borrar on public.eventos;
+create policy eventos_borrar on public.eventos for delete to authenticated using (public.es_admin_grupo(grupo));
+
+drop policy if exists asistencias_ver on public.asistencias;
+create policy asistencias_ver on public.asistencias for select to authenticated using (public.es_miembro(public.grupo_de_evento(evento)) or public.es_admin());
+drop policy if exists asistencias_poner on public.asistencias;
+create policy asistencias_poner on public.asistencias for insert to authenticated
+  with check (usuario = auth.uid() and public.es_miembro(public.grupo_de_evento(evento)));
+drop policy if exists asistencias_cambiar on public.asistencias;
+create policy asistencias_cambiar on public.asistencias for update to authenticated using (usuario = auth.uid()) with check (usuario = auth.uid());
+drop policy if exists asistencias_quitar on public.asistencias;
+create policy asistencias_quitar on public.asistencias for delete to authenticated
+  using (usuario = auth.uid() or public.es_admin_grupo(public.grupo_de_evento(evento)));
+
+-- el resto de comprobaciones de los encuentros están en reglas_encuentro()
+drop policy if exists encuentros_ver on public.encuentros;
+create policy encuentros_ver on public.encuentros for select to authenticated using (public.es_miembro(public.grupo_de_evento(evento)) or public.es_admin());
+drop policy if exists encuentros_crear on public.encuentros;
+create policy encuentros_crear on public.encuentros for insert to authenticated with check (public.es_miembro(public.grupo_de_evento(evento)) or public.es_admin());
+drop policy if exists encuentros_editar on public.encuentros;
+create policy encuentros_editar on public.encuentros for update to authenticated
+  using (public.es_miembro(public.grupo_de_evento(evento)) or public.es_admin()) with check (true);
+drop policy if exists encuentros_borrar on public.encuentros;
+create policy encuentros_borrar on public.encuentros for delete to authenticated using (public.es_admin_grupo(public.grupo_de_evento(evento)));
+
+grant select, insert, update, delete on public.eventos, public.asistencias, public.encuentros to authenticated;
+revoke execute on function public.reglas_encuentro() from public, anon, authenticated;
+revoke execute on function public.grupo_de_evento(uuid), public.cerrar_evento(uuid, uuid, text), public.reabrir_evento(uuid) from public, anon;
+grant execute on function public.grupo_de_evento(uuid), public.cerrar_evento(uuid, uuid, text), public.reabrir_evento(uuid) to authenticated;
+
+-- ============================================================
+--  Comunidad · fase 3 (v6): partidas en directo y campañas compartidas
+--  · directos  marcador de la partida en curso de un miembro, solo si él lo activa. Un registro por jugador y comunidad
+--  · campanas  copia de solo lectura de la hoja de campaña que un miembro comparte con su comunidad
+-- ============================================================
+create table if not exists public.directos (
+  usuario uuid not null references auth.users (id) on delete cascade,
+  grupo uuid not null references public.grupos (id) on delete cascade,
+  datos jsonb not null check (pg_column_size(datos) < 20000),
+  video text check (video is null or char_length(video) <= 300),
+  actualizado timestamptz not null default now(),
+  primary key (usuario, grupo)
+);
+
+create table if not exists public.campanas (
+  usuario uuid not null references auth.users (id) on delete cascade,
+  id text not null check (char_length(id) <= 40),
+  grupo uuid not null references public.grupos (id) on delete cascade,
+  nombre text not null check (char_length(nombre) between 1 and 80),
+  comando text not null check (char_length(comando) <= 60),
+  datos jsonb not null check (pg_column_size(datos) < 200000),
+  actualizado timestamptz not null default now(),
+  primary key (usuario, id, grupo)
+);
+create index if not exists campanas_grupo_idx on public.campanas (grupo);
+
+alter table public.directos enable row level security;
+alter table public.campanas enable row level security;
+
+drop policy if exists directos_ver on public.directos;
+create policy directos_ver on public.directos for select to authenticated using (public.es_miembro(grupo) or public.es_admin());
+drop policy if exists directos_publicar on public.directos;
+create policy directos_publicar on public.directos for insert to authenticated with check (usuario = auth.uid() and public.es_miembro(grupo));
+drop policy if exists directos_actualizar on public.directos;
+create policy directos_actualizar on public.directos for update to authenticated using (usuario = auth.uid()) with check (usuario = auth.uid() and public.es_miembro(grupo));
+drop policy if exists directos_quitar on public.directos;
+create policy directos_quitar on public.directos for delete to authenticated using (usuario = auth.uid() or public.es_admin_grupo(grupo));
+
+drop policy if exists campanas_ver on public.campanas;
+create policy campanas_ver on public.campanas for select to authenticated using (public.es_miembro(grupo) or public.es_admin());
+drop policy if exists campanas_publicar on public.campanas;
+create policy campanas_publicar on public.campanas for insert to authenticated with check (usuario = auth.uid() and public.es_miembro(grupo));
+drop policy if exists campanas_actualizar on public.campanas;
+create policy campanas_actualizar on public.campanas for update to authenticated using (usuario = auth.uid()) with check (usuario = auth.uid() and public.es_miembro(grupo));
+drop policy if exists campanas_quitar on public.campanas;
+create policy campanas_quitar on public.campanas for delete to authenticated using (usuario = auth.uid() or public.es_admin_grupo(grupo));
+
+grant select, insert, update, delete on public.directos, public.campanas to authenticated;

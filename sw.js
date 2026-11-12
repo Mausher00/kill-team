@@ -2,7 +2,7 @@
 //  sw.js — Service worker: la app funciona sin conexión.
 //  GENERADO por herramientas/pwa/generar_sw.py — no editar a mano.
 // ============================================================
-const VERSION = '1574e8f895';
+const VERSION = 'd709ffc372';
 const CORE = [
 "index.html",
 "builder.html",
@@ -54,7 +54,9 @@ const CORE = [
 "js/data/universal_equipment.js",
 "js/data/vespid.js",
 "js/data/zonas.js",
+"js/directo.js",
 "js/dual.js",
+"js/eventos.js",
 "js/grupo.js",
 "js/nube.js",
 "js/partida.js",
@@ -63,14 +65,14 @@ const CORE = [
 "js/usuarios.js",
 "js/vendor/qrcode.js",
 "js/vendor/supabase.js",
-"recursos/d-din/D-DIN-Bold.otf",
-"recursos/d-din/D-DIN-Italic.otf",
-"recursos/d-din/D-DIN.otf",
-"recursos/d-din/D-DINCondensed-Bold.otf",
-"recursos/d-din/D-DINCondensed.otf",
-"recursos/d-din/D-DINExp-Bold.otf",
-"recursos/d-din/D-DINExp-Italic.otf",
-"recursos/d-din/D-DINExp.otf",
+"recursos/d-din/d-din-bold.otf",
+"recursos/d-din/d-din-italic.otf",
+"recursos/d-din/d-din.otf",
+"recursos/d-din/d-dincondensed-bold.otf",
+"recursos/d-din/d-dincondensed.otf",
+"recursos/d-din/d-dinexp-bold.otf",
+"recursos/d-din/d-dinexp-italic.otf",
+"recursos/d-din/d-dinexp.otf",
 "recursos/iconos/tabler-icons.woff2",
 "imagenes/app/apple-touch-icon.png",
 "imagenes/app/icono-192.png",

@@ -337,6 +337,90 @@
       const { error } = await sb.from('distinciones').insert(row); fail(error, 'No se pudo dar la distinción');
     },
     async quitarDistincion(id) { need(); const { error } = await sb.from('distinciones').delete().eq('id', id); fail(error); },
+
+    // ── Eventos de la comunidad (calendario, ligas y torneos) ──
+    // Cada evento vuelve con sus asistencias y sus encuentros (partidas de liga o torneo)
+    async eventos(grupo) {
+      need();
+      const ev = await sb.from('eventos').select('*').eq('grupo', grupo).order('inicio');
+      if (ev.error && /does not exist|schema cache|could not find/i.test(ev.error.message)) return [];   // servidor sin actualizar
+      fail(ev.error, 'No se pudieron leer los eventos');
+      const ids = (ev.data || []).map(e => e.id);
+      let as = [], en = [];
+      if (ids.length) {
+        const [a, b] = await Promise.all([sb.from('asistencias').select('evento,usuario,estado').in('evento', ids), sb.from('encuentros').select('*').in('evento', ids).order('creado')]);
+        fail(a.error); fail(b.error); as = a.data || []; en = b.data || [];
+      }
+      return (ev.data || []).map(e => ({ ...e, asistencias: as.filter(x => x.evento === e.id), encuentros: en.filter(x => x.evento === e.id) }));
+    },
+    async guardarEvento(grupo, ev, id) {
+      const me = need();
+      const row = { tipo: ev.tipo, titulo: String(ev.titulo || '').trim(), descripcion: String(ev.descripcion || '').trim().slice(0, 1000) || null, lugar: String(ev.lugar || '').trim().slice(0, 120) || null, inicio: ev.inicio, fin: ev.fin || null };
+      if (row.titulo.length < 2 || row.titulo.length > 80) throw new Error('El título debe tener entre 2 y 80 caracteres');
+      if (!row.inicio) throw new Error('Pon la fecha del evento');
+      if (row.fin && row.fin < row.inicio) throw new Error('La fecha de fin no puede ser anterior al inicio');
+      const q = id ? sb.from('eventos').update(row).eq('id', id) : sb.from('eventos').insert({ ...row, grupo, creador: me });
+      const { error } = await q; fail(error, 'No se pudo guardar el evento');
+    },
+    async borrarEvento(id) { need(); const { error } = await sb.from('eventos').delete().eq('id', id); fail(error); },
+    // estado: 'voy' | 'quiza' | 'no' | null (quitar)
+    async asistir(evento, estado) {
+      const me = need();
+      const q = estado ? sb.from('asistencias').upsert({ evento, usuario: me, estado, actualizado: new Date().toISOString() }, { onConflict: 'evento,usuario' })
+        : sb.from('asistencias').delete().eq('evento', evento).eq('usuario', me);
+      const { error } = await q; fail(error);
+    },
+    async guardarEncuentro(x) {
+      need();
+      const sc = v => v === '' || v == null ? null : Math.max(0, Math.min(99, parseInt(v, 10) || 0));
+      const pa = sc(x.pa), pb = sc(x.pb);
+      if ((pa == null) !== (pb == null)) throw new Error('Pon los dos marcadores');
+      const q = x.id ? sb.from('encuentros').update({ pa, pb }).eq('id', x.id) : sb.from('encuentros').insert({ evento: x.evento, a: x.a, b: x.b, pa, pb, ronda: x.ronda || null });
+      const { error } = await q; fail(error, 'No se pudo guardar la partida');
+    },
+    async crearEncuentros(rows) { need(); if (!rows.length) return; const { error } = await sb.from('encuentros').insert(rows); fail(error, 'No se pudieron crear los emparejamientos'); },
+    async borrarEncuentro(id) { need(); const { error } = await sb.from('encuentros').delete().eq('id', id); fail(error); },
+    async cerrarEvento(id, ganador, titulo) { need(); const { error } = await sb.rpc('cerrar_evento', { e: id, g: ganador || null, t: titulo || null }); fail(error); },
+    async reabrirEvento(id) { need(); const { error } = await sb.rpc('reabrir_evento', { e: id }); fail(error); },
+
+    // ── Partidas en directo (solo si el jugador lo activa) ────
+    async publicarDirecto(grupos, datos, video) {
+      const me = need(); if (!grupos.length) return;
+      const now = new Date().toISOString();
+      const { error } = await sb.from('directos').upsert(grupos.map(g => ({ usuario: me, grupo: g, datos, video: video || null, actualizado: now })), { onConflict: 'usuario,grupo' });
+      fail(error, 'No se pudo publicar la partida');
+    },
+    async quitarDirecto() { const me = need(); const { error } = await sb.from('directos').delete().eq('usuario', me); fail(error); },
+    async directos(grupo) {
+      need();
+      const { data, error } = await sb.from('directos').select('usuario,datos,video,actualizado').eq('grupo', grupo).order('actualizado', { ascending: false });
+      if (error && /does not exist|schema cache|could not find/i.test(error.message)) return [];
+      fail(error);
+      const nm = await N.nombres((data || []).map(x => x.usuario));
+      return (data || []).map(x => ({ ...x, nombre: nm[x.usuario] || '¿?', mia: x.usuario === uid() }));
+    },
+
+    // ── Campañas compartidas (copia de solo lectura) ──────────
+    // list: campañas locales; se suben las que llevan `compartida` y se retiran las que ya no
+    async sincronizarCampanas(list) {
+      const me = need();
+      const mine = await sb.from('campanas').select('id,grupo').eq('usuario', me);
+      if (mine.error && /does not exist|schema cache|could not find/i.test(mine.error.message)) throw new Error('Falta actualizar el servidor: vuelve a ejecutar esquema.sql en Supabase');
+      fail(mine.error);
+      const want = [], now = new Date().toISOString();
+      list.forEach(c => (c.compartida || []).forEach(g => { const d = { ...c }; delete d.compartida; delete d.owner; want.push({ usuario: me, id: c.id, grupo: g, nombre: String(c.name || 'Campaña').slice(0, 80), comando: c.factionId, datos: d, actualizado: now }); }));
+      for (const r of (mine.data || []).filter(r => !want.some(w => w.id === r.id && w.grupo === r.grupo))) await sb.from('campanas').delete().eq('usuario', me).eq('id', r.id).eq('grupo', r.grupo);
+      if (want.length) { const { error } = await sb.from('campanas').upsert(want, { onConflict: 'usuario,id,grupo' }); fail(error, 'No se pudo compartir la campaña'); }
+      return want.length;
+    },
+    async campanas(grupo) {
+      need();
+      const { data, error } = await sb.from('campanas').select('usuario,id,nombre,comando,datos,actualizado').eq('grupo', grupo).order('actualizado', { ascending: false });
+      if (error && /does not exist|schema cache|could not find/i.test(error.message)) return [];
+      fail(error);
+      const nm = await N.nombres((data || []).map(x => x.usuario));
+      return (data || []).map(x => ({ ...x, jugador: nm[x.usuario] || '¿?', mia: x.usuario === uid() }));
+    },
   };
 
   // Perfil público: se crea al registrarse (o en el primer inicio si hubo que confirmar el correo)

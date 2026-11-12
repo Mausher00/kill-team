@@ -10,7 +10,11 @@
   const $ = s => document.querySelector(s), esc = KT.esc, R = window.CAMPANA;
   const KEY = 'campanas';
   const load = () => KT.store.get(KEY, []) || [];
-  const saveAll = l => KT.store.set(KEY, l);
+  // Las campañas con `compartida: [comunidades]` se copian al servidor (solo lectura para los demás)
+  let tSync = null;
+  const cloudOn = () => !!(KT.nube?.on && KT.user.current()?.nube);
+  const syncCloud = (quiet = true) => { if (!cloudOn()) return; clearTimeout(tSync); tSync = setTimeout(() => KT.nube.ready().then(() => KT.nube.user && KT.nube.sincronizarCampanas(load())).then(n => { if (!quiet && n != null) KT.toast(n ? 'Campaña compartida con tu comunidad' : 'La campaña ya no se comparte', { type: 'ok' }); }).catch(e => { if (!quiet) KT.toast(esc(e.message), { type: 'err', ms: 6000 }); }), quiet ? 2500 : 0); };
+  const saveAll = l => { KT.store.set(KEY, l); if (l.some(c => c.compartida?.length) || tSync) syncCloud(); };
   const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
   const d6 = () => 1 + Math.floor(Math.random() * 6);
   const rankOf = xp => { let k = 0; R.rangos.forEach((r, i) => { if (xp >= r.xp) k = i; }); return k; };
@@ -20,6 +24,21 @@
   const withC = fn => { const list = load(), C = list.find(x => x.id === cur); if (!C) return; fn(C); saveAll(list); render(); };
   const opName = (C, o) => o.name || FACTIONS[C.factionId]?.ops.find(x => x.id === o.opId)?.name || o.opId;
   const cardOf = (C, o) => FACTIONS[C.factionId]?.ops.find(x => x.id === o.opId);
+
+  function shareModal(C) {
+    if (!cloudOn()) { KT.toast('Entra con tu cuenta online para compartir la campaña', { type: 'err' }); KT.user.open(); return; }
+    const close = KT.modal('Compartir campaña', '<div class="acc acc-load"><i class="ti ti-loader-2"></i> Cargando tus comunidades…</div>', 'users-group');
+    const box = document.querySelector('.cmdk-back.on:last-of-type .cmdk-list');
+    KT.nube.ready().then(() => KT.nube.grupos()).then(gs => {
+      const G = gs.filter(g => g.rol !== 'externo'); if (!box.isConnected) return;
+      box.innerHTML = G.length ? `<form class="acc-form" id="shf" style="padding:6px 4px"><label>Visible para <small class="acc-hint">Los miembros verán la hoja de datos (operativos, rangos, honores, cicatrices y partidas) sin poder cambiarla. Se actualiza sola cuando la modificas.</small></label>
+        ${G.map(g => `<label class="lv-g"><input type="checkbox" name="g" value="${g.id}" ${C.compartida?.includes(g.id) ? 'checked' : ''}> <span>${esc(g.nombre)}</span></label>`).join('')}
+        <button class="icon-btn accent" type="submit"><i class="ti ti-device-floppy"></i> Guardar</button></form>` : '<div class="usr"><p class="usr-note">Todavía no estás en ninguna comunidad. Crea una o únete con un código en la sección Comunidad.</p></div>';
+      box.querySelector('#shf')?.addEventListener('submit', e => { e.preventDefault(); const ids = new FormData(e.target).getAll('g'); close();
+        const list = load(), c = list.find(x => x.id === C.id); if (!c) return; if (ids.length) c.compartida = ids; else delete c.compartida;
+        KT.store.set(KEY, list); syncCloud(false); render(); });
+    }).catch(e => { close(); KT.toast(esc(e.message), { type: 'err' }); });
+  }
 
   function render() {
     const list = load(), C = cur && list.find(x => x.id === cur);
@@ -156,7 +175,7 @@
         <button class="back" data-a="home"><i class="ti ti-arrow-left"></i> Campañas</button>
         <h1>${esc(C.name)}</h1>
         <p>${esc(f?.name || C.factionId)}${C.owner ? ' · ' + esc(KT.user.byId(C.owner)?.name || '') : ''}</p>
-        <div class="row"><button class="icon-btn" data-a="rename"><i class="ti ti-pencil"></i> Renombrar</button><button class="icon-btn" data-a="export"><i class="ti ti-download"></i> Exportar</button><button class="icon-btn" data-a="delc" style="color:#f07070"><i class="ti ti-trash"></i> Borrar</button></div>
+        <div class="row"><button class="icon-btn" data-a="rename"><i class="ti ti-pencil"></i> Renombrar</button><button class="icon-btn" data-a="export"><i class="ti ti-download"></i> Exportar</button>${KT.nube?.on ? `<button class="icon-btn ${C.compartida?.length ? 'accent' : ''}" data-a="sharec"><i class="ti ti-users-group"></i> ${C.compartida?.length ? 'Compartida' : 'Compartir en comunidad'}</button>` : ''}<button class="icon-btn" data-a="delc" style="color:#f07070"><i class="ti ti-trash"></i> Borrar</button></div>
       </header>
       <div class="m-tabs">${tabs.map(([k, v]) => `<button class="${tab === k ? 'on' : ''}" data-tab="${k}">${v}</button>`).join('')}</div>${body}`;
   }
@@ -301,7 +320,9 @@
     else if (d.a === 'rmlog') withC(C2 => { C2.log = C2.log.filter(l => l.id !== d.id); });
     else if (d.a === 'rename') { const v = prompt('Nombre de la campaña', C.name); if (v && v.trim()) withC(C2 => { C2.name = v.trim().slice(0, 40); }); }
     else if (d.a === 'export') { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(C, null, 1)], { type: 'application/json' })); a.download = KT.norm(C.name).replace(/[^a-z0-9]+/g, '-') + '.ktcampana.json'; a.click(); }
-    else if (d.a === 'delc') { if (confirm(`¿Borrar la campaña «${C.name}»?`)) { saveAll(load().filter(x => x.id !== C.id)); cur = null; render(); } }
+    else if (d.a === 'sharec') shareModal(C);
+    else if (d.a === 'delc' && C.compartida?.length && !confirm(`«${C.name}» está compartida con tu comunidad. Al borrarla también desaparece de allí. ¿Continuar?`)) return;
+    else if (d.a === 'delc') { if (confirm(`¿Borrar la campaña «${C.name}»?`)) { const had = C.compartida?.length; saveAll(load().filter(x => x.id !== C.id)); if (had) syncCloud(); cur = null; render(); } }
   });
   document.addEventListener('kt:user', () => { if (!cur) render(); });
   if (location.hash.length > 1) cur = location.hash.slice(1);

@@ -73,6 +73,7 @@ function commit(fn, opts = {}) {
     save();
     Net.ops('S', ops);
     if (S.ended) saveHistory();
+    window.KT?.directo?.push();                 // marcador en directo para la comunidad (solo si el jugador lo activó)
   }
   if (opts.render !== false) render(opts.only);
   syncUndo();
@@ -154,6 +155,21 @@ function scoreOf(i) {
   const by = { crit: P.score.crit, kill: k.grade + bonus, tac: P.score.tac };
   const prim = S.ended && P.prim ? Math.ceil(by[P.prim] / 2) : 0;
   return { ...by, bonus, prim, k, total: by.crit + by.kill + by.tac + prim };
+}
+
+// Resumen de la partida para los espectadores de la comunidad (directo.js)
+function liveSnap() {
+  if (!S?.started) return null;
+  const g = geom(), c = critOf(S.crit), sc = [scoreOf(0), scoreOf(1)];
+  return {
+    gid: S.gid, tp: S.tp, ended: !!S.ended, ini: S.ini ?? null,
+    zone: g?.z.name || zoneOf(S.zone)?.name || '', map: g?.m.label || '', img: g?.m.img || '', crit: c ? `${c.n} · ${c.name}` : '',
+    players: S.players.map((P, i) => ({
+      name: pname(i), faction: P.factionId, title: P.title || '', cp: P.cp ?? 0, total: sc[i].total,
+      vp: { crit: sc[i].crit, kill: sc[i].kill, tac: sc[i].tac, prim: sc[i].prim }, tp: tpTotals(i),
+      ops: P.ops.length, lost: P.ops.filter(o => o.w <= 0).length,
+    })),
+  };
 }
 
 // ── Historial de partidas (kt.historial) ─────────────────────
@@ -601,6 +617,7 @@ function optBody() {
     <h4>Vista</h4>
     <div class="g-row"><button class="icon-btn" data-optact="view"><i class="ti ti-${isCompact() ? 'layout-board-split' : 'layout-list'}"></i> ${isCompact() ? 'Vista completa' : 'Vista reducida (marcador)'}</button>
       <button class="icon-btn" data-optact="fs"><i class="ti ti-maximize"></i> Pantalla completa</button></div>
+    ${window.KT?.directo ? KT.directo.optHtml() : ''}
     <h4>Partida</h4>
     <div class="g-row"><button class="icon-btn" data-optact="restart"><i class="ti ti-refresh"></i> Reiniciar</button><button class="icon-btn" data-optact="new"><i class="ti ti-plus"></i> Nueva partida</button>
       <button class="icon-btn" data-optact="end"><i class="ti ti-flag"></i> Fin de partida</button><button class="icon-btn" data-optact="help"><i class="ti ti-help"></i> Ayuda</button></div>
@@ -1598,7 +1615,7 @@ function renderWizard() {
   const ok = stepOk(n), last = n === STEPS.length - 1;
   let right;
   if (!last) right = `<button class="icon-btn accent ripple" data-next ${ok ? '' : 'disabled'} style="height:38px;padding:0 18px;font-size:13px">Siguiente <i class="ti ti-chevron-right"></i></button>`;
-  else if (!isDual()) right = `<button class="icon-btn accent ripple" data-finish ${ok ? '' : 'disabled'} style="height:38px;padding:0 18px;font-size:13px"><i class="ti ti-swords"></i> ¡A la batalla!</button>`;
+  else if (!isDual()) right = (window.KT?.directo ? KT.directo.setupBtn() : '') + `<button class="icon-btn accent ripple" data-finish ${ok ? '' : 'disabled'} style="height:38px;padding:0 18px;font-size:13px"><i class="ti ti-swords"></i> ¡A la batalla!</button>`;
   else {
     const me = draft.ready[SEAT], other = draft.ready[1 - SEAT];
     right = `<span class="g-readys"><span class="${draft.ready[0] ? 'on' : ''}">${esc(pname(0))}</span><span class="${draft.ready[1] ? 'on' : ''}">${esc(pname(1))}</span></span>
