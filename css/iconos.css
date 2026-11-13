@@ -1,4 +1,4 @@
-/* Tabler Icons 3.48.0 (MIT) — subconjunto generado por herramientas/iconos/subset.py (192 iconos) */
+/* Tabler Icons 3.48.0 (MIT) — subconjunto generado por herramientas/iconos/subset.py (194 iconos) */
 @font-face { font-family: "tabler-icons"; font-style: normal; font-weight: 400; font-display: block;
   src: url("../recursos/iconos/tabler-icons.woff2") format("woff2"); }
 .ti { font-family: "tabler-icons" !important; speak: none; font-style: normal; font-weight: normal; font-variant: normal;
@@ -80,6 +80,7 @@
 .ti-flag-3:before { content: "\ee8d"; }
 .ti-flag-check:before { content: "\fb8c"; }
 .ti-flame:before { content: "\ec2c"; }
+.ti-focus:before { content: "\eb8d"; }
 .ti-fold:before { content: "\ed56"; }
 .ti-fold-down:before { content: "\ed54"; }
 .ti-folder-open:before { content: "\faf7"; }
@@ -186,6 +187,7 @@
 .ti-user-circle:before { content: "\ef68"; }
 .ti-user-minus:before { content: "\eb4a"; }
 .ti-user-plus:before { content: "\eb4b"; }
+.ti-user-question:before { content: "\f7cf"; }
 .ti-user-shield:before { content: "\f7d0"; }
 .ti-users:before { content: "\ebf2"; }
 .ti-users-group:before { content: "\fa21"; }

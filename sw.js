@@ -2,7 +2,7 @@
 //  sw.js — Service worker: la app funciona sin conexión.
 //  GENERADO por herramientas/pwa/generar_sw.py — no editar a mano.
 // ============================================================
-const VERSION = 'd709ffc372';
+const VERSION = 'ad0e39aee6';
 const CORE = [
 "index.html",
 "builder.html",
@@ -15,6 +15,7 @@ const CORE = [
 "admin.html",
 "misiones/misiones.html",
 "manifest.webmanifest",
+"css/comunidad.css",
 "css/fonts.css",
 "css/fx.css",
 "css/iconos.css",

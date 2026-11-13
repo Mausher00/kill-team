@@ -175,14 +175,17 @@
   KT.eventos = {
     reset() { sel = null; view = 'lista'; month = new Date(); },
     count: D => (D.ev || []).filter(upcoming).length,
+    open(id) { sel = id; },
+    nuevo(c) { ctx = c; if (c.canAdmin) eventModal(null); },
     html(c) {
       ctx = c; const E = c.D.ev;
-      if (E == null) return '<div class="m-empty">Cargando…</div>';
+      if (E == null) return '<div class="g-card sk" role="status" aria-label="Cargando"></div>';
       const e = sel && E.find(x => x.id === sel); if (e) return detail(e); sel = null;
       const up = E.filter(upcoming), past = E.filter(x => !upcoming(x)).reverse();
-      return `<div class="m-row e-bar"><div class="e-seg"><button class="${view === 'lista' ? 'on' : ''}" data-ev="view" data-v="lista"><i class="ti ti-list"></i> Lista</button><button class="${view === 'mes' ? 'on' : ''}" data-ev="view" data-v="mes"><i class="ti ti-calendar-month"></i> Mes</button></div>
+      return `<div class="m-row e-bar"><div class="e-seg" role="group" aria-label="Vista del calendario"><button class="${view === 'lista' ? 'on' : ''}" aria-pressed="${view === 'lista'}" data-ev="view" data-v="lista"><i class="ti ti-list"></i> Lista</button><button class="${view === 'mes' ? 'on' : ''}" aria-pressed="${view === 'mes'}" data-ev="view" data-v="mes"><i class="ti ti-calendar-month"></i> Mes</button></div>
           <span style="flex:1"></span>${c.canAdmin ? '<button class="icon-btn accent" data-ev="new"><i class="ti ti-calendar-plus"></i> Nuevo evento</button>' : ''}</div>
-        ${view === 'mes' ? monthHtml(E) : !E.length ? `<div class="m-empty"><i class="ti ti-calendar-event" style="font-size:28px;display:block;margin-bottom:6px"></i>No hay eventos. ${c.canAdmin ? 'Crea una quedada, una liga o un torneo con «Nuevo evento».' : 'Los administradores pueden crear quedadas, ligas y torneos.'}</div>`
+        ${view === 'mes' ? monthHtml(E) : !E.length ? KT.grupo.empty('calendar-event', 'El calendario está vacío', c.canAdmin ? 'Convoca una quedada para saber quién va, o monta una liga, un torneo o una campaña con inscripción, emparejamientos y clasificación. Quien gane recibe una distinción que sube su rango.' : 'Aquí aparecerán las quedadas, ligas, torneos y campañas que convoquen los administradores. Podrás apuntarte y añadirlas a tu calendario.',
+            c.canAdmin ? '<button class="icon-btn accent" data-ev="new"><i class="ti ti-calendar-plus" aria-hidden="true"></i> Crear el primer evento</button>' : '')
           : `${up.length ? `<div class="m-sec"><i class="ti ti-calendar-event"></i> Próximos y en curso <span>${up.length}</span></div>${up.map(card).join('')}` : '<p class="g-note">No hay eventos próximos.</p>'}
              ${past.length ? `<details class="e-past"><summary><i class="ti ti-history"></i> Pasados <span>${past.length}</span></summary>${past.map(card).join('')}</details>` : ''}`}`;
     },

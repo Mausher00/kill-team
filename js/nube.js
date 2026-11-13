@@ -245,13 +245,14 @@
     // Cada comunidad lleva `rol`: 'fundador' | 'admin' | 'miembro' | 'externo' (administrador de la app que no es miembro)
     async grupos() {
       const me = need();
+      // «miembros» solo deja ver los de las comunidades propias: sirve para contar cuántos hay en cada una
       const [g, m] = await Promise.all([
         sb.from('grupos').select('*').order('creado'),
-        sb.from('miembros').select('grupo,rol').eq('usuario', me),
+        sb.from('miembros').select('grupo,usuario,rol'),
       ]);
       fail(g.error, 'No se pudieron leer las comunidades');
-      const mine = {}; (m.data || []).forEach(x => { mine[x.grupo] = x.rol; });
-      return (g.data || []).map(x => ({ ...x, rol: x.creador === me ? 'fundador' : mine[x.id] || 'externo' }));
+      const mine = {}, n = {}; (m.data || []).forEach(x => { n[x.grupo] = (n[x.grupo] || 0) + 1; if (x.usuario === me) mine[x.grupo] = x.rol; });
+      return (g.data || []).map(x => ({ ...x, rol: x.creador === me ? 'fundador' : mine[x.id] || 'externo', n: n[x.id] || 0 }));
     },
     async crearGrupo(nombre) { need(); const { data, error } = await sb.rpc('crear_grupo', { n: String(nombre).trim() }); fail(error, 'No se pudo crear la comunidad'); return Array.isArray(data) ? data[0] : data; },
     async unirse(codigo) { need(); const { data, error } = await sb.rpc('unirse_grupo', { c: String(codigo).trim() }); fail(error); return data; },

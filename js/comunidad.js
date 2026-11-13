@@ -14,7 +14,7 @@
     finally { busy = false; document.body.style.cursor = ''; }
   };
   const head = (title, sub, extra = '') => `<header class="m-hd">
-      <a class="back" href="index.html"><i class="ti ti-arrow-left"></i> <img class="back-logo" src="imagenes/app/logo-kt-sm.webp" alt="Kill Team" width="440" height="139"></a>
+      <a class="back" href="index.html" aria-label="Volver al inicio"><i class="ti ti-arrow-left" aria-hidden="true"></i> <img class="back-logo" src="imagenes/app/logo-kt-sm.webp" alt="Kill Team" width="440" height="139"></a>
       <h1>${title}</h1>${sub ? `<p>${sub}</p>` : ''}${extra}</header>`;
 
   // ── Sin servidor ───────────────────────────────────────────
@@ -42,50 +42,67 @@
   }
 
   // ── Dentro ─────────────────────────────────────────────────
+  const TABS = ['grupos', 'jugadores', 'inv'];
   function renderIn() {
     const p = N.perfil, last = KT.store.get('nube.sync');
     const pend = (cache.inv || []).filter(i => !i.mia && i.estado === 'pendiente').length;
-    const tabs = [['grupos', 'Comunidades'], ['jugadores', 'Jugadores'], ['inv', 'Invitaciones' + (pend ? ` (${pend})` : '')]];
+    const tabs = [['grupos', 'Comunidades', 'users-group', (cache.grupos || []).filter(g => g.rol !== 'externo').length], ['jugadores', 'Jugadores', 'search', 0], ['inv', 'Invitaciones', 'mail', pend]];
     let body = '';
     if (tab === 'grupos') body = groupsBody();
     else if (tab === 'jugadores') body = playersBody();
     else body = invBody();
-    app.innerHTML = head('Comunidad', `Sesión de <b style="color:#fff">${esc(p?.nombre || '')}</b>${last ? ' · sincronizado ' + fecha(last) : ''}`,
-      `<div class="row"><button class="icon-btn accent" data-a="sync"><i class="ti ti-cloud-upload"></i> Sincronizar bandas e historial</button><button class="icon-btn" data-a="out"><i class="ti ti-logout"></i> Salir</button></div>`) +
-      `<div class="m-tabs">${tabs.map(([k, v]) => `<button class="${tab === k ? 'on' : ''}" data-tab="${k}">${v}</button>`).join('')}</div>${body}`;
+    app.innerHTML = head('Comunidad', '',
+      `<div class="cm-me">${N.avatar(p?.nombre, N.user.id)}<div><b>${esc(p?.nombre || '')}</b><small>${last ? 'Bandas e historial sincronizados el ' + fecha(last) : 'Aún no has sincronizado tus bandas'}</small></div>
+        <button class="icon-btn accent" data-a="sync"><i class="ti ti-cloud-upload" aria-hidden="true"></i> Sincronizar bandas e historial</button><button class="icon-btn" data-a="out"><i class="ti ti-logout" aria-hidden="true"></i> Salir</button></div>`) +
+      `<div class="m-tabs" role="tablist" aria-label="Secciones">${tabs.map(([k, v, ic, n]) => `<button role="tab" id="ct-${k}" aria-selected="${tab === k}" aria-controls="c-panel" tabindex="${tab === k ? 0 : -1}" class="${tab === k ? 'on' : ''}" data-tab="${k}"><i class="ti ti-${ic}" aria-hidden="true"></i> ${v}${n ? ` (${n})` : ''}</button>`).join('')}</div>
+      <div id="c-panel" role="tabpanel" aria-labelledby="ct-${tab}">${body}</div>`;
   }
   function groupsBody() {
     const G = cache.grupos, ROL = { fundador: 'Fundador', admin: 'Administrador', miembro: 'Miembro', externo: 'No eres miembro' };
-    const card = g => `<button class="m-card" data-open="${g.id}"><small>${ROL[g.rol]} · código ${esc(g.codigo)}</small><b>${esc(g.nombre)}</b><span>${esc(g.descripcion || 'Tablón, partidas, galería y miembros')}</span></button>`;
+    const card = g => `<button class="m-card cm-card" data-open="${g.id}">${KT.grupo.emblem(g.nombre)}
+      <span class="cm-txt"><small>${ROL[g.rol]} · código ${esc(g.codigo)}</small><b>${esc(g.nombre)}</b><span>${esc(g.descripcion || 'Tablón, eventos, partidas, galería y rangos')}</span></span>
+      ${g.n ? `<span class="cm-n"><i class="ti ti-users-group" aria-hidden="true"></i> ${g.n} ${g.n === 1 ? 'miembro' : 'miembros'}</span>` : ''}<i class="ti ti-chevron-right" aria-hidden="true"></i></button>`;
     const mine = (G || []).filter(g => g.rol !== 'externo'), other = (G || []).filter(g => g.rol === 'externo');
-    return `${G == null ? '<div class="m-empty">Cargando…</div>' : mine.length ? `<div class="m-grid">${mine.map(card).join('')}</div>`
-      : '<div class="m-empty"><i class="ti ti-users-group" style="font-size:28px;display:block;margin-bottom:6px"></i>Aún no estás en ninguna comunidad. Crea una o únete con un código.</div>'}
-      ${other.length ? `<div class="m-sec"><i class="ti ti-shield-lock"></i> Otras comunidades <span>solo las ves por ser administrador de la app</span></div><div class="m-grid">${other.map(card).join('')}</div>` : ''}
-      <div class="m-sec"><i class="ti ti-plus"></i> Nueva comunidad o unirse</div>
-      <div class="m-form"><div class="m-row"><input class="m-in" id="g-name" maxlength="40" placeholder="Nombre de la comunidad (p. ej. El Bulto)" style="flex:1 1 220px"><button class="icon-btn accent" data-a="gnew"><i class="ti ti-users-plus"></i> Crear comunidad</button></div>
-        <div class="m-row"><input class="m-in" id="g-code" maxlength="6" placeholder="Código de 6 caracteres" style="flex:1 1 220px;text-transform:uppercase;letter-spacing:.2em"><button class="icon-btn" data-a="gjoin"><i class="ti ti-login"></i> Unirme con código</button></div></div>`;
+    const feats = [['messages', 'Tablón', 'Anuncios fijados, mensajes con respuestas, bandas y comandos compartidos.'], ['calendar-event', 'Eventos', 'Quedadas, ligas, torneos y campañas con inscripción y clasificación.'], ['broadcast', 'Partidas en directo', 'Sigue el marcador de quien esté jugando, con vídeo si lo emite.'], ['military-rank', 'Rangos', 'De Recluta a Leyenda según las partidas jugadas y los eventos ganados.']];
+    return `<div class="cm-lay"><div>
+        ${G == null ? '<div class="g-card sk" role="status" aria-label="Cargando"></div>' : mine.length ? `<h2 class="sr">Tus comunidades</h2><div class="cm-list">${mine.map(card).join('')}</div>`
+          : KT.grupo.empty('users-group', 'Todavía no estás en ninguna comunidad', 'Una comunidad es tu grupo de juego: el club, la tienda o los amigos de siempre. Crea la tuya y pasa el código, o escribe el código que te hayan dado.',
+              '<button class="icon-btn accent" data-a="focus" data-f="g-name"><i class="ti ti-users-plus" aria-hidden="true"></i> Crear una comunidad</button><button class="icon-btn" data-a="focus" data-f="g-code"><i class="ti ti-key" aria-hidden="true"></i> Tengo un código</button>')}
+        ${G != null && mine.length < 3 ? `<div class="cm-feats">${feats.map(([ic, t, d]) => `<div class="cm-feat"><i class="ti ti-${ic}" aria-hidden="true"></i><b>${t}</b><span>${d}</span></div>`).join('')}</div>` : ''}
+        ${other.length ? `<div class="m-sec"><i class="ti ti-shield-lock" aria-hidden="true"></i> Otras comunidades <span>solo las ves por ser administrador de la app</span></div><div class="cm-list">${other.map(card).join('')}</div>` : ''}
+      </div>
+      <aside class="cm-side" aria-label="Crear una comunidad o unirse">
+        <section class="g-card"><h2><i class="ti ti-users-plus" aria-hidden="true"></i> Crear una comunidad</h2>
+          <p>Serás su fundador: podrás nombrar administradores, convocar eventos y dar distinciones.</p>
+          <label for="g-name">Nombre</label><input class="m-in" id="g-name" maxlength="40" placeholder="P. ej. Club Kill Team Santander" autocomplete="off">
+          <button class="icon-btn accent" data-a="gnew"><i class="ti ti-plus" aria-hidden="true"></i> Crear comunidad</button></section>
+        <section class="g-card"><h2><i class="ti ti-key" aria-hidden="true"></i> Unirme con código</h2>
+          <p>Pide a un miembro el código de 6 caracteres de su comunidad.</p>
+          <label for="g-code">Código</label><input class="m-in" id="g-code" maxlength="6" placeholder="ABC123" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <button class="icon-btn" data-a="gjoin"><i class="ti ti-login" aria-hidden="true"></i> Unirme</button></section>
+      </aside></div>`;
   }
   function playersBody() {
     const F = cache.found;
-    return `<div class="m-form"><div class="m-row"><input class="m-in" id="p-q" maxlength="24" value="${esc(cache.q)}" placeholder="Nombre de jugador" style="flex:1 1 220px"><button class="icon-btn accent" data-a="search"><i class="ti ti-search"></i> Buscar</button></div></div>
-      ${F == null ? '<p style="font-size:13px;color:var(--text-3);margin-top:10px">Busca por nombre de jugador (dos letras o más) e invítale a una partida: le llegará a su pestaña de invitaciones con la fecha y el enlace.</p>'
-        : F.length ? `<div style="margin-top:10px">${F.map(u => `<div class="c-log"><div class="m-row">${N.avatar(u.nombre, u.avatar)}<b style="flex:1">${esc(u.nombre)}</b><button class="icon-btn accent" data-invite="${u.id}" data-n="${esc(u.nombre)}"><i class="ti ti-swords"></i> Invitar a jugar</button></div></div>`).join('')}</div>`
-        : '<div class="m-empty" style="margin-top:10px">Nadie con ese nombre.</div>'}`;
+    return `<div class="m-form"><div class="cm-search"><div><label for="p-q">Nombre de jugador</label><input class="m-in" id="p-q" maxlength="24" value="${esc(cache.q)}" placeholder="Dos letras o más" autocomplete="off"></div><button class="icon-btn accent" data-a="search"><i class="ti ti-search" aria-hidden="true"></i> Buscar</button></div></div>
+      <div aria-live="polite" style="margin-top:12px">${F == null ? KT.grupo.empty('swords', 'Reta a otro jugador', 'Busca a alguien por su nombre e invítale a una partida. Le llegará a su pestaña de invitaciones con el día, la hora y el enlace de la sala si jugáis cada uno con su dispositivo.')
+        : F.length ? F.map(u => `<div class="c-log"><div class="m-row">${N.avatar(u.nombre, u.avatar)}<b style="flex:1">${esc(u.nombre)}</b><button class="icon-btn accent" data-invite="${u.id}" data-n="${esc(u.nombre)}"><i class="ti ti-swords" aria-hidden="true"></i> Invitar a jugar</button></div></div>`).join('')
+        : KT.grupo.empty('user-question', 'Nadie con ese nombre', 'Comprueba cómo se escribe. Solo aparecen los jugadores que han creado una cuenta.')}</div>`;
   }
   function invBody() {
     const I = cache.inv;
-    if (I == null) return '<div class="m-empty">Cargando…</div>';
-    if (!I.length) return '<div class="m-empty"><i class="ti ti-mail" style="font-size:28px;display:block;margin-bottom:6px"></i>No tienes invitaciones. Busca un jugador en la pestaña «Jugadores» para retarle.</div>';
+    if (I == null) return '<div class="g-card sk" role="status" aria-label="Cargando"></div>';
+    if (!I.length) return KT.grupo.empty('mail', 'No tienes invitaciones', 'Cuando alguien te rete a una partida aparecerá aquí, y podrás aceptarla y añadirla a tu calendario.', '<button class="icon-btn accent" data-tab="jugadores"><i class="ti ti-search" aria-hidden="true"></i> Buscar un jugador</button>');
     const st = { pendiente: ['pend', 'pendiente'], aceptada: ['ok', 'aceptada'], rechazada: ['no', 'rechazada'] };
     return I.map(i => `<div class="c-log" data-inv="${i.id}"><div class="q-inv">
         <div>${N.avatar(i.mia ? i.paraNombre : i.deNombre, i.mia ? i.para : i.de)} <b>${i.mia ? 'Para ' + esc(i.paraNombre) : 'De ' + esc(i.deNombre)}</b> <span class="q-badge ${st[i.estado][0]}">${st[i.estado][1]}</span><br>
           <small>${fecha(i.creado)}${i.cuando ? ' · partida el ' + new Date(i.cuando).toLocaleString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : ''}</small>
           ${i.mensaje ? `<div style="margin-top:3px;color:var(--text)">${esc(i.mensaje)}</div>` : ''}</div>
         <div class="m-row" style="justify-content:flex-end">
-          ${!i.mia && i.estado === 'pendiente' ? `<button class="icon-btn accent" data-ia="aceptada"><i class="ti ti-check"></i> Aceptar</button><button class="icon-btn" data-ia="rechazada">Rechazar</button>` : ''}
-          ${i.cuando && i.estado !== 'rechazada' ? `<button class="icon-btn" data-ia="cal" title="Añadir a mi calendario"><i class="ti ti-calendar-plus"></i></button>` : ''}
-          ${i.enlace && /^https?:\/\//i.test(i.enlace) && i.estado !== 'rechazada' ? `<a class="icon-btn" href="${esc(i.enlace)}" title="Abrir la partida"><i class="ti ti-swords"></i> Partida</a>` : ''}
-          <button class="icon-btn" data-ia="del" title="Borrar"><i class="ti ti-trash"></i></button></div></div></div>`).join('');
+          ${!i.mia && i.estado === 'pendiente' ? `<button class="icon-btn accent" data-ia="aceptada"><i class="ti ti-check" aria-hidden="true"></i> Aceptar</button><button class="icon-btn" data-ia="rechazada">Rechazar</button>` : ''}
+          ${i.cuando && i.estado !== 'rechazada' ? `<button class="icon-btn" data-ia="cal" title="Añadir a mi calendario" aria-label="Añadir a mi calendario"><i class="ti ti-calendar-plus" aria-hidden="true"></i></button>` : ''}
+          ${i.enlace && /^https?:\/\//i.test(i.enlace) && i.estado !== 'rechazada' ? `<a class="icon-btn" href="${esc(i.enlace)}" title="Abrir la partida"><i class="ti ti-swords" aria-hidden="true"></i> Partida</a>` : ''}
+          <button class="icon-btn" data-ia="del" title="Borrar" aria-label="Borrar la invitación"><i class="ti ti-trash" aria-hidden="true"></i></button></div></div></div>`).join('');
   }
 
   // ── Carga de datos ─────────────────────────────────────────
@@ -126,7 +143,8 @@
     if (KT.grupo.active) return;                         // dentro de una comunidad manda grupo.js
     const t = e.target.closest('[data-a], [data-tab], [data-open], [data-invite], [data-ia]'); if (!t) return;
     const d = t.dataset;
-    if (d.tab) { tab = d.tab; render(); }
+    if (d.tab) { tab = d.tab; render(); document.querySelector('#ct-' + tab)?.focus({ preventScroll: true }); }
+    else if (d.a === 'focus') { const i = $('#' + d.f); if (i) { i.scrollIntoView({ block: 'center' }); i.focus({ preventScroll: true }); } }
     else if (d.open) { const g = cache.grupos.find(x => x.id === d.open); if (g) KT.grupo.open(g, () => { render(); run(loadHome); }); }
     else if (d.invite) inviteModal(d.invite, d.n);
     else if (d.ia) {
@@ -141,7 +159,12 @@
     else if (d.a === 'gjoin') { const c = $('#g-code').value.trim(); if (c.length !== 6) { KT.toast('El código tiene 6 caracteres', { type: 'err' }); return; } run(async () => { await N.unirse(c); await loadHome(); }, 'Te has unido a la comunidad'); }
     else if (d.a === 'search') { cache.q = $('#p-q').value; run(async () => { cache.found = await N.buscar(cache.q); render(); }); }
   });
-  document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'p-q') { e.preventDefault(); document.querySelector('[data-a="search"]').click(); } });
+  document.addEventListener('keydown', e => {
+    if (KT.grupo.active) return;
+    const id = e.target.id, go = { 'p-q': 'search', 'g-name': 'gnew', 'g-code': 'gjoin' }[id];
+    if (e.key === 'Enter' && go) { e.preventDefault(); document.querySelector(`[data-a="${go}"]`).click(); }
+    else if (e.target.getAttribute?.('role') === 'tab' && /^Arrow(Left|Right)$/.test(e.key)) { e.preventDefault(); tab = TABS[(TABS.indexOf(tab) + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length]; render(); document.querySelector('#ct-' + tab)?.focus(); }
+  });
   document.addEventListener('kt:nube', () => { if (!N.user) { KT.grupo.close(); render(); } });
 
   KT.initFx && KT.initFx();
