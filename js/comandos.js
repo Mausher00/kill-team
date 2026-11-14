@@ -160,6 +160,22 @@
       const types = new Set(f.ops.map(o => o.type));
       const known = t => t === 'ARDID_0PM' || types.has(t);
       const loadouts = l => arr(l).filter(x => x && x.label).map(x => ({ label: txt(x.label), w: arr(x.w).filter(y => y && y.n).map(y => ({ n: txt(y.n) })) }));
+      // Las armas de cada opción tienen que ser las de la ficha: se casan aunque la IA las escriba algo distinto
+      // (sin el perfil entre paréntesis, con o sin «de», en otro orden) y se avisa de las que no se encuentran.
+      const words = n => norm(n).replace(/\(.*?\)/g, ' ').split(/[^a-z0-9]+/).filter(x => x && !/^(de|del|la|el|los|las|y|con|a)$/.test(x)).sort().join(' ');
+      const fixLoadouts = (t, lo, label) => {
+        const od = f.ops.find(o => o.type === t); if (!od) return;
+        lo.forEach(l => {
+          if (!l.w.length) warnings.push(`Composición: en «${t}» la opción «${l.label}» no indica sus armas («w»); en la partida se verán todas las de la ficha.`);
+          l.w.forEach(x => {
+            const n = norm(x.n);
+            if (od.w.some(y => norm(y.n) === n || norm(y.n).startsWith(n + ' '))) return;
+            const hit = od.w.find(y => words(y.n) === words(x.n));
+            if (hit) x.n = hit.n.replace(/\s*\(.*?\)\s*$/, '');
+            else warnings.push(`Composición: en «${t}» la opción «${l.label}» usa el arma «${x.n}», que no está en su ficha; en la partida no se podrá mostrar.`);
+          });
+        });
+      };
       const ro = { archetypes: arr(R.archetypes).map(tag).filter(Boolean) };
       ro.required = arr(R.required).map(e => {
         if (!e || !e.type) return null;
@@ -167,6 +183,7 @@
         if (!known(t)) warnings.push(`Composición: el obligatorio «${t}» no coincide con el «type» de ningún operativo.`);
         const out = { type: t, count: Math.max(1, num(e.count, 1)) };
         const lo = loadouts(e.loadouts); if (lo.length) out.loadouts = lo;
+        fixLoadouts(t, lo);
         return out;
       }).filter(Boolean);
       const P = R.pool || {};
@@ -184,10 +201,12 @@
         if (e.cost != null && Number.isFinite(+e.cost)) out.cost = +e.cost;
         if (e.note) out.note = txt(e.note);
         const lo = loadouts(e.loadouts); if (lo.length) out.loadouts = lo;
-        const od = f.ops.find(o => o.type === t);
-        if (od) lo.forEach(l => l.w.forEach(x => { if (!od.w.some(y => norm(y.n) === norm(x.n))) warnings.push(`Composición: en «${t}» la opción «${l.label}» usa el arma «${x.n}», que no está en su ficha.`); }));
+        fixLoadouts(t, lo);
         return out;
       }).filter(Boolean) };
+      // El mismo operativo en varias versiones (una entrada por arma) sin decir qué arma lleva cada una
+      const byType = {}; ro.pool.entries.forEach(e => { (byType[e.type] = byType[e.type] || []).push(e); });
+      Object.entries(byType).forEach(([t, L]) => { if (L.length > 1 && L.some(e => !e.loadouts && !(e.label || '').includes('·'))) warnings.push(`Composición: «${t}» aparece en ${L.length} versiones sin indicar las armas de cada una («loadouts»); en la partida todas mostrarán todas las armas de la ficha.`); });
       const total = ro.required.reduce((a, r) => a + r.count, 0) + ro.pool.slots;
       if (ro.pool.slots && (total < 4 || total > 20)) warnings.push(`Composición: el comando tendría ${total} agentes; comprueba «required» y «pool.slots».`);
       if (!ro.pool.slots) warnings.push('Composición: «pool.slots» (plazas a elegir) es 0.');

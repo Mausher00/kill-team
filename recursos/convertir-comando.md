@@ -127,8 +127,12 @@ Sale de la sección de selección de operativos. Ejemplo de lectura: «1 Líder;
 - `pool.slots`: cuántos operativos **más** se eligen, sin contar los obligatorios.
 - `pool.entries`: una entrada por operativo elegible. `"max": 1` si solo puede elegirse una vez; `"max": null` si puede repetirse. Su `type` debe ser **idéntico** al `type` de una ficha de `ops`.
 - Si un operativo ocupa medio hueco (dos cuentan como una selección), añade `"half": true`.
-- Si un operativo elige entre combinaciones de armas, añade `"loadouts": [ { "label": "Bólter y bayoneta", "w": [ { "n": "Bólter" }, { "n": "Bayoneta" } ] } ]`. Cada `n` debe coincidir con el nombre de un arma de su ficha.
-- Si el mismo tipo puede elegirse en varias versiones separadas (p. ej. un Artillero con lanzallamas y otro con fusil de fusión, cada uno una sola vez), crea una entrada por versión, cada una con `"key"` único y `"label"`.
+- Si un operativo elige entre combinaciones de armas, añade `"loadouts": [ { "label": "Bólter; bayoneta", "w": [ { "n": "Bólter" }, { "n": "Bayoneta" } ] } ]`, una opción por combinación posible.
+  - `w` es lo que cuenta: lista **todas** las armas que da esa opción. La app enseña en la partida solo las armas de la opción elegida más las que no aparecen en ninguna opción (las fijas).
+  - Cada `n` es el nombre de un arma de la ficha de ese operativo, **letra por letra**. Si el arma tiene varios perfiles, pon el nombre sin el paréntesis (`"Pistola de plasma"` vale para `"Pistola de plasma (estándar)"` y `"Pistola de plasma (sobrecarga)"`).
+  - No metas en `loadouts` las armas que el operativo lleva siempre.
+  - `label` es el texto que ve el jugador al elegir: los nombres de las armas separados por `;`.
+- Si el mismo tipo puede elegirse en varias versiones separadas (p. ej. un Artillero con lanzallamas y otro con fusil de fusión, cada uno una sola vez), crea una entrada por versión, cada una con `"key"` único y `"label"` y con un `"loadouts"` de una sola opción que diga qué armas lleva esa versión.
 - `constraints`: límites que afectan a varios operativos a la vez (`"max"` o `"min"` sobre la lista `types`).
 - `equipment.slots`: cuántos equipos se eligen (normalmente 4).
 - Si el PDF no trae selección de operativos, omite `roster` entero y dilo en `dudas`.
@@ -150,6 +154,7 @@ Repasa uno por uno y corrige lo que falle:
 - [ ] Cada operativo tiene `lpa`, `mov`, `salv`, `h` y al menos un arma.
 - [ ] Ningún `type` se repite en `ops`, y cada `type` de `roster` existe en `ops`.
 - [ ] Los `n` de los `loadouts` coinciden con armas de la ficha.
+- [ ] Cada opción de `loadouts` lista en `w` todas sus armas, y ningún arma fija aparece en `loadouts`.
 - [ ] Ningún texto está resumido ni cortado a medias.
 - [ ] Todo está en español y las reglas de arma usan los nombres del glosario.
 - [ ] Lo que no hayas podido leer bien está anotado en `dudas`.
