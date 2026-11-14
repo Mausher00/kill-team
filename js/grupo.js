@@ -507,7 +507,7 @@
 
   KT.grupo = {
     get active() { return !!G; },
-    open(g, home) { G = g; onHome = home; tab = 'tablon'; D = {}; replyTo = null; KT.eventos.reset(); render(); run(load); },
+    open(g, home, ev) { G = g; onHome = home; tab = ev ? 'eventos' : 'tablon'; D = {}; replyTo = null; KT.eventos.reset(); if (ev) KT.eventos.open(ev); render(); run(load); },
     close() { G = null; D = {}; },
     render, emblem, empty,
   };

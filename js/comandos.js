@@ -227,6 +227,7 @@
     if (typeof FACTIONS === 'undefined') return;
     if (BUILTIN[id]) { FACTIONS[id] = BUILTIN[id]; delete BUILTIN[id]; } else delete FACTIONS[id];
   }
+  const hide = (id, on) => { try { const h = (JSON.parse(localStorage.getItem(KEY + '.ocultos')) || []).filter(x => x !== id); if (on) h.push(id); localStorage.setItem(KEY + '.ocultos', JSON.stringify(h)); } catch {} };
   const clean = f => { const o = { ...f }; delete o._user; delete o._recv; delete o._added; return o; };
 
   const KTC = window.KTC = {
@@ -235,15 +236,22 @@
     isBuiltin: id => !!BUILTIN[id],
     builtinName: id => BUILTIN[id]?.name || (typeof FACTIONS !== 'undefined' && FACTIONS[id] && !FACTIONS[id]._user ? FACTIONS[id].name : null),
     // Guarda (o sustituye) un comando ya normalizado
+    // meta.cloud: fecha de la versión compartida a la que equivale esta copia (null = cambio local aún sin compartir)
     save(f, meta = {}) {
       const list = read().filter(x => x.f.id !== f.id);
-      const rec = { f: clean(f), added: Date.now(), recv: !!meta.recv };
+      const rec = { f: clean(f), added: Date.now(), recv: !!meta.recv, cloud: meta.cloud || null, by: meta.by || null };
       list.push(rec);
       if (!write(list)) throw new Error('No queda espacio en este dispositivo para guardar el comando.');
       register(JSON.parse(JSON.stringify(rec.f)), rec);
+      hide(f.id, false);
+      document.dispatchEvent(new CustomEvent('kt:comandos', { detail: { id: f.id, local: !meta.cloud && !meta.recv } }));
       return rec;
     },
-    remove(id) { write(read().filter(x => x.f.id !== id)); unregister(id); },
+    // Borrarlo de este dispositivo: si era compartido se apunta para no volver a descargarlo
+    remove(id) { const rec = read().find(x => x.f.id === id); write(read().filter(x => x.f.id !== id)); unregister(id); if (rec?.cloud) hide(id, true); },
+    // Anota que la copia local es la versión compartida de esa fecha ('x' = retirada del servidor)
+    mark(id, cloud, by) { const list = read(), rec = list.find(x => x.f.id === id); if (rec) { rec.cloud = cloud; if (by !== undefined) rec.by = by; write(list); } },
+    hidden: () => { try { return JSON.parse(localStorage.getItem(KEY + '.ocultos')) || []; } catch { return []; } },
     // Varios comandos en un mismo archivo: { comandos: [...] } o una lista
     split(raw) {
       if (Array.isArray(raw)) return raw;

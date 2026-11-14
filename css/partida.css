@@ -58,8 +58,12 @@ body.game { padding: 0; font-size: 13px; }
 .g-op.active { box-shadow: 0 0 0 1px var(--pc), 0 8px 24px -12px var(--pc); }
 .g-op.used { opacity: .5; }
 .g-op.used .g-op-hd { filter: grayscale(.7); }
-.g-op.dead { opacity: .35; filter: grayscale(1); border-left-color: var(--border-2); }
+.g-op.dead { border-left-color: var(--border-2); }
+.g-op.dead .g-op-hd, .g-op.dead .g-stats, .g-op.dead .g-det, .g-op.dead .g-tag.dead { opacity: .4; filter: grayscale(1); }
 .g-op.dead .g-wnd, .g-op.dead .g-tg { display: none; }
+.g-op.dead .g-tg.revive { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; height: 28px; padding: 0 10px; color: #7fd69a; border-color: #2c5a3b; background: #0e1c13; font-family: var(--font-display); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.g-op.dead .g-tg.revive:hover { background: #14301e; color: #fff; }
+.g-tag.ko { cursor: pointer; background: none; font-size: 9px; padding: 3px 6px; color: #7fd69a; border: .5px solid #2c5a3b; }
 
 .g-op-hd { position: relative; display: flex; align-items: flex-end; gap: 6px; padding: 6px 8px 5px; min-height: 42px; cursor: pointer;
   background-size: auto 100%; background-position: right center; background-repeat: no-repeat; background-color: #0e0e0e; }

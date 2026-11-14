@@ -141,6 +141,16 @@
     // ── Administración (solo rol admin; el servidor lo vuelve a comprobar) ──
     async adminCuentas() { need(); const { data, error } = await sb.rpc('admin_cuentas'); fail(error, 'No se pudieron leer las cuentas'); return data || []; },
     async adminGrupos() { need(); const { data, error } = await sb.rpc('admin_grupos'); fail(error, 'No se pudieron leer los grupos'); return data || []; },
+    // Todos los eventos de todas las comunidades, con sus apuntados y enfrentamientos
+    async adminEventos() {
+      need();
+      const ev = await sb.from('eventos').select('id,grupo,tipo,titulo,lugar,inicio,fin,estado,ganador,creado').order('inicio', { ascending: false }).limit(500);
+      if (ev.error && /does not exist|schema cache|could not find/i.test(ev.error.message)) return [];
+      fail(ev.error, 'No se pudieron leer los eventos');
+      const [a, b] = await Promise.all([sb.from('asistencias').select('evento,estado').limit(5000), sb.from('encuentros').select('evento,pa').limit(5000)]);
+      return (ev.data || []).map(e => ({ ...e, van: (a.data || []).filter(x => x.evento === e.id && x.estado === 'voy').length,
+        encuentros: (b.data || []).filter(x => x.evento === e.id).length, jugados: (b.data || []).filter(x => x.evento === e.id && x.pa != null).length }));
+    },
     async adminEditar(id, nombre, rol) {
       need(); nombre = String(nombre || '').trim();
       if (nombre.length < 2 || nombre.length > 24) throw new Error('El nombre debe tener entre 2 y 24 caracteres');
@@ -240,6 +250,54 @@
     },
     async responder(id, estado) { need(); const { error } = await sb.from('invitaciones').update({ estado }).eq('id', id); fail(error); },
     async borrarInvitacion(id) { need(); const { error } = await sb.from('invitaciones').delete().eq('id', id); fail(error); },
+
+    // ── Comandos compartidos ─────────────────────────────────
+    // Los comandos que añade un jugador (los que no vienen con la app) se publican para todos.
+    // Leerlos no exige cuenta; publicarlos sí. Vale siempre la versión más reciente.
+    async comandosLista() {
+      await N.ready();
+      const { data, error } = await sb.from('comandos').select('id,nombre,actualizado,autor_nombre,version').order('nombre');
+      fail(error, 'No se pudieron leer los comandos compartidos'); return data || [];
+    },
+    async comandoSubir(f) {
+      need();
+      const pk = KTC.pack(f), noData = o => { if (typeof o.img === 'string' && o.img.startsWith('data:')) delete o.img; return o; };
+      noData(pk.comando); pk.comando.ops = (pk.comando.ops || []).map(o => noData({ ...o }));   // sin imágenes incrustadas: pesan demasiado
+      const { data, error } = await sb.rpc('publicar_comando', { i: f.id, n: String(f.name || f.id).slice(0, 80), d: pk });
+      fail(error, 'No se pudo compartir el comando'); return data;
+    },
+    async comandoBorrar(id) { need(); const { error } = await sb.from('comandos').delete().eq('id', id); fail(error, 'No se pudo borrar el comando compartido'); },
+    // Baja los comandos nuevos o más recientes y sube los añadidos aquí. Devuelve { down: [nombres], up: [nombres] }
+    async sincronizarComandos() {
+      const out = { down: [], up: [] };
+      if (!N.on || !window.KTC) return out;
+      const remote = await N.comandosLista(), local = KTC.list(), hidden = KTC.hidden(), me = uid();
+      const builtin = id => KTC.isBuiltin(id) || (typeof FACTIONS !== 'undefined' && FACTIONS[id] && !FACTIONS[id]._user);
+      const get = [], put = [];
+      remote.forEach(r => {
+        if (builtin(r.id)) return;                                   // los comandos de la app no se sustituyen desde aquí
+        const loc = local.find(x => x.f.id === r.id);
+        if (!loc) { if (!hidden.includes(r.id)) get.push(r); }
+        else if (loc.cloud && Date.parse(loc.cloud) === Date.parse(r.actualizado)) return;
+        else if (!loc.cloud && !loc.recv && loc.added > Date.parse(r.actualizado)) { if (me) put.push(loc); }   // mi cambio es posterior: se sube (con sesión) o se queda como está
+        else get.push(r);
+      });
+      local.forEach(loc => {
+        if (remote.some(r => r.id === loc.f.id) || builtin(loc.f.id) || loc.recv) return;
+        if (loc.cloud && loc.cloud !== 'x') KTC.mark(loc.f.id, 'x');   // lo retiró un administrador: se queda aquí, no se vuelve a subir
+        else if (!loc.cloud && me) put.push(loc);
+      });
+      for (let k = 0; k < get.length; k += 5) {
+        const { data, error } = await sb.from('comandos').select('id,datos,actualizado,autor_nombre').in('id', get.slice(k, k + 5).map(r => r.id));
+        fail(error, 'No se pudieron descargar los comandos compartidos');
+        (data || []).forEach(r => {
+          try { const { f, errors } = KTC.normalize(r.datos); if (!f || errors.length) return; f.id = r.id; KTC.save(f, { cloud: r.actualizado, by: r.autor_nombre }); out.down.push(f.name); } catch {}
+        });
+      }
+      for (const loc of put) { try { const t = await N.comandoSubir(loc.f); KTC.mark(loc.f.id, t, perfil?.nombre || null); out.up.push(loc.f.name); } catch (e) { out.error = e.message; } }
+      KT.store.set('comandos.sync', Date.now());
+      return out;
+    },
 
     // ── Comunidades ──────────────────────────────────────────
     // Cada comunidad lleva `rol`: 'fundador' | 'admin' | 'miembro' | 'externo' (administrador de la app que no es miembro)
@@ -444,6 +502,27 @@
     if (u.nube !== perfil.id) { const l = KT.user.list(); const x = l.find(y => y.id === u.id); x.nube = perfil.id; KT.store.set('usuarios', l); u = x; }
     if (KT.user.current()?.id !== u.id) KT.user.login(u.id);
     return u;
+  }
+  // Comandos compartidos: al abrir la app (como mucho cada 10 minutos), al iniciar sesión y al añadir uno.
+  // No se toca nada con una partida en curso, para no cambiarle las reglas a mitad.
+  let cmdBusy = false;
+  async function autoComandos(force) {
+    if (!N.on || !window.KTC || cmdBusy) return;
+    if (/partida\.html$/.test(location.pathname) && KT.store.get('partida')?.started) return;
+    if (!force && Date.now() - (KT.store.get('comandos.sync') || 0) < 10 * 60e3) return;
+    cmdBusy = true;
+    try {
+      const r = await N.sincronizarComandos();
+      if (r.down.length) { KT.toast(`${r.down.length === 1 ? 'Comando nuevo o actualizado' : r.down.length + ' comandos nuevos o actualizados'}: ${KT.esc(r.down.slice(0, 3).join(', '))}${r.down.length > 3 ? '…' : ''}`, { type: 'ok', ms: 5000 }); document.dispatchEvent(new CustomEvent('kt:comandos-nube', { detail: r })); }
+      if (r.up.length) { KT.toast(`${KT.esc(r.up.join(', '))}: compartido con todos los jugadores`, { type: 'ok', ms: 4500 }); document.dispatchEvent(new CustomEvent('kt:comandos-nube', { detail: r })); }
+    } catch (e) { if (force === 'show') KT.toast(KT.esc(e.message), { type: 'err' }); }
+    finally { cmdBusy = false; }
+  }
+  N.autoComandos = autoComandos;
+  if (N.on && window.KTC) {
+    setTimeout(() => autoComandos(), 1200);
+    document.addEventListener('kt:comandos', e => { if (e.detail?.local) setTimeout(() => autoComandos(true), 300); });
+    let was = null; document.addEventListener('kt:nube', () => { const u = uid(); if (u && u !== was) autoComandos(true); was = u; });
   }
   const uniqueName = (n, list) => { let k = 1, v = n; while (list.some(x => KT.norm(x.name) === KT.norm(v))) v = n.slice(0, 20) + ' ' + (++k); return v; };
 

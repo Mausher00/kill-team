@@ -685,3 +685,50 @@ drop policy if exists campanas_quitar on public.campanas;
 create policy campanas_quitar on public.campanas for delete to authenticated using (usuario = auth.uid() or public.es_admin_grupo(grupo));
 
 grant select, insert, update, delete on public.directos, public.campanas to authenticated;
+
+-- ============================================================
+--  Comandos compartidos (v7)
+--  Los comandos que añade un jugador (los que no vienen con la app) se publican para todos.
+--  · Cualquiera puede leerlos, también sin cuenta.
+--  · Solo se publican con cuenta y a través de publicar_comando(): vale siempre la última versión subida.
+--  · Los puede borrar quien subió la última versión o un administrador de la app.
+-- ============================================================
+create table if not exists public.comandos (
+  id text primary key check (id ~ '^[a-z0-9-]{1,48}$'),
+  nombre text not null check (char_length(nombre) between 1 and 80),
+  datos jsonb not null check (pg_column_size(datos) < 900000),
+  autor uuid references auth.users (id) on delete set null,
+  autor_nombre text,
+  version int not null default 1,
+  creado timestamptz not null default now(),
+  actualizado timestamptz not null default now()
+);
+
+alter table public.comandos enable row level security;
+
+drop policy if exists comandos_ver on public.comandos;
+create policy comandos_ver on public.comandos for select to anon, authenticated using (true);
+drop policy if exists comandos_borrar on public.comandos;
+create policy comandos_borrar on public.comandos for delete to authenticated using (autor = auth.uid() or public.es_admin());
+
+create or replace function public.publicar_comando(i text, n text, d jsonb) returns timestamptz
+  language plpgsql security definer set search_path = public as
+$$
+declare t timestamptz := date_trunc('milliseconds', clock_timestamp()); nom text;
+begin
+  if auth.uid() is null then raise exception 'Inicia sesión para compartir un comando'; end if;
+  if d is null or coalesce(jsonb_typeof(d -> 'comando'), '') <> 'object' then raise exception 'El comando no es válido'; end if;
+  select p.nombre into nom from public.perfiles p where p.id = auth.uid();
+  insert into public.comandos (id, nombre, datos, autor, autor_nombre, actualizado)
+    values (i, n, d, auth.uid(), nom, t)
+  on conflict (id) do update
+    set nombre = excluded.nombre, datos = excluded.datos, autor = excluded.autor, autor_nombre = excluded.autor_nombre,
+        version = public.comandos.version + 1, actualizado = t;
+  return t;
+end $$;
+
+revoke all on public.comandos from anon, authenticated;
+grant select on public.comandos to anon, authenticated;
+grant delete on public.comandos to authenticated;
+revoke execute on function public.publicar_comando(text, text, jsonb) from public, anon;
+grant execute on function public.publicar_comando(text, text, jsonb) to authenticated;

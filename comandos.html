@@ -103,6 +103,8 @@
     .c-item b { font-family: var(--font-display); font-size: 17px; text-transform: uppercase; color: #fff; display: block; line-height: 1.1; }
     .c-item small { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-3); }
     .c-badge { font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .08em; padding: 1px 6px; border-radius: 3px; background: var(--bg-3); color: var(--text-3); margin-left: 4px; }
+    .c-badge.ok { background: rgba(60,170,100,.16); color: #7fd69a; }
+    .c-badge.warn { background: rgba(232,73,15,.14); color: var(--orange-light); }
     .c-badge.rep { background: rgba(212,160,16,.15); color: var(--action); }
     .c-empty { text-align: center; color: var(--text-3); padding: 26px 10px; border: 1px dashed var(--border-2); border-radius: 6px; font-size: 13px; }
     .c-select { flex: 1 1 220px; min-width: 0; height: 36px; background: var(--bg-2); color: var(--text); border: 1px solid var(--border-2); border-radius: 4px; padding: 0 8px; font: 14px var(--font-body); }
@@ -218,6 +220,7 @@
     </details>
 
     <div class="c-sec"><i class="ti ti-users-group"></i> Comandos añadidos en este dispositivo <span id="n-mine"></span></div>
+    <p class="c-hint" id="share-note"></p>
     <div class="c-list" id="mine"></div>
     <p class="c-hint">Se guardan solo en este navegador. Para pasarlos a otro dispositivo usa «Paquete» y súbelo allí, o «Archivo para la app» si quieres incluirlo en la versión publicada (va en <code>js/data/</code>). En una partida a dos dispositivos, el comando se envía solo al otro jugador.</p>
   </div>
@@ -373,14 +376,19 @@ $('#paste').addEventListener('paste', () => setTimeout(() => check($('#paste').v
 
 // ── Mis comandos ─────────────────────────────────────────────
 function renderMine() {
+  const note = $('#share-note');
+  if (note) note.innerHTML = !KT.nube?.on ? '' : KT.nube.user ? 'Los comandos que añadas y no vengan ya con la app se comparten solos con todos los jugadores. Si alguien sube una versión más nueva, es la que vale para todos.'
+    : 'Los comandos que comparten otros jugadores se descargan solos. Para compartir los tuyos, <button class="g-link" id="share-login" style="background:none;border:0;padding:0;font:inherit;color:var(--orange-light);text-decoration:underline;cursor:pointer">inicia sesión</button>.';
   const list = KTC.list().sort((a, b) => a.f.name.localeCompare(b.f.name, 'es'));
   $('#n-mine').textContent = list.length ? list.length : '';
   $('#mine').innerHTML = !list.length ? `<div class="c-empty"><i class="ti ti-package" style="font-size:26px;display:block;margin-bottom:6px"></i>Todavía no has añadido ningún comando.</div>` :
-    list.map(({ f, added, recv }) => {
+    list.map(({ f, added, recv, cloud, by }) => {
       const rep = KTC.isBuiltin(f.id);
+      const sh = rep || recv || !KT.nube?.on ? '' : cloud && cloud !== 'x' ? `<span class="c-badge ok" title="Lo ven todos los jugadores. Vale siempre la versión más reciente.">compartido${by ? ' · ' + esc(by) : ''}</span>`
+        : cloud === 'x' ? '<span class="c-badge">retirado de los compartidos</span>' : `<span class="c-badge warn">${KT.nube.user ? 'pendiente de compartir' : 'solo en este dispositivo'}</span>`;
       return `<div class="c-item" data-id="${esc(f.id)}">
         <img src="${FACTIONS[f.id]?.img || ''}" alt="">
-        <div class="t"><b>${esc(f.name)}${rep ? '<span class="c-badge rep">sustituye al incluido</span>' : ''}${recv ? '<span class="c-badge">recibido en partida</span>' : ''}</b>
+        <div class="t"><b>${esc(f.name)}${rep ? '<span class="c-badge rep">sustituye al incluido</span>' : ''}${recv ? '<span class="c-badge">recibido en partida</span>' : ''}${sh}</b>
           <small>${esc(f.subfaction || '')} · ${f.ops.length} operativos · ${f.roster ? 'con constructor' : 'sin constructor'} · ${new Date(added).toLocaleDateString('es-ES')}</small></div>
         <a class="icon-btn" href="index.html#${encodeURIComponent(f.id)}"><i class="ti ti-eye"></i> Ver</a>
         <button class="icon-btn" data-pack title="Descargar el paquete para pasarlo a otro dispositivo"><i class="ti ti-package-export"></i> Paquete</button>
@@ -396,12 +404,15 @@ $('#mine').addEventListener('click', e => {
   else if (b.hasAttribute('data-js')) download(id + '.js', KTC.toJs(rec.f), 'text/javascript');
   else if (b.hasAttribute('data-del')) {
     if (!confirm(`¿Borrar «${rec.f.name}» de este dispositivo? Las listas guardadas con este comando dejarán de abrirse.`)) return;
-    KTC.remove(id); renderMine(); KT.toast('Comando borrado');
+    KTC.remove(id); renderMine(); KT.toast(rec.cloud && rec.cloud !== 'x' ? 'Borrado de este dispositivo. Los demás jugadores lo siguen viendo.' : 'Comando borrado');
   }
 });
 
 KT.initFx && KT.initFx();
 renderMine(); fillUpd();
+document.addEventListener('kt:comandos-nube', () => { renderMine(); fillUpd(); });
+document.addEventListener('kt:nube', renderMine);
+document.addEventListener('click', e => { if (e.target.id === 'share-login') KT.user.open(); });
 </script>
 </body>
 </html>

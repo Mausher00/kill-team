@@ -105,10 +105,18 @@
           <button class="icon-btn" data-ia="del" title="Borrar" aria-label="Borrar la invitación"><i class="ti ti-trash" aria-hidden="true"></i></button></div></div></div>`).join('');
   }
 
+  function openGroup(id, ev) {
+    const g = (cache.grupos || []).find(x => x.id === id); if (!g) return false;
+    KT.grupo.open(g, () => { render(); run(loadHome); }, ev); return true;
+  }
+  // Enlace directo desde el panel de administración: comunidad.html?g=<comunidad>&e=<evento>
+  let deep = (() => { const q = new URLSearchParams(location.search); return q.get('g') ? { g: q.get('g'), e: q.get('e') } : null; })();
+  function followDeep() { if (!deep || !cache.grupos) return; const d = deep; deep = null; history.replaceState(null, '', location.pathname); if (!openGroup(d.g, d.e)) KT.toast('Esa comunidad ya no existe o no tienes acceso', { type: 'err' }); }
+
   // ── Carga de datos ─────────────────────────────────────────
   async function loadHome() {
     const [g, i] = await Promise.all([N.grupos(), N.invitaciones()]);
-    cache.grupos = g; cache.inv = i; render();
+    cache.grupos = g; cache.inv = i; render(); followDeep();
   }
   function render() {
     if (!N.on) return renderOff();
@@ -145,7 +153,7 @@
     const d = t.dataset;
     if (d.tab) { tab = d.tab; render(); document.querySelector('#ct-' + tab)?.focus({ preventScroll: true }); }
     else if (d.a === 'focus') { const i = $('#' + d.f); if (i) { i.scrollIntoView({ block: 'center' }); i.focus({ preventScroll: true }); } }
-    else if (d.open) { const g = cache.grupos.find(x => x.id === d.open); if (g) KT.grupo.open(g, () => { render(); run(loadHome); }); }
+    else if (d.open) openGroup(d.open);
     else if (d.invite) inviteModal(d.invite, d.n);
     else if (d.ia) {
       const id = t.closest('[data-inv]').dataset.inv, i = cache.inv.find(x => x.id === id);

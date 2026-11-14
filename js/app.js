@@ -125,6 +125,9 @@ function setHomeFilter(t) {
   KT.vt(() => render());
 }
 
+// Llegan comandos compartidos por otros jugadores: la portada los enseña sin recargar
+document.addEventListener('kt:comandos-nube', () => { if (!currentFaction) render(); });
+
 // ── RENDER PRINCIPAL ─────────────────────────────────────────
 function render() {
   const app = document.getElementById('app');

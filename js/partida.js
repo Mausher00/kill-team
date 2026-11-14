@@ -116,7 +116,7 @@ function eqOptions(f) {
 // Grado de eliminación de i: según los agentes de su rival incapacitados
 function killInfo(i) {
   const E = S.players[1 - i];
-  const start = E.ops.length, dead = E.ops.filter(o => o.w <= 0).length;
+  const start = E.ops.length, dead = E.ops.filter(o => o.w <= 0 || o.ko).length;
   const row = OPS.kill.tabla[Math.max(5, Math.min(14, start))];
   const base = row.filter(t => dead >= t).length;
   const adj = S.players[i].score.killAdj || 0;
@@ -201,7 +201,7 @@ function saveHistory() {
 }
 
 // ── Construir jugador desde un comando guardado o un comando completo ─
-function weaponsFor(f, type, chosenText) {
+function weaponsFor(f, type, ro) {
   // Armas opcionales de este tipo (aparecen en alguna opción del constructor)
   const entries = [...(f.roster?.required || []), ...(f.roster?.pool?.entries || [])].filter(e => e.type === type);
   const optional = new Set();
@@ -209,13 +209,42 @@ function weaponsFor(f, type, chosenText) {
     (e.loadouts || []).forEach(l => l.w.forEach(w => optional.add(norm(w.n))));
     if (e.label && e.label.includes('·')) optional.add(norm(e.label.split('·')[1]));
   });
-  const chosen = new Set((chosenText || '').split(/;|·/).map(norm).filter(Boolean));
+  // Armas de la opción elegida: las que trae la propia opción. Solo si no se encuentra (comandos guardados
+  // con otra versión del paquete) se deducen del texto de la etiqueta, que en los comandos añadidos puede ser cualquiera.
+  const lo = ro.loadout ? entries.flatMap(e => e.loadouts || []).find(l => l.label === ro.loadout) || entries.flatMap(e => e.loadouts || []).find(l => norm(l.label) === norm(ro.loadout)) : null;
+  const chosen = new Set(lo ? lo.w.map(w => norm(w.n)) : (ro.loadout || ro.label || '').split(/;|·/).map(norm).filter(Boolean));
+  if (ro.label && ro.label.includes('·')) chosen.add(norm(ro.label.split('·')[1]));
   const match = (base, set) => [...set].some(n => base === n || base.startsWith(n + ' '));
-  return op => op.w.filter(w => {
-    const b = norm(w.n);
-    if (!match(b, optional)) return true;           // arma fija
-    return chosen.size ? match(b, chosen) : true;    // sin elección: todas
-  }).map(w => w.n);
+  return op => {
+    const fixed = op.w.filter(w => !match(norm(w.n), optional));
+    const picked = chosen.size ? op.w.filter(w => match(norm(w.n), optional) && match(norm(w.n), chosen)) : [];
+    // sin elección, o si la elección no casa con ningún arma de la ficha: se enseñan todas antes que esconderlas
+    const keep = new Set((picked.length ? [...fixed, ...picked] : op.w).map(w => w.n));
+    return op.w.filter(w => keep.has(w.n)).map(w => w.n);
+  };
+}
+// Armas de cada agente de un comando guardado, en el mismo orden en que se crean al empezar la partida
+function rosterWeapons(r, f) {
+  const out = [];
+  r.ops.forEach(o => {
+    const od = f.ops.find(x => x.id === o.opId) || f.ops.find(x => x.type === o.type);
+    if (!od) return;
+    const w = weaponsFor(f, od.type, o)(od);
+    for (let k = 0; k < o.qty; k++) out.push({ opId: od.id, wpn: w });
+  });
+  return out;
+}
+// Partidas empezadas antes de corregir la elección de armas: se recalculan si el comando guardado sigue igual
+function fixWeapons() {
+  if (!S?.players) return;
+  S.players.forEach(P => {
+    if (P?.src?.kind !== 'roster') return;
+    const r = (KT.store.get('rosters', []) || []).find(x => x.id === P.src.id), f = FACTIONS[P.factionId];
+    if (!r || !f || r.factionId !== P.factionId) return;
+    const W = rosterWeapons(r, f);
+    if (W.length !== P.ops.length || W.some((w, k) => w.opId !== P.ops[k].opId)) return;
+    P.ops.forEach((o, k) => { if (W[k].wpn.length > o.wpn.length) o.wpn = W[k].wpn; });
+  });
 }
 
 function buildPlayer(src, name) {
@@ -227,8 +256,8 @@ function buildPlayer(src, name) {
     r.ops.forEach(o => {
       const od = f.ops.find(x => x.id === o.opId) || f.ops.find(x => x.type === o.type);
       if (!od) return;
-      const pickW = weaponsFor(f, od.type, o.loadout || o.label);
-      for (let k = 0; k < o.qty; k++) ops.push({ opId: od.id, label: o.label !== od.name ? o.label : null, wpn: pickW(od) });
+      const wpn = weaponsFor(f, od.type, o)(od);
+      for (let k = 0; k < o.qty; k++) ops.push({ opId: od.id, label: o.label !== od.name ? o.label : null, wpn: [...wpn] });
     });
   } else {
     f = FACTIONS[src.id]; if (!f) return null;
@@ -354,6 +383,9 @@ function renderCol(i) {
     return `<button class="g-card s${st}" data-card="${id}" title="${esc(tip.name + ' ' + tip.sub)} · ${['no la tiene', 'disponible', 'usada'][st]} (tocar para cambiar)">${l}</button>`;
   }).join('');
   const nPloys = ployList(P).filter(p => P.ployUsed[p.n] === S.tp).length;
+  // al redibujar se conserva dónde estaba la lista y qué habilidades estaban desplegadas
+  const L0 = col.querySelector('.g-list'), top0 = L0 ? L0.scrollTop : 0;
+  const det0 = new Set([...col.querySelectorAll('.g-ab details[open]')].map(d => d.closest('.g-op').dataset.u + '|' + d.querySelector('summary').textContent));
   col.innerHTML = `
     <div class="g-ph">
       <button class="g-pteam" data-sheet="team" data-p="${i}" title="Ver el comando: lista, reglas de facción y enlaces"><img src="${f.img}" alt="" onerror="this.style.visibility='hidden'"><i class="ti ti-book-2"></i></button>
@@ -368,6 +400,8 @@ function renderCol(i) {
     </div>
     <div class="g-extras">${extras}<div class="g-cards" aria-label="Cartas de iniciativa">${cards}</div></div>
     <div class="g-list">${P.ops.map(o => opCard(i, P, o)).join('')}</div>`;
+  if (det0.size) col.querySelectorAll('.g-ab details').forEach(d => { if (det0.has(d.closest('.g-op').dataset.u + '|' + d.querySelector('summary').textContent)) d.open = true; });
+  if (top0) col.querySelector('.g-list').scrollTop = top0;
 }
 
 function opCard(i, P, o) {
@@ -388,7 +422,8 @@ function opCard(i, P, o) {
     </div>
     <div class="g-op-row">
       <div class="g-stats"><span>LPA <b>${od.s.lpa}</b></span><span>MOV <b class="${hurt ? 'mod' : ''}">${mov}</b></span><span>SALV <b>${od.s.salv}</b></span></div>
-      ${dead ? '<span class="g-tag dead">Incapacitado</span>' : `
+      ${dead ? '<span class="g-tag dead">Incapacitado</span><button class="g-tg revive" data-act="revive" title="Devolverlo al juego (Protocolos de reanimación y reglas parecidas)"><i class="ti ti-heart-plus"></i>Reanimar</button>' : `
+      ${o.ko ? '<button class="g-tag ko" data-act="ko" title="Reanimado: sigue contando como baja para la eliminación del rival. Toca para que deje de contar.">Reanimado</button>' : ''}
       ${hurt ? '<span class="g-tag hurt" title="−2&quot; MOV y empeora en 1 el Impactar">Lesionado</span>' : ''}
       <button class="g-tg ${o.order === 'engage' ? 'engage' : 'conceal'}" data-act="order" title="Cambiar orden">${o.order === 'engage' ? '<i class="ti ti-sword"></i>Trab.' : '<i class="ti ti-eye-off"></i>Ocul.'}</button>
       <button class="g-tg ${o.used ? 'on' : ''}" data-act="used" title="${o.used ? 'Usado (tocar para desmarcar)' : 'Marcar como usado'}"><i class="ti ti-${o.used ? 'check' : 'player-play'}"></i></button>`}
@@ -1165,10 +1200,13 @@ function onColClick(e) {
   commit(() => {
     if (act === 'order') o.order = o.order === 'engage' ? 'conceal' : 'engage';
     if (act === 'used') o.used = !o.used;
+    if (act === 'revive') { o.w = 1; o.ko = true; KT.toast(`${esc(o.label || opData(P, o).name)} vuelve al juego con 1 herida: súbelas con +`, { type: 'ok' }); }
+    if (act === 'ko') { delete o.ko; KT.toast('Ya no cuenta como baja'); }
     if (act === 'dmg') {
       const max = opData(P, o).s.h;
       const before = o.w;
       o.w = Math.max(0, Math.min(max, o.w - +b.dataset.v));
+      if (before > 0 && o.w === 0) o.ko = true;           // la baja cuenta aunque después se reanime
       if (before > 0 && o.w === 0) KT.toast(`${esc(o.label || opData(P, o).name)} incapacitado`, { type: 'err', action: 'Deshacer', onAction: undo });
     }
   }, { only: i });
@@ -2146,6 +2184,7 @@ window.addEventListener('load', () => {
     S = null; KT.store.del(KEY);
     KT.toast('La partida guardada usaba un comando que ya no está en este dispositivo: empieza una nueva', { type: 'err', ms: 5000 });
   }
+  if (S && !S.dual) { try { fixWeapons(); save(); } catch {} }
   // Partida en dos dispositivos: invitación en la URL o sala guardada
   const inv = KTD.fromUrl(), sala = KT.store.get('sala');
   if (inv) {

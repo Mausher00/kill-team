@@ -115,3 +115,18 @@ Tras actualizar, vuelve a ejecutar `esquema.sql`.
   honores, cicatrices y últimas partidas) en la pestaña Partidas, en solo lectura. Se actualiza al cambiarla.
 
 Tras actualizar, vuelve a ejecutar `esquema.sql`.
+
+
+## Comandos compartidos y panel de administración (versión 7)
+
+- **Comandos compartidos:** cuando un jugador con cuenta añade un comando que no viene con la app, se publica solo para
+  todos. Los demás lo reciben al abrir la app (también sin cuenta) y aparece en la biblioteca, el constructor y la partida.
+  Vale siempre la última versión subida: si alguien lo actualiza, los demás reciben esa.
+  - No se comparten los comandos que sustituyen a uno incluido en la app ni los recibidos en una partida a dos dispositivos.
+  - Borrarlo en un dispositivo solo lo quita de ese dispositivo. Para retirarlo de todos: Administración → Comandos → Retirar.
+  - No se descarga nada con una partida en curso, para no cambiar las reglas a mitad.
+  - Las imágenes incrustadas no se suben (pesan demasiado): los demás ven el comando con su icono.
+- **Administración** (`admin.html`): resumen, cuentas, comunidades, eventos de todas las comunidades y comandos
+  compartidos en una sola página, con un buscador común. Desde cada comunidad o evento, «Abrir» lleva a su página.
+
+Tras actualizar, vuelve a ejecutar `esquema.sql`.

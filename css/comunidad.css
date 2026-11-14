@@ -228,3 +228,28 @@
   .cm-card .cm-n { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .g-card.sk { animation: none; } .com .m-card.cm-card:hover { transform: none; } }
+
+/* ── Panel de administración (admin.html) ── */
+.ad-stats .ad-stat { text-align: left; background: var(--bg-2); border: 1px solid var(--border-2); border-top: 3px solid var(--orange); border-radius: 6px; padding: 12px 14px; color: inherit; cursor: pointer; transition: background .15s; }
+.ad-stats .ad-stat:hover { background: var(--bg-3); }
+.ad-stats .ad-stat b { display: block; font-family: var(--font-display); font-size: 30px; color: #fff; line-height: 1; }
+.ad-stats .ad-stat small { font-family: var(--font-display); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-2); }
+.ad-stats .ad-stat span { display: block; font-size: 12.5px; color: var(--text-3); margin-top: 4px; }
+.ad-bar { display: flex; gap: 10px 16px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.ad-bar .m-tabs { margin: 0; flex: 1 1 auto; }
+.ad-bar .m-tabs button span, .ad-seg button span { background: rgba(255,255,255,.1); border-radius: 9px; padding: 0 6px; font-size: 10.5px; line-height: 17px; }
+.ad-q { position: relative; flex: 1 1 280px; max-width: 460px; }
+.ad-q i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-3); pointer-events: none; }
+.ad-q .m-in { width: 100%; height: 42px; padding-left: 36px; }
+.ad-seg { margin-bottom: 10px; }
+.ad-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 12px; align-items: start; }
+.com .ad-list.one { grid-template-columns: 1fr; gap: 6px; }
+.ad-cols .ad-row { padding: 8px 10px; background: var(--bg-3); }
+.ad-cols .ad-acts { width: auto; }
+.ad-cols .ad-acts .icon-btn span { display: none; }
+.ad-date { flex-shrink: 0; width: 46px; padding: 5px 0; border-radius: 6px; text-align: center; background: var(--orange-bg); border: 1px solid var(--orange-dim); }
+.ad-date b { display: block; font-family: var(--font-display); font-size: 21px; line-height: 1; color: #fff; }
+.ad-date small { font-family: var(--font-display); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--orange-light); }
+.ad-note { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 13.5px; color: var(--text-2); background: var(--bg-2); border: 1px solid var(--border-2); border-left: 3px solid var(--action); border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; line-height: 1.45; }
+.ad-note i { color: var(--action); }
+.com .ad-row .icon-btn { text-decoration: none; }
