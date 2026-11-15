@@ -206,7 +206,7 @@
       else if (a === 'reopen') { if (confirm('¿Reabrir el evento? Si había ganador, se le retira la distinción de este evento.')) c.run(async () => { await N.reabrirEvento(e.id); await c.load(); }, 'Evento reabierto'); }
       else if (a === 'del') { if (confirm(`¿Borrar «${e.titulo}» con su asistencia y sus partidas?`)) c.run(async () => { await N.borrarEvento(e.id); sel = null; await c.load(); }, 'Evento borrado'); }
       else if (a === 'ics') KT.cal.download({ title: `Kill Team: ${e.titulo}`, start: new Date(e.inicio), mins: 180, desc: [c.G.nombre, e.descripcion].filter(Boolean).join('\n'), place: e.lugar || '' });
-      else if (a === 'share') KT.share.open({ title: e.titulo, text: `📅 ${e.titulo}\n${largo(e.inicio)}${e.lugar ? '\n📍 ' + e.lugar : ''}${e.descripcion ? '\n' + e.descripcion : ''}\n${c.G.nombre} · Kill Team` });
+      else if (a === 'share') KT.share.open({ title: e.titulo, text: `📅 ${e.titulo}\n${largo(e.inicio)}${e.lugar ? '\n📍 ' + e.lugar : ''}${e.descripcion ? '\n' + e.descripcion : ''}\n${c.G.nombre} · Kill Zone` });
       else if (a === 'fixtures') { const rows = fixtures(e); if (!rows.length) { KT.toast('Ya están todos los emparejamientos', { type: 'ok' }); return; }
         if (confirm(`Se crearán ${rows.length} partidas pendientes entre los ${going(e).length} inscritos.`)) c.run(async () => { await N.crearEncuentros(rows); await c.load(); }, `${rows.length} partidas creadas`); }
       else if (a === 'score' || a === 'mdel') { const x = e.encuentros.find(m => m.id === t.closest('[data-mid]').dataset.mid); if (!x) return;

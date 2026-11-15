@@ -1,7 +1,7 @@
 {
-  "name": "Kill Team Companion",
-  "short_name": "Kill Team",
-  "description": "Librería de comandos, constructor y gestor de partidas de Kill Team",
+  "name": "Kill Zone",
+  "short_name": "Kill Zone",
+  "description": "Compañero no oficial para Kill Team: comandos, constructor, partidas, campañas y comunidad",
   "lang": "es",
   "start_url": "./index.html",
   "scope": "./",

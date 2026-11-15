@@ -358,7 +358,7 @@ function renderTop() {
   const z = zoneOf(S.zone), m = mapOf(z, S.map), c = critOf(S.crit);
   $('#g-title').innerHTML = `<b>${esc(pname(0))} <span style="color:var(--text-3);font-size:12px">vs</span> ${esc(pname(1))}</b>
     <span>${z ? esc(z.name) + (m ? ' · mapa ' + esc(m.label) : '') : 'Sin zona'}${c ? ' · ' + esc(c.name) : ''}</span>`;
-  document.title = 'Partida · Kill Team';
+  document.title = 'Partida · Kill Zone';
 }
 
 const CARDS = [['rr', 'Rep.'], ['i1', '±1'], ['i2', '±2'], ['i3', '±3']];
@@ -1729,7 +1729,7 @@ function onSetupClick(e) {
   if (d.dual === 'on') { Net.host(); return; }
   if (d.dual === 'off') { Net.leave(true); return; }
   if (d.copy) { navigator.clipboard?.writeText(d.copy).then(() => KT.toast('Enlace copiado', { type: 'ok' }), () => KT.toast(d.copy, { ms: 8000 })); return; }
-  if (t.hasAttribute('data-share')) { const url = KTD.inviteUrl(Net.cfg); navigator.share({ title: 'Kill Team', text: '¡Te reto a una partida de Kill Team!', url }).catch(() => {}); return; }
+  if (t.hasAttribute('data-share')) { const url = KTD.inviteUrl(Net.cfg); navigator.share({ title: 'Kill Zone', text: '¡Te reto a una partida de Kill Team!', url }).catch(() => {}); return; }
   if (t.closest('.ro')) return;                                         // paneles del rival / misión del invitado
   const before = isDual() ? sharedOf(draft) : null;
   const ownChange = () => { if (isDual()) draft.ready[SEAT] = false; };

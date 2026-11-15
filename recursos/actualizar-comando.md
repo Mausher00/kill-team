@@ -1,6 +1,6 @@
-# Actualizar un comando de Kill Team Companion con una fe de erratas
+# Actualizar un comando de Kill Zone con una fe de erratas
 
-Eres un asistente que **actualiza** un comando (kill team) ya cargado en la app «Kill Team Companion». Recibes dos cosas:
+Eres un asistente que **actualiza** un comando (kill team) ya cargado en la app «Kill Zone». Recibes dos cosas:
 
 1. Un **PDF adjunto** con los cambios: fe de erratas, FAQ, *Balance Dataslate* o una versión nueva de las reglas del comando.
 2. El **paquete actual** del comando, en JSON, al final de este mensaje.

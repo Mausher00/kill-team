@@ -1,5 +1,5 @@
 // ============================================================
-//  app.js — SPA Kill Team
+//  app.js — SPA Kill Zone
 //  Navegación por hash: #home | #korps | #sucesores | ...
 // ============================================================
 
@@ -136,14 +136,14 @@ function render() {
     app.innerHTML = renderHome();
     offlineSync();
     hideKw();
-    document.title = 'Kill Team';
+    document.title = 'Kill Zone';
     return;
   }
 
   const f = FACTIONS[currentFaction];
   if (!f) { currentFaction = null; render(); return; }
 
-  document.title = f.name + ' · Kill Team';
+  document.title = f.name + ' · Kill Zone';
   if (window._kwFaction !== f.id) { hideKw(); window._kwFaction = f.id; }
   window.LOCAL_KW = localKeywords(f);
   app.innerHTML = renderFactionView(f, activeTab, searchQ, openOps);

@@ -309,7 +309,7 @@
     const box = document.querySelector('.cmdk-back.on:last-of-type .cmdk-list');
     box.addEventListener('click', e => {
       const b = e.target.closest('[data-pm]'); if (!b) return;
-      if (b.dataset.pm === 'share') { close(); KT.share.photo(p.url, [p.texto, `📷 ${G.nombre} · Kill Team`].filter(Boolean).join('\n')); }
+      if (b.dataset.pm === 'share') { close(); KT.share.photo(p.url, [p.texto, `📷 ${G.nombre} · Kill Zone`].filter(Boolean).join('\n')); }
       else if (confirm('¿Borrar esta foto?')) { close(); run(async () => { await N.borrarPublicacion(p); await load(); }, 'Foto borrada'); }
     });
   }
@@ -462,7 +462,7 @@
       else if (d.g === 'guide-x') { KT.store.set('grupo.guia.' + G.id, 1); render(); }
       else if (d.g === 'settings') settingsModal();
       else if (d.g === 'leave') { if (confirm(`¿Salir de «${G.nombre}»?`)) run(async () => { await N.salirGrupo(G.id); exit(); }); }
-      else if (d.g === 'invite') { const url = location.href.replace(/[#?].*$/, ''); KT.share.open({ title: G.nombre, text: `Únete a «${G.nombre}» en Kill Team Companion:\n${url}\nEntra en Comunidad → Unirme con código → ${G.codigo}` }); }
+      else if (d.g === 'invite') { const url = location.href.replace(/[#?].*$/, ''); KT.share.open({ title: G.nombre, text: `Únete a «${G.nombre}» en Kill Zone:\n${url}\nEntra en Comunidad → Unirme con código → ${G.codigo}` }); }
       return;
     }
     if (d.ra) {
@@ -489,8 +489,8 @@
     else if (d.pa === 'zoom') photoModal({ ...p, galeria: false });
     else if (d.pa === 'share') {
       if (p.tipo === 'resultado' && p.datos?.players) KT.share.result(p.datos, { comunidad: G.nombre });
-      else if (p.url) KT.share.photo(p.url, [p.texto, `📷 ${G.nombre} · Kill Team`].filter(Boolean).join('\n'));
-      else KT.share.open({ title: G.nombre, text: `${p.texto || ''}\n— ${p.nombre}, ${G.nombre} · Kill Team` });
+      else if (p.url) KT.share.photo(p.url, [p.texto, `📷 ${G.nombre} · Kill Zone`].filter(Boolean).join('\n'));
+      else KT.share.open({ title: G.nombre, text: `${p.texto || ''}\n— ${p.nombre}, ${G.nombre} · Kill Zone` });
     }
     else if (d.pa === 'saveband') {
       const me = KT.user.current(), all = KT.store.get('rosters', []) || [];

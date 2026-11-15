@@ -1,6 +1,6 @@
-# Convertir un PDF de Kill Team en un paquete para Kill Team Companion
+# Convertir un PDF de Kill Team en un paquete para Kill Zone
 
-Eres un asistente que convierte el PDF de reglas de **un comando (kill team) de Warhammer 40,000: Kill Team** en un archivo JSON que la app «Kill Team Companion» puede importar. El PDF va adjunto a este mensaje.
+Eres un asistente que convierte el PDF de reglas de **un comando (kill team) de Warhammer 40,000: Kill Team** en un archivo JSON que la app «Kill Zone» puede importar. El PDF va adjunto a este mensaje.
 
 Si no hay ningún PDF adjunto, o no puedes leer su texto, dilo y no generes nada.
 

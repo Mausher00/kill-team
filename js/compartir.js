@@ -25,7 +25,7 @@
     g.fillStyle = '#e8490f'; g.fillRect(0, 0, W, 8); g.fillRect(0, H - 8, W, 8);
     g.strokeStyle = 'rgba(232,73,15,.18)'; g.lineWidth = 1;
     for (let x = -H; x < W; x += 46) { g.beginPath(); g.moveTo(x, H); g.lineTo(x + H, 0); g.stroke(); }
-    try { const logo = await loadImg(ROOT + 'imagenes/app/logo-kt.webp'); const lw = 330, lh = lw * logo.naturalHeight / logo.naturalWidth; g.drawImage(logo, (W - lw) / 2, 34, lw, lh); } catch { /* sin logo */ }
+    try { const logo = await loadImg(ROOT + 'imagenes/app/logo-kz.webp'); const lw = 330, lh = lw * logo.naturalHeight / logo.naturalWidth; g.drawImage(logo, (W - lw) / 2, 34, lw, lh); } catch { /* sin logo */ }
     const win = a.total === b.total ? -1 : a.total > b.total ? 0 : 1, fn = x => (typeof FACTIONS !== 'undefined' && FACTIONS[x.faction]?.name) || x.faction || '';
     g.textAlign = 'center'; g.textBaseline = 'middle';
     // marcador
@@ -47,11 +47,11 @@
   const resultText = (d, extra = {}) => {
     const [a, b] = d.players, fn = x => (typeof FACTIONS !== 'undefined' && FACTIONS[x.faction]?.name) || x.faction || '';
     const w = a.total === b.total ? 'Empate' : `Victoria de ${(a.total > b.total ? a : b).name}`;
-    return `⚔️ Kill Team${extra.comunidad ? ' · ' + extra.comunidad : ''}\n${a.name} (${fn(a)}) ${a.total} – ${b.total} ${b.name} (${fn(b)})\n${w}`;
+    return `⚔️ Kill Zone${extra.comunidad ? ' · ' + extra.comunidad : ''}\n${a.name} (${fn(a)}) ${a.total} – ${b.total} ${b.name} (${fn(b)})\n${w}`;
   };
 
   // Abre el menú del sistema o, si no hay, el panel propio
-  async function share({ title = 'Kill Team', text = '', blob = null, filename = 'kill-team.png' }) {
+  async function share({ title = 'Kill Zone', text = '', blob = null, filename = 'kill-zone.png' }) {
     const file = blob ? new File([blob], filename, { type: blob.type || 'image/png' }) : null;
     if (navigator.share && matchMedia('(pointer: coarse)').matches) {
       try {
@@ -97,7 +97,7 @@
     async photo(url, text) {
       let blob = null;
       try { const r = await fetch(url, { mode: 'cors' }); if (r.ok) blob = await r.blob(); } catch { /* sin acceso: solo texto */ }
-      return share({ title: 'Kill Team', text: text || '', blob, filename: 'kill-team.jpg' });
+      return share({ title: 'Kill Zone', text: text || '', blob, filename: 'kill-zone.jpg' });
     },
   };
 })();

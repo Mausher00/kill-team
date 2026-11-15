@@ -71,7 +71,7 @@
   const ROOT = (document.currentScript?.src || '').replace(/js\/usuarios\.js.*$/, '');
   const online = () => !!(KT.cuenta && KT.nube?.on);
   function panelHtml() {
-    const logo = `<img class="usr-logo" src="${ROOT}imagenes/app/logo-kt-sm.webp" alt="Kill Team" width="440" height="139">`;
+    const logo = `<img class="usr-logo" src="${ROOT}imagenes/app/logo-kz-sm.webp" alt="Kill Zone" width="440" height="82">`;
     if (!online()) return logo + localHtml();
     const N = KT.nube;
     if (KT.cuenta.ready && N.user && !N.recovery) return logo + KT.cuenta.html() + bandsHtml(U.current());

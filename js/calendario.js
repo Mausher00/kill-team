@@ -12,7 +12,7 @@
     // ev: { title, start: Date, mins, desc, place, url }
     ics(ev) {
       const end = new Date(ev.start.getTime() + (ev.mins || 120) * 60000);
-      return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Kill Team Companion//ES', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT',
+      return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Kill Zone//ES', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT',
         'UID:' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) + '@killteam-companion', 'DTSTAMP:' + utc(new Date()),
         'DTSTART:' + utc(ev.start), 'DTEND:' + utc(end), 'SUMMARY:' + fold(ev.title),
         'DESCRIPTION:' + fold([ev.desc, ev.url].filter(Boolean).join('\n')), ev.place ? 'LOCATION:' + fold(ev.place) : '', ev.url ? 'URL:' + ev.url : '',

@@ -164,7 +164,7 @@ function renderHome() {
       <header class="home-hdr reveal">
         <div class="hh-top">
           <div class="hh-title">
-            <h1 class="home-logo"><img src="imagenes/app/logo-kt.webp" srcset="imagenes/app/logo-kt-sm.webp 440w, imagenes/app/logo-kt.webp 937w" sizes="(max-width: 640px) 78vw, 440px" alt="Warhammer 40,000 Kill Team" width="937" height="295"></h1>
+            <h1 class="home-logo"><img src="imagenes/app/logo-kz.webp" alt="Kill Zone" width="937" height="261"></h1>
             <p class="home-sub">Selecciona un comando para ver sus operativos, reglas y ardides</p>
           </div>
           <div class="hh-util">
@@ -185,7 +185,7 @@ function renderHome() {
       <div class="section-label">Comandos disponibles <span class="sl-count">${n}</span></div>
       <div class="chips" role="toolbar" aria-label="Filtrar comandos">${chips}</div>
       <div class="faction-grid">${cards}${filt ? '' : soon}</div>
-      <footer class="page-footer">Kill Team Companion — uso personal · pulsa <kbd>?</kbd> para ver los atajos</footer>
+      <footer class="page-footer">Kill Zone — uso personal · pulsa <kbd>?</kbd> para ver los atajos</footer>
     </div>`;
 }
 

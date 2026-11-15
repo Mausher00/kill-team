@@ -24,7 +24,7 @@
     finally { busy = false; document.body.style.cursor = ''; }
   };
   const head = (sub, extra = '') => `<header class="m-hd">
-    <a class="back" href="index.html" aria-label="Volver al inicio"><i class="ti ti-arrow-left" aria-hidden="true"></i> <img class="back-logo" src="imagenes/app/logo-kt-sm.webp" alt="Kill Team" width="440" height="139"></a>
+    <a class="back" href="index.html" aria-label="Volver al inicio"><i class="ti ti-arrow-left" aria-hidden="true"></i> <img class="back-logo" src="imagenes/app/logo-kz-sm.webp" alt="Kill Zone" width="440" height="82"></a>
     <h1>Administración</h1>${sub ? `<p>${sub}</p>` : ''}${extra}</header>`;
   const gate = (icon, title, txt, btn = '') => { app.innerHTML = head('') + `<div class="g-empty"><span class="g-empty-ic" aria-hidden="true"><i class="ti ti-${icon}"></i></span><h3>${title}</h3><p>${txt}</p>${btn ? `<div class="g-empty-acts">${btn}</div>` : ''}</div>`; };
   const none = t => `<div class="m-empty">${t}</div>`;

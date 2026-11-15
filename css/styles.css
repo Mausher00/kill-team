@@ -1,5 +1,5 @@
 /* ============================================================
-   KILL TEAM — SPA unificada
+   KILL ZONE — SPA unificada
    ============================================================ */
 
 /* Tipografía D-DIN: ver css/fonts.css (enlazado desde cada página) */
@@ -424,7 +424,7 @@ button.nav-link { background: none; cursor: pointer; }
 
 /* Logo */
 .home-logo { margin: 0; line-height: 0; }
-.home-logo img { display: block; width: clamp(240px, 30vw, 440px); height: auto; filter: drop-shadow(0 10px 24px rgba(0,0,0,.6)); }
+.home-logo img { display: block; width: clamp(290px, 30vw, 440px); height: auto; filter: drop-shadow(0 10px 24px rgba(0,0,0,.6)); }
 .kt-logo { display: block; height: auto; }
 .back-logo { display: block; height: 30px; width: auto; transition: filter .15s, transform .15s; }
 a.back:hover .back-logo, .back:hover .back-logo { filter: brightness(1.15); transform: translateX(2px); }

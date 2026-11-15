@@ -2,7 +2,7 @@
 //  sw.js — Service worker: la app funciona sin conexión.
 //  GENERADO por herramientas/pwa/generar_sw.py — no editar a mano.
 // ============================================================
-const VERSION = '26bc36e139';
+const VERSION = '779f9468f7';
 const CORE = [
 "index.html",
 "builder.html",
@@ -79,8 +79,8 @@ const CORE = [
 "imagenes/app/icono-192.png",
 "imagenes/app/icono-512.png",
 "imagenes/app/icono-maskable-512.png",
-"imagenes/app/logo-kt-sm.webp",
-"imagenes/app/logo-kt.webp"
+"imagenes/app/logo-kz-sm.webp",
+"imagenes/app/logo-kz.webp"
 ];
 const IMAGES = [
 "imagenes/alaasesina.webp",
